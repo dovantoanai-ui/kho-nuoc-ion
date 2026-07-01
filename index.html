@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Kho Nuoc Ion Kiem - DA05</title>
+<style>
+  :root{
+    --bg:#f4f6f8;--card:#ffffff;--ink:#1a2430;--mut:#6b7683;--line:#e3e8ee;
+    --ac:#2f6df0;--acb:#e7f0ff;--pu:#7c3aed;--pub:#f0e9ff;--gr:#0f9d58;--grb:#e6f4ea;
+    --re:#d9463c;--reb:#fdeceb;--am:#e08a00;--amb:#fdf1dd;--sf:#f7f9fb;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.5}
+  .wrap{max-width:760px;margin:0 auto;padding:0 0 90px;min-height:100vh;background:var(--bg)}
+  .top{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:1px solid var(--line);
+    padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .top .ttl{font-size:16px;font-weight:700}
+  .top .sub{font-size:11px;color:var(--mut)}
+  .gsbtn{border:none;background:var(--ac);color:#fff;font:inherit;font-size:13px;font-weight:600;
+    padding:8px 12px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .gsdot{width:8px;height:8px;border-radius:50%;background:#9fb3c8}
+  .gsdot.on{background:#7ef0b0}.gsdot.syncing{background:#ffd24d;animation:bl .8s infinite}
+  @keyframes bl{50%{opacity:.3}}
+  .sc{display:none;padding:12px 14px}.sc.on{display:block}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  h2{font-size:15px;margin:0 0 10px;font-weight:700}
+  label{font-size:12px;color:var(--mut);display:block;margin:8px 0 4px}
+  input,select,textarea{width:100%;font:inherit;font-size:15px;padding:10px 11px;border:1px solid var(--line);
+    border-radius:10px;background:#fff;color:var(--ink);-webkit-appearance:none;appearance:none}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--ac)}
+  select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' stroke='%236b7683' stroke-width='1.6' fill='none'/></svg>");
+    background-repeat:no-repeat;background-position:right 11px center;padding-right:30px}
+  .row{display:flex;gap:8px}.row>*{flex:1}
+  .prow{display:flex;gap:6px;align-items:flex-end;margin-bottom:8px}
+  .prow .pd{flex:2.4}.prow .pq{flex:1}.prow .pp{flex:1.5}
+  .xbtn{flex:0 0 34px;height:42px;border:1px solid var(--line);background:var(--reb);color:var(--re);
+    border-radius:10px;font-size:20px;cursor:pointer;line-height:1}
+  .addp{width:100%;border:1px dashed var(--ac);background:var(--acb);color:var(--ac);
+    font:inherit;font-weight:600;font-size:13px;padding:9px;border-radius:10px;cursor:pointer;margin-bottom:8px}
+  .tot{display:flex;justify-content:space-between;align-items:center;background:var(--sf);
+    border-radius:10px;padding:11px 12px;margin:8px 0}
+  .tot .v{font-size:19px;font-weight:800}
+  .save{width:100%;border:none;color:#fff;font:inherit;font-size:15px;font-weight:700;
+    padding:13px;border-radius:11px;cursor:pointer;margin-top:6px}
+  .save.ac{background:var(--ac)}.save.pu{background:var(--pu)}.save.gr{background:var(--gr)}
+  .pills{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}
+  .pill{border:1px solid var(--line);background:#fff;color:var(--mut);font-size:13px;font-weight:600;
+    padding:7px 13px;border-radius:20px;cursor:pointer}
+  .pill.on{background:var(--pub);color:var(--pu);border-color:var(--pu)}
+  .li{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:8px}
+  .li .h{display:flex;justify-content:space-between;font-size:13px;font-weight:700}
+  .li .m{font-size:12px;color:var(--mut);margin-top:3px}
+  .tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px}
+  .tag.nh{background:var(--acb);color:var(--ac)}.tag.xu{background:var(--pub);color:var(--pu)}
+  .tag.th{background:var(--grb);color:var(--gr)}.tag.le{background:var(--amb);color:var(--am)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{font-size:11px;color:var(--mut);text-align:left;font-weight:600;padding:6px 6px;border-bottom:1px solid var(--line)}
+  td{padding:8px 6px;border-bottom:1px solid var(--line)}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .neg{color:var(--re)}.pos{color:var(--gr)}
+  .kpi{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .kpi .b{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .kpi .l{font-size:11px;color:var(--mut)}.kpi .v{font-size:20px;font-weight:800;margin-top:3px}
+  .nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);
+    display:flex;z-index:30;max-width:760px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom)}
+  .nav button{flex:1;border:none;background:none;font:inherit;color:var(--mut);font-size:10px;
+    padding:8px 2px 7px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .nav button.on{color:var(--ac)}.nav button svg{width:21px;height:21px}
+  .dpick{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .dpick input{flex:1}
+  .toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:#1a2430;color:#fff;
+    font-size:13px;padding:10px 16px;border-radius:10px;z-index:50;opacity:0;transition:.2s;pointer-events:none;max-width:90%}
+  .toast.on{opacity:1}
+  .hint{font-size:12px;color:var(--mut);margin-top:6px;line-height:1.4}
+  .seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:2px}
+  .seg button{flex:1;border:none;background:#fff;font:inherit;font-size:13px;font-weight:600;color:var(--mut);padding:9px;cursor:pointer}
+  .seg button.on{background:var(--pu);color:#fff}
+  @media(min-width:640px){.sc{padding:16px 18px}.kpi{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div><div class="ttl">Kho Nuoc Ion Kiem</div><div class="sub" id="topSub">DA05 - dang tai...</div></div>
+    <button class="gsbtn" onclick="pushToSheet()"><span class="gsdot" id="gsDot"></span>Dong bo</button>
+  </div>
+
+  <div class="sc on" id="s-home">
+    <div class="dpick">
+      <span style="font-size:13px;color:var(--mut)">Ngay</span>
+      <input type="date" id="homeDate" onchange="onDateChange()">
+    </div>
+    <div class="kpi">
+      <div class="b"><div class="l">Nhap trong ngay</div><div class="v" id="hNhap">0</div></div>
+      <div class="b"><div class="l">Xuat ban</div><div class="v" id="hXuat">0</div></div>
+    </div>
+    <div id="homeList"></div>
+  </div>
+
+  <div class="sc" id="s-nhap">
+    <div class="card">
+      <h2>Phieu nhap kho</h2>
+      <div class="row"><div><label>Nguoi nhap</label><input id="nhNV" placeholder="Ten nhan vien"></div>
+        <div><label>Nha cung cap</label><input id="nhNCC" placeholder="Vi du: Ion Fuji"></div></div>
+      <label>San pham</label>
+      <div id="nhRows"></div>
+      <button class="addp" onclick="addRow('nh')">+ Them san pham</button>
+      <div class="tot"><span>Tong tien nhap</span><span class="v" id="nhTot">0</span></div>
+      <label>Ghi chu</label><input id="nhNote" placeholder="Ghi chu lo hang...">
+      <button class="save ac" onclick="saveNhap()">Luu phieu nhap</button>
+    </div>
+  </div>
+
+  <div class="sc" id="s-xuat">
+    <div class="card">
+      <h2>Xuat ban cho dai ly</h2>
+      <label>Dai ly</label><input id="xuDL" placeholder="Ten dai ly" list="dlList">
+      <datalist id="dlList"></datalist>
+      <label>Bac chiet khau</label>
+      <div class="seg" id="xuBac">
+        <button data-b="NPP" class="on" onclick="pickBac(this)">NPP</button>
+        <button data-b="C1" onclick="pickBac(this)">Cap 1</button>
+        <button data-b="C2" onclick="pickBac(this)">Cap 2</button>
+        <button data-b="C3" onclick="pickBac(this)">Cap 3</button>
+      </div>
+      <label>San pham</label>
+      <div id="xuRows"></div>
+      <button class="addp" onclick="addRow('xu')">+ Them san pham</button>
+      <div class="tot"><span>Tong tien hang</span><span class="v" id="xuTot">0</span></div>
+      <div class="row"><div><label>Khach da tra</label><input id="xuThu" type="number" inputmode="numeric" placeholder="0" oninput="calcXu()"></div>
+        <div><label>Con no</label><input id="xuNo" readonly style="background:var(--sf)"></div></div>
+      <label>Ghi chu</label><input id="xuNote" placeholder="Ghi chu...">
+      <button class="save pu" onclick="saveXuat('DL')">Luu phieu xuat</button>
+    </div>
+  </div>
+
+  <div class="sc" id="s-banle">
+    <div class="card">
+      <h2>Ban le khach cuoi</h2>
+      <div class="row"><div><label>Ten khach</label><input id="blKh" placeholder="Ten khach"></div>
+        <div><label>SDT</label><input id="blSdt" type="tel" placeholder="So dien thoai"></div></div>
+      <label>San pham (gia le)</label>
+      <div id="blRows"></div>
+      <button class="addp" onclick="addRow('bl')">+ Them san pham</button>
+      <div class="tot"><span>Tong tien</span><span class="v" id="blTot">0</span></div>
+      <div class="row"><div><label>Khach da tra</label><input id="blThu" type="number" inputmode="numeric" placeholder="0" oninput="calcBl()"></div>
+        <div><label>Con no</label><input id="blNo" readonly style="background:var(--sf)"></div></div>
+      <label>Ghi chu</label><input id="blNote" placeholder="Vi du: giam 10%...">
+      <button class="save am" style="background:var(--am)" onclick="saveXuat('Le')">Luu don ban le</button>
+    </div>
+  </div>
+
+  <div class="sc" id="s-thu">
+    <div class="card">
+      <h2>Thu tien cong no</h2>
+      <label>Dai ly / khach</label><input id="tuDL" placeholder="Ten dai ly" list="dlList2">
+      <datalist id="dlList2"></datalist>
+      <div class="row"><div><label>So tien thu</label><input id="tuTien" type="number" inputmode="numeric" placeholder="0"></div>
+        <div><label>Hinh thuc</label><select id="tuHt"><option>Tien mat</option><option>Chuyen khoan</option></select></div></div>
+      <label>Nguoi thu</label><input id="tuNV" placeholder="Ten nhan vien">
+      <label>Ghi chu</label><input id="tuNote" placeholder="Ghi chu...">
+      <button class="save gr" onclick="saveThu()">Luu thu tien</button>
+      <div class="hint" id="tuNoInfo"></div>
+    </div>
+  </div>
+
+  <div class="sc" id="s-ton">
+    <div class="card">
+      <h2>Ton kho hien tai</h2>
+      <div class="hint">Ton = ton dau ky + tong nhap - tong xuat (tinh tu du lieu tren may).</div>
+      <table id="tonTbl"><thead><tr><th>Ma hang</th><th class="num">Dau ky</th><th class="num">Nhap</th><th class="num">Xuat</th><th class="num">Ton</th><th class="num">Gia tri</th></tr></thead><tbody id="tonBody"></tbody></table>
+    </div>
+  </div>
+
+  <div class="sc" id="s-dash">
+    <div class="pills" id="dashPills">
+      <span class="pill on" data-r="today" onclick="pickRange(this)">Hom nay</span>
+      <span class="pill" data-r="month" onclick="pickRange(this)">Thang nay</span>
+      <span class="pill" data-r="all" onclick="pickRange(this)">Tat ca</span>
+    </div>
+    <div class="kpi">
+      <div class="b"><div class="l">Doanh thu ban</div><div class="v" id="dDt">0</div></div>
+      <div class="b"><div class="l">Tong nhap</div><div class="v" id="dNh">0</div></div>
+      <div class="b"><div class="l">Cong no dai ly</div><div class="v neg" id="dNo">0</div></div>
+      <div class="b"><div class="l">Gia tri ton</div><div class="v" id="dTon">0</div></div>
+    </div>
+    <div class="card"><h2>Cong no theo dai ly</h2><div id="dashNo"></div></div>
+  </div>
+
+  <div class="sc" id="s-dm">
+    <div class="card">
+      <h2>Danh muc san pham</h2>
+      <div class="hint">Danh muc + gia lay 100% tu tab Data cua Google Sheet.</div>
+      <button class="addp" style="margin-top:8px" onclick="loadCatalog()">Tai lai danh muc tu Google Sheet</button>
+      <div id="dmList"></div>
+    </div>
+    <div class="card">
+      <h2>Ket noi Google Sheet</h2>
+      <label>URL Apps Script Web App (/exec)</label>
+      <input id="cfgUrl" placeholder="https://script.google.com/macros/s/.../exec">
+      <button class="save ac" style="margin-top:10px" onclick="saveCfg()">Luu ket noi + tai danh muc</button>
+      <div class="hint" id="cfgInfo"></div>
+    </div>
+  </div>
+
+  <div class="nav" id="nav"></div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+function pad(n){return String(n).padStart(2,'0');}
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function ld(k,d){try{var v=localStorage.getItem(k);return v!==null?JSON.parse(v):d;}catch(e){return d;}}
+function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function fmt(n){return (Math.round(Number(n)||0)).toLocaleString('vi-VN');}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+var _tt;
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(_tt);_tt=setTimeout(function(){t.classList.remove('on');},2200);}
+
+var DEFAULT_CAT=[
+ {ma:'BOCOCTHUYTINH',ten:'Bo coc thuy tinh ION Fuji',dvt:'Bo',gv:39793,gnpp:0,gc1:0,gc2:0,gc3:0,gle:0},
+ {ma:'CHAI500ML',ten:'Nuoc ion kiem chai 500ml',dvt:'Thung',gv:11028,gnpp:0,gc1:0,gc2:0,gc3:0,gle:0},
+ {ma:'CHAILUX350ML',ten:'Nuoc ion kiem Luxury 350ml',dvt:'Thung',gv:8207,gnpp:0,gc1:0,gc2:0,gc3:0,gle:0},
+ {ma:'CHAILUX500ML',ten:'Nuoc ion kiem Luxury 500ml',dvt:'Thung',gv:4354,gnpp:0,gc1:0,gc2:0,gc3:0,gle:0},
+ {ma:'ION19LVOI',ten:'Nuoc ion kiem binh 19l (co voi)',dvt:'Binh',gv:114,gnpp:0,gc1:0,gc2:0,gc3:0,gle:0},
+ {ma:'LOCRO500',ten:'Nuoc Suoi Fuji chai 500ml (12 chai)',dvt:'Loc',gv:7063,gnpp:0,gc1:0,gc2:0,gc3:0,gle:0},
+ {ma:'MOCKHOA',ten:'Moc khoa Ion Fuji (qua tang)',dvt:'Chiec',gv:4700,gnpp:0,gc1:0,gc2:0,gc3:0,gle:0},
+ {ma:'RO19IVOI',ten:'Nuoc Suoi Fuji binh 19L co voi',dvt:'Binh',gv:140,gnpp:0,gc1:0,gc2:0,gc3:0,gle:0}
+];
+var DEFAULT_TONDAU={BOCOCTHUYTINH:16,CHAI500ML:3,CHAILUX350ML:5,CHAILUX500ML:5,ION19LVOI:2,LOCRO500:4,MOCKHOA:100,RO19IVOI:2};
+
+var CAT=ld('kda_catalog',[]);
+if(ld('kda_tondau',null)===null)sv('kda_tondau',DEFAULT_TONDAU);
+var curDate=todayStr();
+var xuBac='NPP';
+var nhData={},xuData={},blData={};
+
+function catByMa(ma){for(var i=0;i<CAT.length;i++)if(CAT[i].ma===ma)return CAT[i];return null;}
+function priceByBac(c,bac){if(!c)return 0;return bac==='NPP'?c.gnpp:bac==='C1'?c.gc1:bac==='C2'?c.gc2:c.gc3;}
+
+var SCREENS=['home','nhap','xuat','banle','thu','ton','dash','dm'];
+var NAV=[['home','Trang chu','M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z'],
+ ['nhap','Nhap','M12 3v12m0 0l-4-4m4 4l4-4M4 19h16'],
+ ['xuat','Xuat DL','M12 21V9m0 0l4 4m-4-4l-4 4M4 5h16'],
+ ['banle','Ban le','M6 6h15l-1.5 9h-12zM6 6L5 3H3m3 15a1 1 0 100 2 1 1 0 000-2zm11 0a1 1 0 100 2 1 1 0 000-2z'],
+ ['thu','Thu tien','M12 8v8m0 0c-2 0-3-1-3-2m3 2c2 0 3-1 3-2m-3-6c2 0 3 1 3 2m-3-2c-2 0-3 1-3 2m3-2V6m0 12v2M4 6a8 8 0 1016 0 8 8 0 00-16 0z'],
+ ['ton','Ton kho','M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10'],
+ ['dash','Bao cao','M4 20V10m5 10V4m5 16v-6m5 6V8'],
+ ['dm','Danh muc','M4 6h16M4 12h16M4 18h10']];
+
+function buildNav(){
+  var n=document.getElementById('nav');var h='';
+  NAV.forEach(function(x,i){
+    h+='<button id="nv-'+x[0]+'" onclick="go('+"'"+x[0]+"'"+')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="'+x[2]+'"/></svg>'+x[1]+'</button>';
+  });
+  n.innerHTML=h;
+}
+function go(id){
+  SCREENS.forEach(function(s){document.getElementById('s-'+s).classList.remove('on');
+    var b=document.getElementById('nv-'+s);if(b)b.classList.remove('on');});
+  document.getElementById('s-'+id).classList.add('on');
+  var b=document.getElementById('nv-'+id);if(b)b.classList.add('on');
+  window.scrollTo(0,0);
+  if(id==='home')renderHome();if(id==='ton')renderTon();if(id==='dash')renderDash();if(id==='dm')renderDM();
+  if(id==='xuat'||id==='thu')refreshDL();
+}
+
+function onDateChange(){curDate=document.getElementById('homeDate').value||todayStr();renderHome();}
+function getRecs(t,d){return ld('kda_'+t+'_'+(d||curDate),[]);}
+function svRecs(t,d,a){sv('kda_'+t+'_'+(d||curDate),a);}
+
+function renderHome(){
+  document.getElementById('homeDate').value=curDate;
+  var nh=getRecs('nhap'),xu=getRecs('xuat'),tu=getRecs('thu');
+  var tNhap=0,tXuat=0;
+  nh.forEach(function(p){tNhap+=p.total||0;});
+  xu.forEach(function(p){tXuat+=p.total||0;});
+  document.getElementById('hNhap').textContent=fmt(tNhap);
+  document.getElementById('hXuat').textContent=fmt(tXuat);
+  var h='';
+  nh.forEach(function(p){h+='<div class="li"><div class="h"><span><span class="tag nh">NHAP</span> '+esc(p.ncc||'Nhap kho')+'</span><span>'+fmt(p.total)+'</span></div><div class="m">'+p.lines.length+' mat hang - '+esc(p.nv||'')+(p.synced?' - da dong bo':'')+'</div></div>';});
+  xu.forEach(function(p){var tg=p.loai==='Le'?'le':'xu';h+='<div class="li"><div class="h"><span><span class="tag '+tg+'">'+(p.loai==='Le'?'BAN LE':'XUAT '+p.bac)+'</span> '+esc(p.kh||'')+'</span><span>'+fmt(p.total)+'</span></div><div class="m">'+p.lines.length+' mat hang'+(p.no>0?' - con no '+fmt(p.no):'')+(p.synced?' - da dong bo':'')+'</div></div>';});
+  tu.forEach(function(p){h+='<div class="li"><div class="h"><span><span class="tag th">THU</span> '+esc(p.dl||'')+'</span><span>'+fmt(p.tien)+'</span></div><div class="m">'+esc(p.ht||'')+(p.synced?' - da dong bo':'')+'</div></div>';});
+  document.getElementById('homeList').innerHTML=h||'<div class="hint" style="text-align:center;padding:24px">Chua co phieu nao trong ngay nay.</div>';
+}
+function esc(s){return String(s==null?'':s).replace(/[<>&]/g,function(c){return c==='<'?'&lt;':c==='>'?'&gt;':'&amp;';});}
+</script>
+<script>
+function prodOptions(sel){var h=CAT.length?'<option value="">-- chon SP --</option>':'<option value="">-- vao Danh muc de tai --</option>';CAT.forEach(function(c){h+='<option value="'+c.ma+'"'+(c.ma===sel?' selected':'')+'>'+esc(c.ten)+'</option>';});return h;}
+function refreshProdSelects(){document.querySelectorAll('.prow select').forEach(function(sel){var v=sel.value;sel.innerHTML=prodOptions(v);});}
+function addRow(t){
+  var box=document.getElementById(t+'Rows');
+  var div=document.createElement('div');div.className='prow';
+  div.innerHTML='<div class="pd"><select onchange="onProd('+"'"+t+"'"+',this)">'+prodOptions('')+'</select></div>'
+    +'<div class="pq"><input type="number" inputmode="numeric" placeholder="SL" oninput="calc('+"'"+t+"'"+')"></div>'
+    +'<div class="pp"><input type="number" inputmode="numeric" placeholder="Gia" oninput="calc('+"'"+t+"'"+')"></div>'
+    +'<button class="xbtn" onclick="this.parentNode.remove();calc('+"'"+t+"'"+')">&times;</button>';
+  box.appendChild(div);
+}
+function onProd(t,selEl){
+  var row=selEl.closest('.prow');var c=catByMa(selEl.value);var pinp=row.querySelector('.pp input');
+  if(c){pinp.value=t==='nh'?c.gv:t==='bl'?c.gle:priceByBac(c,xuBac);}
+  calc(t);
+}
+function calc(t){
+  var tot=0;
+  document.querySelectorAll('#'+t+'Rows .prow').forEach(function(r){
+    var sl=Number(r.querySelector('.pq input').value)||0;
+    var pr=Number(r.querySelector('.pp input').value)||0;tot+=sl*pr;});
+  document.getElementById(t+'Tot').textContent=fmt(tot);
+  if(t==='xu')calcXu(tot);if(t==='bl')calcBl(tot);
+}
+function readLines(t){
+  var out=[];
+  document.querySelectorAll('#'+t+'Rows .prow').forEach(function(r){
+    var ma=r.querySelector('select').value;if(!ma)return;
+    var sl=Number(r.querySelector('.pq input').value)||0;
+    var pr=Number(r.querySelector('.pp input').value)||0;if(!sl)return;
+    var c=catByMa(ma);
+    out.push({ma:ma,ten:c?c.ten:ma,dvt:c?c.dvt:'',sl:sl,price:pr,tt:sl*pr});
+  });
+  return out;
+}
+function curTot(t){var s=0;readLines(t).forEach(function(l){s+=l.tt;});return s;}
+
+function pickBac(btn){
+  document.querySelectorAll('#xuBac button').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');xuBac=btn.getAttribute('data-b');
+  document.querySelectorAll('#xuRows .prow').forEach(function(r){
+    var ma=r.querySelector('select').value;var c=catByMa(ma);
+    if(c)r.querySelector('.pp input').value=priceByBac(c,xuBac);});
+  calc('xu');
+}
+function calcXu(tot){if(tot==null)tot=curTot('xu');var thu=Number(document.getElementById('xuThu').value)||0;document.getElementById('xuNo').value=fmt(Math.max(tot-thu,0));}
+function calcBl(tot){if(tot==null)tot=curTot('bl');var thu=Number(document.getElementById('blThu').value)||0;document.getElementById('blNo').value=fmt(Math.max(tot-thu,0));}
+
+function saveNhap(){
+  var lines=readLines('nh');if(!lines.length)return toast('Chua chon san pham');
+  var tot=0;lines.forEach(function(l){tot+=l.tt;});
+  var p={id:uid(),date:curDate,nv:document.getElementById('nhNV').value.trim(),ncc:document.getElementById('nhNCC').value.trim(),
+    note:document.getElementById('nhNote').value.trim(),lines:lines,total:tot,synced:false};
+  var a=getRecs('nhap');a.unshift(p);svRecs('nhap',null,a);
+  document.getElementById('nhRows').innerHTML='';addRow('nh');
+  document.getElementById('nhNCC').value='';document.getElementById('nhNote').value='';document.getElementById('nhTot').textContent='0';
+  toast('Da luu phieu nhap');go('home');if(ld('kda_gs_url',''))pushToSheet();
+}
+function saveXuat(loai){
+  var t=loai==='Le'?'bl':'xu';var lines=readLines(t);if(!lines.length)return toast('Chua chon san pham');
+  var tot=0;lines.forEach(function(l){tot+=l.tt;});
+  var thu=Number(document.getElementById(t+'Thu').value)||0;
+  var p={id:uid(),date:curDate,loai:loai,bac:loai==='Le'?'Le':xuBac,
+    kh:loai==='Le'?document.getElementById('blKh').value.trim():document.getElementById('xuDL').value.trim(),
+    sdt:loai==='Le'?document.getElementById('blSdt').value.trim():'',
+    nv:'',lines:lines,total:tot,thu:thu,no:Math.max(tot-thu,0),
+    note:document.getElementById(t+'Note').value.trim(),synced:false};
+  if(!p.kh)return toast(loai==='Le'?'Nhap ten khach':'Nhap ten dai ly');
+  var a=getRecs('xuat');a.unshift(p);svRecs('xuat',null,a);
+  if(loai!=='Le'){var dls=ld('kda_dealers',[]);if(dls.indexOf(p.kh)<0){dls.push(p.kh);sv('kda_dealers',dls);}}
+  document.getElementById(t+'Rows').innerHTML='';addRow(t);
+  document.getElementById(t+'Thu').value='';document.getElementById(t+'Note').value='';
+  document.getElementById(t+'Tot').textContent='0';document.getElementById(t+'No').value='';
+  if(loai==='Le'){document.getElementById('blKh').value='';document.getElementById('blSdt').value='';}
+  toast('Da luu phieu');go('home');if(ld('kda_gs_url',''))pushToSheet();
+}
+function saveThu(){
+  var dl=document.getElementById('tuDL').value.trim();var tien=Number(document.getElementById('tuTien').value)||0;
+  if(!dl)return toast('Nhap ten dai ly');if(!tien)return toast('Nhap so tien');
+  var p={id:uid(),date:curDate,dl:dl,tien:tien,ht:document.getElementById('tuHt').value,
+    nv:document.getElementById('tuNV').value.trim(),note:document.getElementById('tuNote').value.trim(),synced:false};
+  var a=getRecs('thu');a.unshift(p);svRecs('thu',null,a);
+  document.getElementById('tuTien').value='';document.getElementById('tuNote').value='';document.getElementById('tuNoInfo').textContent='';
+  toast('Da luu thu tien');go('home');if(ld('kda_gs_url',''))pushToSheet();
+}
+</script>
+<script>
+function lsKeys(pre){var o=[];for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf(pre)===0)o.push(k);}return o;}
+function allRecs(t){var o=[];lsKeys('kda_'+t+'_').forEach(function(k){ld(k,[]).forEach(function(r){o.push(r);});});return o;}
+function inRange(d,r){if(r==='all')return true;if(r==='today')return d===curDate;if(r==='month')return d.slice(0,7)===curDate.slice(0,7);return true;}
+
+function tonMap(){
+  var nh={},xu={};
+  allRecs('nhap').forEach(function(p){(p.lines||[]).forEach(function(l){nh[l.ma]=(nh[l.ma]||0)+l.sl;});});
+  allRecs('xuat').forEach(function(p){(p.lines||[]).forEach(function(l){xu[l.ma]=(xu[l.ma]||0)+l.sl;});});
+  return {nh:nh,xu:xu};
+}
+function debtMap(){
+  var d={};
+  allRecs('xuat').forEach(function(p){if(p.no>0){d[p.kh]=(d[p.kh]||0)+p.no;}});
+  allRecs('thu').forEach(function(p){d[p.dl]=(d[p.dl]||0)-p.tien;});
+  return d;
+}
+function renderTon(){
+  var td=ld('kda_tondau',{});var m=tonMap();var body='';var tGT=0;
+  CAT.forEach(function(c){
+    var dau=td[c.ma]||0,nh=m.nh[c.ma]||0,xu=m.xu[c.ma]||0;var ton=dau+nh-xu;var gt=ton*c.gv;tGT+=gt;
+    body+='<tr><td>'+esc(c.ma)+'</td><td class="num">'+fmt(dau)+'</td><td class="num pos">'+fmt(nh)+'</td><td class="num neg">'+fmt(xu)+'</td><td class="num" style="font-weight:700">'+fmt(ton)+'</td><td class="num">'+fmt(gt)+'</td></tr>';
+  });
+  body+='<tr><td style="font-weight:700">Tong gia tri ton</td><td colspan="4"></td><td class="num" style="font-weight:800">'+fmt(tGT)+'</td></tr>';
+  document.getElementById('tonBody').innerHTML=body;
+}
+function renderDash(){
+  var r=(document.querySelector('#dashPills .pill.on')||{}).getAttribute?document.querySelector('#dashPills .pill.on').getAttribute('data-r'):'today';
+  var dt=0,nh=0;
+  allRecs('xuat').forEach(function(p){if(inRange(p.date,r))dt+=p.total||0;});
+  allRecs('nhap').forEach(function(p){if(inRange(p.date,r))nh+=p.total||0;});
+  var d=debtMap();var tNo=0;var rows='';
+  Object.keys(d).forEach(function(k){if(d[k]>0.5){tNo+=d[k];rows+='<div class="li"><div class="h"><span>'+esc(k)+'</span><span class="neg">'+fmt(d[k])+'</span></div></div>';}});
+  var td=ld('kda_tondau',{});var m=tonMap();var tGT=0;CAT.forEach(function(c){tGT+=((td[c.ma]||0)+(m.nh[c.ma]||0)-(m.xu[c.ma]||0))*c.gv;});
+  document.getElementById('dDt').textContent=fmt(dt);
+  document.getElementById('dNh').textContent=fmt(nh);
+  document.getElementById('dNo').textContent=fmt(tNo);
+  document.getElementById('dTon').textContent=fmt(tGT);
+  document.getElementById('dashNo').innerHTML=rows||'<div class="hint">Khong co cong no.</div>';
+}
+function pickRange(el){document.querySelectorAll('#dashPills .pill').forEach(function(p){p.classList.remove('on');});el.classList.add('on');renderDash();}
+
+function refreshDL(){
+  var dls=ld('kda_dealers',[]);var h='';dls.forEach(function(d){h+='<option value="'+esc(d)+'">';});
+  document.getElementById('dlList').innerHTML=h;document.getElementById('dlList2').innerHTML=h;
+}
+function renderDM(){
+  var h=CAT.length?'':'<div class="hint" style="text-align:center;padding:20px">Chua co danh muc. Luu URL Web App ben duoi roi bam Tai.</div>';
+  CAT.forEach(function(c){
+    h+='<div class="li"><div class="h"><span>'+esc(c.ma)+'</span><span style="font-size:11px;color:var(--mut)">'+esc(c.dvt)+'</span></div>'
+    +'<div class="m">'+esc(c.ten)+'</div>'
+    +'<div class="m" style="margin-top:4px">Von '+fmt(c.gv)+' | NPP '+fmt(c.gnpp)+' | C1 '+fmt(c.gc1)+' | C2 '+fmt(c.gc2)+' | C3 '+fmt(c.gc3)+' | Le '+fmt(c.gle)+'</div></div>';
+  });
+  document.getElementById('dmList').innerHTML=h;
+  document.getElementById('cfgUrl').value=ld('kda_gs_url','');
+}
+function setPrice(i,f,v){CAT[i][f]=Number(v)||0;sv('kda_catalog',CAT);}
+
+function parseCSV(txt){
+  var rows=[],row=[],cur='',q=false;
+  for(var i=0;i<txt.length;i++){var ch=txt[i];
+    if(q){if(ch==='"'){if(txt[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=ch;}
+    else{if(ch==='"')q=true;else if(ch===',' ){row.push(cur);cur='';}
+    else if(ch==='\n'){row.push(cur);rows.push(row);row=[];cur='';}
+    else if(ch==='\r'){}else cur+=ch;}}
+  if(cur!==''||row.length){row.push(cur);rows.push(row);}return rows;
+}
+function loadCatalog(){
+  var url=ld('kda_gs_url','');if(!url)return toast('Chua co URL Web App');
+  toast('Dang tai danh muc...');
+  var cbn='__onCat_'+Date.now();
+  window[cbn]=function(res){try{delete window[cbn];}catch(e){}
+    if(res&&res.ok&&res.cat){CAT=res.cat;sv('kda_catalog',CAT);renderDM();refreshProdSelects();toast('Da tai '+CAT.length+' san pham tu Sheet');}
+    else toast('Loi tai danh muc'+(res&&res.error?': '+res.error:''));};
+  var sc=document.createElement('script');
+  sc.src=url+(url.indexOf('?')<0?'?':'&')+'action=catalog&callback='+cbn+'&t='+Date.now();
+  sc.onerror=function(){try{delete window[cbn];}catch(e){}toast('Khong ket noi duoc Web App');};
+  document.body.appendChild(sc);
+}
+function saveCfg(){
+  var u=(document.getElementById('cfgUrl').value||'').trim().replace(/^["']|["']$/g,'');
+  sv('kda_gs_url',u);setTop();
+  document.getElementById('cfgInfo').textContent=u?'Da luu. Dang tai danh muc...':'Chua co URL Web App.';
+  if(u)loadCatalog();
+  toast('Da luu ket noi');
+}
+function setTop(){var u=ld('kda_gs_url','');document.getElementById('topSub').textContent=u?'DA05 - da ket noi Sheet':'DA05 - chua ket noi (vao Danh muc de cai)';document.getElementById('gsDot').className='gsdot'+(u?' on':'');}
+
+function pushToSheet(){
+  var url=ld('kda_gs_url','');if(!url){toast('Chua co URL Web App. Vao Danh muc de cai.');return go('dm');}
+  var dev=ld('kda_device','');if(!dev){dev='KDA_'+Date.now().toString(36).toUpperCase();sv('kda_device',dev);}
+  var nh=getRecs('nhap'),xu=getRecs('xuat'),tu=getRecs('thu');
+  if(!nh.length&&!xu.length&&!tu.length)return toast('Ngay nay chua co du lieu');
+  document.getElementById('gsDot').className='gsdot syncing';toast('Dang gui len Sheet...');
+  var rNh=[],rXu=[],rTu=[];
+  nh.forEach(function(p){p.lines.forEach(function(l,i){rNh.push([p.id+'_'+i,p.id,p.date,p.nv,l.ma,l.ten,l.dvt,l.sl,l.price,l.tt,p.ncc,i===0?p.note:'']);});});
+  xu.forEach(function(p){p.lines.forEach(function(l,i){rXu.push([p.id+'_'+i,p.id,p.date,p.loai,p.bac,p.kh,p.sdt,l.ma,l.ten,l.dvt,l.sl,l.price,l.tt,i===0?p.thu:'',i===0?p.no:'',i===0?p.note:'']);});});
+  tu.forEach(function(p){rTu.push([p.id,p.date,p.dl,p.tien,p.ht,p.nv,p.note]);});
+  fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({loai:'khoDA05',ngay:curDate,device:dev,nhap:rNh,xuat:rXu,thu:rTu})})
+  .then(function(){
+    function mk(a){return a.map(function(v){return Object.assign({},v,{synced:true});});}
+    svRecs('nhap',null,mk(nh));svRecs('xuat',null,mk(xu));svRecs('thu',null,mk(tu));
+    document.getElementById('gsDot').className='gsdot on';renderHome();toast('Da dong bo len Sheet!');
+  }).catch(function(e){document.getElementById('gsDot').className='gsdot';toast('Loi: '+e.message);});
+}
+
+function init(){
+  buildNav();document.getElementById('homeDate').value=curDate;
+  addRow('nh');addRow('xu');addRow('bl');
+  setTop();renderHome();refreshDL();
+  if(ld('kda_gs_url',''))loadCatalog();
+}
+init();
+</script>
+</body>
+</html>
