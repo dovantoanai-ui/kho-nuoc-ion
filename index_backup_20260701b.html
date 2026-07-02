@@ -36,8 +36,7 @@
     background-repeat:no-repeat;background-position:right 11px center;padding-right:30px}
   .row{display:flex;gap:8px}.row>*{flex:1}
   .prow{display:flex;gap:6px;align-items:flex-end;margin-bottom:8px}
-  .prow .pd{flex:2}.prow .pq{flex:.9}.prow .pp{flex:1.3}.prow .pt{flex:1.2}
-  .prow .pt select{padding-left:6px;padding-right:16px;font-size:13px}
+  .prow .pd{flex:2.4}.prow .pq{flex:1}.prow .pp{flex:1.5}
   .xbtn{flex:0 0 34px;height:42px;border:1px solid var(--line);background:var(--reb);color:var(--re);
     border-radius:10px;font-size:20px;cursor:pointer;line-height:1}
   .addp{width:100%;border:1px dashed var(--ac);background:var(--acb);color:var(--ac);
@@ -95,7 +94,6 @@
       <span style="font-size:13px;color:var(--mut)">Ngay</span>
       <input type="date" id="homeDate" onchange="onDateChange()">
     </div>
-    <button onclick="loadCatalog()" style="width:100%;border:1px dashed var(--ac);background:var(--acb);color:var(--ac);font:inherit;font-weight:600;font-size:13px;padding:9px;border-radius:10px;cursor:pointer;margin-bottom:10px">Tai lai danh muc tu Google Sheet</button>
     <div class="kpi">
       <div class="b"><div class="l">Nhap trong ngay</div><div class="v" id="hNhap">0</div></div>
       <div class="b"><div class="l">Xuat ban</div><div class="v" id="hXuat">0</div></div>
@@ -122,15 +120,13 @@
       <h2>Xuat ban cho dai ly</h2>
       <label>Dai ly</label><input id="xuDL" placeholder="Ten dai ly" list="dlList">
       <datalist id="dlList"></datalist>
-      <label>Chiet khau dai ly (bam chon nhanh hoac dien %)</label>
+      <label>Bac chiet khau</label>
       <div class="seg" id="xuBac">
-        <button data-b="NPP" data-ck="42" class="on" onclick="pickBac(this)">NPP 42%</button>
-        <button data-b="C1" data-ck="32" onclick="pickBac(this)">C1 32%</button>
-        <button data-b="C2" data-ck="27" onclick="pickBac(this)">C2 27%</button>
-        <button data-b="C3" data-ck="20" onclick="pickBac(this)">C3 20%</button>
+        <button data-b="NPP" class="on" onclick="pickBac(this)">NPP</button>
+        <button data-b="C1" onclick="pickBac(this)">Cap 1</button>
+        <button data-b="C2" onclick="pickBac(this)">Cap 2</button>
+        <button data-b="C3" onclick="pickBac(this)">Cap 3</button>
       </div>
-      <label>% chiet khau (tren gia le)</label>
-      <input id="xuCK" type="number" inputmode="decimal" value="42" oninput="onCK()">
       <label>San pham</label>
       <div id="xuRows"></div>
       <button class="addp" onclick="addRow('xu')">+ Them san pham</button>
@@ -243,9 +239,7 @@ var xuBac='NPP';
 var nhData={},xuData={},blData={};
 
 function catByMa(ma){for(var i=0;i<CAT.length;i++)if(CAT[i].ma===ma)return CAT[i];return null;}
-function ckPct(){return Number(document.getElementById('xuCK').value)||0;}
-function xuPrice(c){return c?Math.round(c.gle*(1-ckPct()/100)):0;}
-function getLT(row){var s=row.querySelector('.pt select');return s?s.value:'Ban';}
+function priceByBac(c,bac){if(!c)return 0;return bac==='NPP'?c.gnpp:bac==='C1'?c.gc1:bac==='C2'?c.gc2:c.gc3;}
 
 var SCREENS=['home','nhap','xuat','banle','thu','ton','dash','dm'];
 var NAV=[['home','Trang chu','M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z'],
@@ -300,36 +294,16 @@ function refreshProdSelects(){document.querySelectorAll('.prow select').forEach(
 function addRow(t){
   var box=document.getElementById(t+'Rows');
   var div=document.createElement('div');div.className='prow';
-  var q="'"+t+"'";
-  var ts=(t!=='nh')?'<div class="pt"><select onchange="onLT('+q+',this)"><option value="Ban">Ban</option><option value="Tang">Tang</option><option value="ThuHoi">Thu hoi</option></select></div>':'';
-  div.innerHTML='<div class="pd"><select onchange="onProd('+q+',this)">'+prodOptions('')+'</select></div>'
-    +'<div class="pq"><input type="number" inputmode="numeric" placeholder="SL" oninput="calc('+q+')"></div>'
-    +'<div class="pp"><input type="number" inputmode="numeric" placeholder="Gia" oninput="calc('+q+')"></div>'
-    +ts
-    +'<button class="xbtn" onclick="this.parentNode.remove();calc('+q+')">&times;</button>';
+  div.innerHTML='<div class="pd"><select onchange="onProd('+"'"+t+"'"+',this)">'+prodOptions('')+'</select></div>'
+    +'<div class="pq"><input type="number" inputmode="numeric" placeholder="SL" oninput="calc('+"'"+t+"'"+')"></div>'
+    +'<div class="pp"><input type="number" inputmode="numeric" placeholder="Gia" oninput="calc('+"'"+t+"'"+')"></div>'
+    +'<button class="xbtn" onclick="this.parentNode.remove();calc('+"'"+t+"'"+')">&times;</button>';
   box.appendChild(div);
 }
 function onProd(t,selEl){
   var row=selEl.closest('.prow');var c=catByMa(selEl.value);var pinp=row.querySelector('.pp input');
-  var lt=getLT(row);
-  if(lt==='Tang'||lt==='ThuHoi'){pinp.value=0;}
-  else if(c){pinp.value = t==='nh'?c.gv : (t==='bl'?c.gle : xuPrice(c));}
+  if(c){pinp.value=t==='nh'?c.gv:t==='bl'?c.gle:priceByBac(c,xuBac);}
   calc(t);
-}
-function onLT(t,sel){
-  var row=sel.closest('.prow');var pd=row.querySelector('.pd select');var c=catByMa(pd?pd.value:'');
-  var pinp=row.querySelector('.pp input');var lt=sel.value;
-  if(lt==='Tang'||lt==='ThuHoi'){pinp.value=0;}
-  else if(c){pinp.value = t==='bl'?c.gle : xuPrice(c);}
-  calc(t);
-}
-function onCK(){
-  document.querySelectorAll('#xuRows .prow').forEach(function(r){
-    if(getLT(r)!=='Ban')return;
-    var pd=r.querySelector('.pd select');var c=catByMa(pd?pd.value:'');
-    if(c)r.querySelector('.pp input').value=xuPrice(c);
-  });
-  calc('xu');
 }
 function calc(t){
   var tot=0;
@@ -342,11 +316,11 @@ function calc(t){
 function readLines(t){
   var out=[];
   document.querySelectorAll('#'+t+'Rows .prow').forEach(function(r){
-    var ma=r.querySelector('.pd select').value;if(!ma)return;
+    var ma=r.querySelector('select').value;if(!ma)return;
     var sl=Number(r.querySelector('.pq input').value)||0;
     var pr=Number(r.querySelector('.pp input').value)||0;if(!sl)return;
-    var c=catByMa(ma);var lt=getLT(r);
-    out.push({ma:ma,ten:c?c.ten:ma,dvt:c?c.dvt:'',sl:sl,price:pr,lt:lt,tt:sl*pr});
+    var c=catByMa(ma);
+    out.push({ma:ma,ten:c?c.ten:ma,dvt:c?c.dvt:'',sl:sl,price:pr,tt:sl*pr});
   });
   return out;
 }
@@ -355,8 +329,10 @@ function curTot(t){var s=0;readLines(t).forEach(function(l){s+=l.tt;});return s;
 function pickBac(btn){
   document.querySelectorAll('#xuBac button').forEach(function(b){b.classList.remove('on');});
   btn.classList.add('on');xuBac=btn.getAttribute('data-b');
-  document.getElementById('xuCK').value=btn.getAttribute('data-ck');
-  onCK();
+  document.querySelectorAll('#xuRows .prow').forEach(function(r){
+    var ma=r.querySelector('select').value;var c=catByMa(ma);
+    if(c)r.querySelector('.pp input').value=priceByBac(c,xuBac);});
+  calc('xu');
 }
 function calcXu(tot){if(tot==null)tot=curTot('xu');var thu=Number(document.getElementById('xuThu').value)||0;document.getElementById('xuNo').value=fmt(Math.max(tot-thu,0));}
 function calcBl(tot){if(tot==null)tot=curTot('bl');var thu=Number(document.getElementById('blThu').value)||0;document.getElementById('blNo').value=fmt(Math.max(tot-thu,0));}
@@ -378,7 +354,7 @@ function saveXuat(loai){
   var p={id:uid(),date:curDate,loai:loai,bac:loai==='Le'?'Le':xuBac,
     kh:loai==='Le'?document.getElementById('blKh').value.trim():document.getElementById('xuDL').value.trim(),
     sdt:loai==='Le'?document.getElementById('blSdt').value.trim():'',
-    nv:'',lines:lines,total:tot,thu:thu,no:Math.max(tot-thu,0),ck:(loai==='Le'?'':ckPct()),
+    nv:'',lines:lines,total:tot,thu:thu,no:Math.max(tot-thu,0),
     note:document.getElementById(t+'Note').value.trim(),synced:false};
   if(!p.kh)return toast(loai==='Le'?'Nhap ten khach':'Nhap ten dai ly');
   var a=getRecs('xuat');a.unshift(p);svRecs('xuat',null,a);
@@ -407,9 +383,7 @@ function inRange(d,r){if(r==='all')return true;if(r==='today')return d===curDate
 function tonMap(){
   var nh={},xu={};
   allRecs('nhap').forEach(function(p){(p.lines||[]).forEach(function(l){nh[l.ma]=(nh[l.ma]||0)+l.sl;});});
-  allRecs('xuat').forEach(function(p){(p.lines||[]).forEach(function(l){
-    if(l.lt==='ThuHoi'){nh[l.ma]=(nh[l.ma]||0)+l.sl;}else{xu[l.ma]=(xu[l.ma]||0)+l.sl;}
-  });});
+  allRecs('xuat').forEach(function(p){(p.lines||[]).forEach(function(l){xu[l.ma]=(xu[l.ma]||0)+l.sl;});});
   return {nh:nh,xu:xu};
 }
 function debtMap(){
@@ -497,7 +471,7 @@ function pushToSheet(){
   document.getElementById('gsDot').className='gsdot syncing';toast('Dang gui len Sheet...');
   var rNh=[],rXu=[],rTu=[];
   nh.forEach(function(p){p.lines.forEach(function(l,i){rNh.push([p.id+'_'+i,p.id,p.date,p.nv,l.ma,l.ten,l.dvt,l.sl,l.price,l.tt,p.ncc,i===0?p.note:'']);});});
-  xu.forEach(function(p){p.lines.forEach(function(l,i){rXu.push([p.id+'_'+i,p.id,p.date,p.loai,p.bac+((p.ck!==''&&p.ck!=null)?' -'+p.ck+'%':''),p.kh,p.sdt,l.ma,(l.lt==='Tang'?'[TANG] ':l.lt==='ThuHoi'?'[THUHOI] ':'')+l.ten,l.dvt,l.sl,l.price,l.tt,i===0?p.thu:'',i===0?p.no:'',i===0?p.note:'']);});});
+  xu.forEach(function(p){p.lines.forEach(function(l,i){rXu.push([p.id+'_'+i,p.id,p.date,p.loai,p.bac,p.kh,p.sdt,l.ma,l.ten,l.dvt,l.sl,l.price,l.tt,i===0?p.thu:'',i===0?p.no:'',i===0?p.note:'']);});});
   tu.forEach(function(p){rTu.push([p.id,p.date,p.dl,p.tien,p.ht,p.nv,p.note]);});
   fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
     body:JSON.stringify({loai:'khoDA05',ngay:curDate,device:dev,nhap:rNh,xuat:rXu,thu:rTu})})
