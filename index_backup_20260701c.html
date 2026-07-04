@@ -35,8 +35,7 @@
   select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' stroke='%236b7683' stroke-width='1.6' fill='none'/></svg>");
     background-repeat:no-repeat;background-position:right 11px center;padding-right:30px}
   .row{display:flex;gap:8px}.row>*{flex:1}
-  .prow{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;margin-bottom:8px}
-  .pl-hint{flex-basis:100%;order:9;font-size:11px;color:var(--mut);padding:1px 2px 0}
+  .prow{display:flex;gap:6px;align-items:flex-end;margin-bottom:8px}
   .prow .pd{flex:2}.prow .pq{flex:.9}.prow .pp{flex:1.3}.prow .pt{flex:1.2}
   .prow .pt select{padding-left:6px;padding-right:16px;font-size:13px}
   .xbtn{flex:0 0 34px;height:42px;border:1px solid var(--line);background:var(--reb);color:var(--re);
@@ -247,7 +246,6 @@ function catByMa(ma){for(var i=0;i<CAT.length;i++)if(CAT[i].ma===ma)return CAT[i
 function ckPct(){return Number(document.getElementById('xuCK').value)||0;}
 function xuPrice(c){return c?Math.round(c.gle*(1-ckPct()/100)):0;}
 function getLT(row){var s=row.querySelector('.pt select');return s?s.value:'Ban';}
-function updHint(row){var h=row.querySelector('.pl-hint');if(!h)return;var pd=row.querySelector('.pd select');var c=catByMa(pd?pd.value:'');var lt=getLT(row);if(!c){h.textContent='';return;}if(lt==='Tang'){h.textContent='Tang - gia 0 (van tru ton)';return;}if(lt==='ThuHoi'){h.textContent='Thu hoi - cong lai ton';return;}h.textContent='Gia le '+fmt(c.gle)+' x (1-'+ckPct()+'%) = ban '+fmt(xuPrice(c));}
 
 var SCREENS=['home','nhap','xuat','banle','thu','ton','dash','dm'];
 var NAV=[['home','Trang chu','M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z'],
@@ -304,13 +302,11 @@ function addRow(t){
   var div=document.createElement('div');div.className='prow';
   var q="'"+t+"'";
   var ts=(t!=='nh')?'<div class="pt"><select onchange="onLT('+q+',this)"><option value="Ban">Ban</option><option value="Tang">Tang</option><option value="ThuHoi">Thu hoi</option></select></div>':'';
-  var hint=(t==='xu')?'<div class="pl-hint"></div>':'';
   div.innerHTML='<div class="pd"><select onchange="onProd('+q+',this)">'+prodOptions('')+'</select></div>'
     +'<div class="pq"><input type="number" inputmode="numeric" placeholder="SL" oninput="calc('+q+')"></div>'
     +'<div class="pp"><input type="number" inputmode="numeric" placeholder="Gia" oninput="calc('+q+')"></div>'
     +ts
-    +'<button class="xbtn" onclick="this.parentNode.remove();calc('+q+')">&times;</button>'
-    +hint;
+    +'<button class="xbtn" onclick="this.parentNode.remove();calc('+q+')">&times;</button>';
   box.appendChild(div);
 }
 function onProd(t,selEl){
@@ -318,7 +314,6 @@ function onProd(t,selEl){
   var lt=getLT(row);
   if(lt==='Tang'||lt==='ThuHoi'){pinp.value=0;}
   else if(c){pinp.value = t==='nh'?c.gv : (t==='bl'?c.gle : xuPrice(c));}
-  if(t==='xu')updHint(row);
   calc(t);
 }
 function onLT(t,sel){
@@ -326,13 +321,13 @@ function onLT(t,sel){
   var pinp=row.querySelector('.pp input');var lt=sel.value;
   if(lt==='Tang'||lt==='ThuHoi'){pinp.value=0;}
   else if(c){pinp.value = t==='bl'?c.gle : xuPrice(c);}
-  if(t==='xu')updHint(row);
   calc(t);
 }
 function onCK(){
   document.querySelectorAll('#xuRows .prow').forEach(function(r){
-    if(getLT(r)==='Ban'){var pd=r.querySelector('.pd select');var c=catByMa(pd?pd.value:'');if(c)r.querySelector('.pp input').value=xuPrice(c);}
-    updHint(r);
+    if(getLT(r)!=='Ban')return;
+    var pd=r.querySelector('.pd select');var c=catByMa(pd?pd.value:'');
+    if(c)r.querySelector('.pp input').value=xuPrice(c);
   });
   calc('xu');
 }

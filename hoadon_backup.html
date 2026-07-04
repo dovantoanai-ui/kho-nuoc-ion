@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Hoá đơn ION FUJI</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root{--red:#c8102e;--bg:#f4f6f8;--card:#fff;--line:#e3e8ee;--ink:#1a2430;--mut:#6b7683}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px}
+  .wrap{max-width:560px;margin:0 auto;padding:12px 12px 100px}
+  h2{font-size:14px;margin:0 0 8px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px}
+  label{font-size:12px;color:var(--mut);display:block;margin:6px 0 3px}
+  input,select{width:100%;font:inherit;font-size:15px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);-webkit-appearance:none;appearance:none}
+  input:focus,select:focus{outline:none;border-color:var(--red)}
+  .row{display:flex;gap:6px;align-items:flex-end;margin-bottom:7px}
+  .row .p{flex:2.4}.row .q{flex:1}.row .g{flex:1.5}
+  .x{flex:0 0 34px;height:42px;border:1px solid var(--line);background:#fdeceb;color:var(--red);border-radius:10px;font-size:20px;cursor:pointer}
+  .add{width:100%;border:1px dashed var(--red);background:#fdeceb;color:var(--red);font:inherit;font-weight:700;font-size:13px;padding:9px;border-radius:10px;cursor:pointer}
+  .btns{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px;display:flex;gap:8px;max-width:560px;margin:0 auto}
+  .btns button{flex:1;border:none;font:inherit;font-weight:700;font-size:14px;padding:13px;border-radius:11px;cursor:pointer}
+  .b1{background:#eef1f4;color:var(--ink)}.b2{background:var(--red);color:#fff}
+  /* invoice preview */
+  #inv{background:#fff;color:#1a1a1a;font-family:Arial,sans-serif}
+  .ivh{background:var(--red);color:#fff;padding:12px 14px}
+  .ivh .n{font-size:22px;font-weight:800;letter-spacing:.5px}
+  .ivh .s{font-size:10.5px;line-height:1.35;margin-top:2px}
+  .ivb{padding:12px 14px}
+  .ivt{text-align:center;font-size:17px;font-weight:800;color:var(--red);margin:2px 0 8px}
+  .kv{font-size:12.5px;margin:2px 0}
+  table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12.5px}
+  th,td{border:1px solid #bbb;padding:5px 6px}
+  th{background:#fbeaea;color:#8a0f22;font-weight:800;text-align:center;font-size:11.5px}
+  td.r{text-align:right}td.c{text-align:center}
+  .tong td{font-weight:800;background:#fbeaea}
+  .ivf{font-size:11px;color:#444;margin-top:8px;line-height:1.5}
+  .muted{color:var(--mut);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="card">
+    <h2>Thông tin khách</h2>
+    <div class="row" style="align-items:stretch">
+      <div style="flex:1"><label>Tên khách</label><input id="kh" oninput="render()" placeholder="Tên khách hàng"></div>
+      <div style="flex:1"><label>SĐT</label><input id="sdt" type="tel" oninput="render()" placeholder="Số điện thoại"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Sản phẩm</h2>
+    <div id="rows"></div>
+    <button class="add" onclick="addRow()">+ Thêm sản phẩm</button>
+  </div>
+
+  <div class="card">
+    <h2>Xem trước hoá đơn</h2>
+    <div class="muted" style="margin-bottom:8px">Đây là ảnh sẽ gửi khách. Kéo xuống bấm <b>Chia sẻ</b>.</div>
+    <div id="inv"></div>
+  </div>
+
+</div>
+
+<div class="btns">
+  <button class="b1" onclick="tAnh()">Tải ảnh</button>
+  <button class="b2" onclick="chiaSe()">Chia sẻ gửi khách</button>
+</div>
+
+<script>
+var CAT=[
+ {t:'Nước ion kiềm 350ml',dv:'Thùng',g:110000},
+ {t:'Nước ion kiềm 500ml',dv:'Thùng',g:130000},
+ {t:'Nước ion kiềm 1250ml',dv:'Thùng',g:134000},
+ {t:'Nước ion kiềm bình 19L',dv:'Bình',g:75000},
+ {t:'Ion kiềm Luxury 350ml',dv:'Thùng',g:132000},
+ {t:'Ion kiềm Luxury 500ml',dv:'Thùng',g:152000},
+ {t:'Nước ion kiềm 5L',dv:'Chai',g:33000}
+];
+function pad(n){return String(n).padStart(2,'0')}
+function today(){var d=new Date();return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()}
+function fmt(n){return (Math.round(Number(n)||0)).toLocaleString('vi-VN')}
+function opts(sel){var h='<option value="-1">-- chọn --</option>';CAT.forEach(function(c,i){h+='<option value="'+i+'"'+(i==sel?' selected':'')+'>'+c.t+'</option>'});return h}
+function addRow(idx){
+  var box=document.getElementById('rows');var d=document.createElement('div');d.className='row';
+  d.innerHTML='<div class="p"><select onchange="onSel(this)">'+opts(-1)+'</select></div>'
+   +'<div class="q"><input type="number" inputmode="numeric" placeholder="SL" oninput="render()"></div>'
+   +'<div class="g"><input type="number" inputmode="numeric" placeholder="Đơn giá" oninput="render()"></div>'
+   +'<button class="x" onclick="this.parentNode.remove();render()">&times;</button>';
+  box.appendChild(d);render();
+}
+function onSel(sel){
+  var i=Number(sel.value);var row=sel.closest('.row');var g=row.querySelector('.g input');
+  if(i>=0){g.value=CAT[i].g;} render();
+}
+function readItems(){
+  var out=[];
+  document.querySelectorAll('#rows .row').forEach(function(r){
+    var i=Number(r.querySelector('select').value);if(i<0)return;
+    var sl=Number(r.querySelector('.q input').value)||0;
+    var gia=Number(r.querySelector('.g input').value)||0;if(!sl)return;
+    out.push({t:CAT[i].t,dv:CAT[i].dv,sl:sl,gia:gia,tt:sl*gia});
+  });
+  return out;
+}
+function render(){
+  var items=readItems();var tong=0;items.forEach(function(x){tong+=x.tt});
+  var kh=(document.getElementById('kh').value||'').trim();
+  var sdt=(document.getElementById('sdt').value||'').trim();
+  var rows='';
+  items.forEach(function(x,n){rows+='<tr><td class="c">'+(n+1)+'</td><td>'+x.t+'</td><td class="c">'+x.dv+'</td><td class="c">'+x.sl+'</td><td class="r">'+fmt(x.gia)+'</td><td class="r">'+fmt(x.tt)+'</td></tr>'});
+  if(!items.length)rows='<tr><td class="c" colspan="6" style="color:#999;padding:14px">Chưa có sản phẩm</td></tr>';
+  var h=''
+   +'<div class="ivh"><div class="n">ION FUJI</div>'
+   +'<div class="s">CT TNHH ION FUJI VIỆT NAM &nbsp;|&nbsp; Hotline: 090.809.88.66<br>VP Hà Nội: Toà R101 - Ruby, Vinhome Ocean Park, Gia Lâm</div></div>'
+   +'<div class="ivb"><div class="ivt">HOÁ ĐƠN BÁN HÀNG</div>'
+   +'<div class="kv"><b>Ngày:</b> '+today()+'</div>'
+   +'<div class="kv"><b>Khách hàng:</b> '+(kh||'.................')+'</div>'
+   +'<div class="kv"><b>Điện thoại:</b> '+(sdt||'.................')+'</div>'
+   +'<table><thead><tr><th>TT</th><th>Tên hàng</th><th>ĐVT</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>'
+   +'<tbody>'+rows+'<tr class="tong"><td class="r" colspan="5">TỔNG CỘNG</td><td class="r">'+fmt(tong)+'</td></tr></tbody></table>'
+   +'<div class="ivf">Giá đã gồm VAT + giao nội thành Hà Nội. Cảm ơn Quý khách!<br>Đặt hàng: 090.809.88.66 &nbsp;|&nbsp; ionfuji.vietnam@gmail.com</div></div>';
+  document.getElementById('inv').innerHTML=h;
+}
+function mkCanvas(){return html2canvas(document.getElementById('inv'),{scale:2,backgroundColor:'#ffffff'})}
+function tAnh(){mkCanvas().then(function(cv){var a=document.createElement('a');a.href=cv.toDataURL('image/png');a.download='hoa-don-'+Date.now()+'.png';a.click();})}
+function chiaSe(){
+  mkCanvas().then(function(cv){
+    cv.toBlob(function(blob){
+      var file=new File([blob],'hoa-don.png',{type:'image/png'});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        navigator.share({files:[file],title:'Hoá đơn ION FUJI'}).catch(function(){});
+      }else{
+        var a=document.createElement('a');a.href=cv.toDataURL('image/png');a.download='hoa-don.png';a.click();
+      }
+    });
+  });
+}
+addRow();
+</script>
+</body>
+</html>
