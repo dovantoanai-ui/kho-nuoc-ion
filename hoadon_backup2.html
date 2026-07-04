@@ -25,11 +25,11 @@
   .b1{background:#eef1f4;color:var(--ink)}.b2{background:var(--red);color:#fff}
   /* invoice preview */
   #inv{background:#fff;color:#1a1a1a;font-family:Arial,sans-serif}
-  .ivh{background:#c8102e;color:#fff;padding:12px 14px}
+  .ivh{background:var(--red);color:#fff;padding:12px 14px}
   .ivh .n{font-size:22px;font-weight:800;letter-spacing:.5px}
   .ivh .s{font-size:10.5px;line-height:1.35;margin-top:2px}
   .ivb{padding:12px 14px}
-  .ivt{text-align:center;font-size:17px;font-weight:800;color:#c8102e;margin:2px 0 8px}
+  .ivt{text-align:center;font-size:17px;font-weight:800;color:var(--red);margin:2px 0 8px}
   .kv{font-size:12.5px;margin:2px 0}
   table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12.5px}
   th,td{border:1px solid #bbb;padding:5px 6px}
@@ -38,11 +38,6 @@
   .tong td{font-weight:800;background:#fbeaea}
   .ivf{font-size:11px;color:#444;margin-top:8px;line-height:1.5}
   .muted{color:var(--mut);font-size:12px}
-  #ovl{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:100;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:12px}
-  #ovl img{max-width:100%;max-height:76vh;border-radius:8px;background:#fff}
-  #ovl .tip{color:#fff;font-size:14px;text-align:center;line-height:1.4}
-  #ovl .cl{background:#fff;color:#1a2430;border:none;font:inherit;font-weight:700;padding:11px 24px;border-radius:10px;cursor:pointer}
-  @media print{ body{background:#fff} .card:not(:last-child){display:none} .wrap{padding:0;max-width:none} .card:last-child{border:none;padding:0;margin:0} .btns,#ovl{display:none !important} h2,.muted{display:none !important} }
 </style>
 </head>
 <body>
@@ -76,15 +71,9 @@
 
 </div>
 
-<div id="ovl">
-  <div class="tip">Nhấn giữ vào ảnh → chọn <b>"Lưu ảnh"</b> / <b>"Thêm vào Ảnh"</b> để lưu về máy, rồi gửi khách.</div>
-  <img alt="hoa don">
-  <button class="cl" onclick="document.getElementById('ovl').style.display='none'">Đóng</button>
-</div>
 <div class="btns">
-  <button class="b1" onclick="luuAnh()">Lưu ảnh</button>
-  <button class="b1" onclick="inPdf()">In / PDF</button>
-  <button class="b2" onclick="chiaSe()">Chia sẻ</button>
+  <button class="b1" onclick="tAnh()">Tải ảnh</button>
+  <button class="b2" onclick="chiaSe()">Chia sẻ gửi khách</button>
 </div>
 
 <script>
@@ -146,21 +135,20 @@ function render(){
    +'<div class="ivf">'+note+' Cảm ơn Quý khách!<br>Đặt hàng: 090.809.88.66 &nbsp;|&nbsp; ionfuji.vietnam@gmail.com</div></div>';
   document.getElementById('inv').innerHTML=h;
 }
-function ready(cb){ if(typeof html2canvas==='undefined'){alert('Chưa tải được thư viện tạo ảnh. Kiểm tra mạng rồi tải lại trang.');return;} cb(); }
-function mkCanvas(){return html2canvas(document.getElementById('inv'),{scale:2,backgroundColor:'#ffffff',useCORS:true});}
-function showImg(url){var o=document.getElementById('ovl');o.querySelector('img').src=url;o.style.display='flex';}
-function luuAnh(){ ready(function(){ mkCanvas().then(function(cv){ showImg(cv.toDataURL('image/png')); }).catch(function(e){alert('Lỗi tạo ảnh: '+e.message);}); }); }
-function chiaSe(){ ready(function(){
+function mkCanvas(){return html2canvas(document.getElementById('inv'),{scale:2,backgroundColor:'#ffffff'})}
+function tAnh(){mkCanvas().then(function(cv){var a=document.createElement('a');a.href=cv.toDataURL('image/png');a.download='hoa-don-'+Date.now()+'.png';a.click();})}
+function chiaSe(){
   mkCanvas().then(function(cv){
     cv.toBlob(function(blob){
       var file=new File([blob],'hoa-don.png',{type:'image/png'});
       if(navigator.canShare&&navigator.canShare({files:[file]})){
         navigator.share({files:[file],title:'Hoá đơn ION FUJI'}).catch(function(){});
-      }else{ showImg(cv.toDataURL('image/png')); }
+      }else{
+        var a=document.createElement('a');a.href=cv.toDataURL('image/png');a.download='hoa-don.png';a.click();
+      }
     });
-  }).catch(function(e){alert('Lỗi: '+e.message);});
-}); }
-function inPdf(){ window.print(); }
+  });
+}
 addRow();
 </script>
 </body>
