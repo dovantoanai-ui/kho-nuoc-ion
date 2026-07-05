@@ -69,15 +69,6 @@
   </div>
 
   <div class="card">
-    <h2>Thanh toán</h2>
-    <div class="row" style="align-items:stretch">
-      <div style="flex:1"><label>Trạng thái</label><select id="tt" onchange="render()"><option>Đã thanh toán</option><option>Chưa thanh toán</option><option>Thanh toán 1 phần</option></select></div>
-      <div style="flex:1"><label>Người thu tiền</label><input id="thu" oninput="render()" placeholder="Tên người thu"></div>
-    </div>
-    <label>Cọc bình (đ)</label><input id="coc" type="number" inputmode="numeric" placeholder="0" oninput="render()">
-  </div>
-
-  <div class="card">
     <h2>Xem trước hoá đơn</h2>
     <div class="muted" style="margin-bottom:8px">Đây là ảnh sẽ gửi khách. Kéo xuống bấm <b>Chia sẻ</b>.</div>
     <div id="inv"></div>
@@ -137,22 +128,9 @@ function render(){
   var kh=(document.getElementById('kh').value||'').trim();
   var sdt=(document.getElementById('sdt').value||'').trim();
   var hasVat=document.getElementById('vat').checked;var rate=Number(document.getElementById('vatr').value)||0;
-  var vat=hasVat?Math.round(sub*rate/100):0;
-  var coc=Number(document.getElementById('coc').value)||0;
-  var tong=sub+vat+coc;
-  var totRows='';
-  if(hasVat||coc>0){
-    totRows+='<tr class="tong"><td class="r" colspan="5">Cộng tiền hàng</td><td class="r">'+fmt(sub)+'</td></tr>';
-    if(hasVat)totRows+='<tr class="tong"><td class="r" colspan="5">Thuế GTGT ('+rate+'%)</td><td class="r">'+fmt(vat)+'</td></tr>';
-    if(coc>0)totRows+='<tr class="tong"><td class="r" colspan="5">Cọc bình</td><td class="r">'+fmt(coc)+'</td></tr>';
-    totRows+='<tr class="tong"><td class="r" colspan="5">TỔNG THANH TOÁN</td><td class="r">'+fmt(tong)+'</td></tr>';
-  }else{
-    totRows='<tr class="tong"><td class="r" colspan="5">TỔNG CỘNG</td><td class="r">'+fmt(sub)+'</td></tr>';
-  }
+  var vat=hasVat?Math.round(sub*rate/100):0;var tong=sub+vat;
+  var totRows=hasVat?('<tr class="tong"><td class="r" colspan="5">Cộng tiền hàng</td><td class="r">'+fmt(sub)+'</td></tr><tr class="tong"><td class="r" colspan="5">Thuế GTGT ('+rate+'%)</td><td class="r">'+fmt(vat)+'</td></tr><tr class="tong"><td class="r" colspan="5">TỔNG THANH TOÁN</td><td class="r">'+fmt(tong)+'</td></tr>'):('<tr class="tong"><td class="r" colspan="5">TỔNG CỘNG</td><td class="r">'+fmt(sub)+'</td></tr>');
   var note=hasVat?('Giá chưa gồm VAT — đã cộng thuế GTGT '+rate+'%. Giao nội thành Hà Nội.'):'Giá đã gồm VAT + giao nội thành Hà Nội.';
-  var tt=document.getElementById('tt').value;var thu=(document.getElementById('thu').value||'').trim();
-  var ttcol=tt==='Đã thanh toán'?'#0f9d58':(tt==='Chưa thanh toán'?'#c8102e':'#e08a00');
-  var payLine='<div class="kv" style="margin-top:6px"><b>Thanh toán:</b> <span style="color:'+ttcol+';font-weight:800">'+tt+'</span>'+(thu?' &nbsp;|&nbsp; <b>Người thu:</b> '+thu:'')+'</div>';
   var rows='';
   items.forEach(function(x,n){rows+='<tr><td class="c">'+(n+1)+'</td><td>'+x.t+'</td><td class="c">'+x.dv+'</td><td class="c">'+x.sl+'</td><td class="r">'+fmt(x.gia)+'</td><td class="r">'+fmt(x.tt)+'</td></tr>'});
   if(!items.length)rows='<tr><td class="c" colspan="6" style="color:#999;padding:14px">Chưa có sản phẩm</td></tr>';
@@ -165,7 +143,6 @@ function render(){
    +'<div class="kv"><b>Điện thoại:</b> '+(sdt||'.................')+'</div>'
    +'<table><thead><tr><th>TT</th><th>Tên hàng</th><th>ĐVT</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>'
    +'<tbody>'+rows+totRows+'</tbody></table>'
-   +payLine
    +'<div class="ivf">'+note+' Cảm ơn Quý khách!<br>Đặt hàng: 090.809.88.66 &nbsp;|&nbsp; ionfuji.vietnam@gmail.com</div></div>';
   document.getElementById('inv').innerHTML=h;
 }
