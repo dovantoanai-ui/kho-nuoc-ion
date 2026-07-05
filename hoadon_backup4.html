@@ -81,7 +81,6 @@
     <h2>Xem trước hoá đơn</h2>
     <div class="muted" style="margin-bottom:8px">Đây là ảnh sẽ gửi khách. Kéo xuống bấm <b>Chia sẻ</b>.</div>
     <div id="inv"></div>
-    <button id="dbBtn" class="add" style="border-color:#0f9d58;background:#e6f4ea;color:#0f9d58;margin-top:10px" onclick="dongBo()">Đồng bộ hoá đơn lên Google Sheet</button>
   </div>
 
 </div>
@@ -185,22 +184,6 @@ function chiaSe(){ ready(function(){
   }).catch(function(e){alert('Lỗi: '+e.message);});
 }); }
 function inPdf(){ window.print(); }
-function dongBo(){
-  var url=localStorage.getItem('hd_gs_url')||'';
-  if(!url){ url=prompt('Dán URL Web App (/exec) để đồng bộ (chỉ cần 1 lần):'); if(!url)return; url=url.trim().replace(/^["\']|["\']$/g,''); localStorage.setItem('hd_gs_url',url); }
-  var items=readItems(); if(!items.length){ alert('Chưa có sản phẩm'); return; }
-  var sub=0; items.forEach(function(x){sub+=x.tt});
-  var hasVat=document.getElementById('vat').checked; var rate=Number(document.getElementById('vatr').value)||0;
-  var vat=hasVat?Math.round(sub*rate/100):0; var coc=Number(document.getElementById('coc').value)||0; var tong=sub+vat+coc;
-  var kh=(document.getElementById('kh').value||'').trim(); var sdt=(document.getElementById('sdt').value||'').trim();
-  var tt=document.getElementById('tt').value; var thu=(document.getElementById('thu').value||'').trim();
-  var id='HD'+Date.now(); var rows=[];
-  items.forEach(function(x,i){ rows.push([id,today(),i===0?kh:'',i===0?sdt:'',x.t,x.dv,x.sl,x.gia,x.tt,i===0?(hasVat?rate:0):'',i===0?coc:'',i===0?tong:'',i===0?tt:'',i===0?thu:'']); });
-  var b=document.getElementById('dbBtn'); if(b)b.textContent='Đang đồng bộ...';
-  fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({loai:'hoadon',rows:rows})})
-   .then(function(){ if(b)b.textContent='Đã đồng bộ ✓ (bấm để gửi tiếp)'; alert('Đã đồng bộ hoá đơn lên Sheet!'); })
-   .catch(function(e){ if(b)b.textContent='Đồng bộ hoá đơn lên Google Sheet'; alert('Lỗi đồng bộ: '+e.message); });
-}
 addRow();
 </script>
 </body>
