@@ -115,6 +115,12 @@ function num_(v) {
   var x = parseFloat(s); return isNaN(x) ? 0 : x;
 }
 
+// Ep ngay ve chuoi dd/MM/yyyy (Sheet hay tu chuyen text -> Date)
+function fmtD_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, 'GMT+7', 'dd/MM/yyyy');
+  return String(v == null ? '' : v).slice(0, 10);
+}
+
 function readKhach_(ss) {
   var d = rowsOf_(ss, 'KhachHang'); if (!d.head.length) return [];
   var h = d.head;
@@ -127,7 +133,7 @@ function readKhach_(ss) {
     out.push({
       ma: String(r[iMa]).trim(), ten: r[iTen] || '', sdt: String(r[iSdt] || ''),
       qh: r[iQh] || '', kho: r[iKho] || '', tt: r[iTt] || '',
-      kyhan: Number(r[iKy]) || 0, ngay: r[iNg] || ''
+      kyhan: Number(r[iKy]) || 0, ngay: fmtD_(r[iNg])
     });
   });
   return out;
@@ -147,7 +153,7 @@ function readHoaDon_(ss) {
     if (!String(r[iId] || '').trim()) return;
     out.push({
       id: String(r[iId]).trim(),
-      ngay: String(r[iNg] || '').slice(0, 10),
+      ngay: fmtD_(r[iNg]),
       ma: String(r[iMa] || '').trim(),
       khach: r[iKh] || '', sdt: String(r[iSd] || ''), kho: r[iKho] || '',
       sp: r[iSp] || '', dvt: r[iDv] || '', sl: num_(r[iSl]), gia: num_(r[iGia]),
