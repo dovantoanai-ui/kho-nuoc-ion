@@ -121,6 +121,20 @@
 
       <div class="card">
         <h2>Sản phẩm</h2>
+        <div class="row" style="align-items:stretch;margin-bottom:10px">
+          <div style="flex:1.5"><label>Chiết khấu (giảm từ giá lẻ)</label>
+            <select id="ck" onchange="onCkSel()">
+              <option value="0">Giá lẻ (0%)</option>
+              <option value="20">20% (C3)</option>
+              <option value="25">25%</option>
+              <option value="32">32% (C1)</option>
+              <option value="42">42% (NPP)</option>
+              <option value="custom">Tự nhập…</option>
+            </select>
+          </div>
+          <div style="flex:1;display:none" id="ckCustomWrap"><label>% tự nhập</label>
+            <input id="ckCustom" type="number" inputmode="numeric" placeholder="%" oninput="applyCK()"></div>
+        </div>
         <div id="rows"></div>
         <button class="add" onclick="addRow()">+ Thêm sản phẩm</button>
         <div style="display:flex;align-items:center;gap:8px;margin-top:12px">
@@ -370,6 +384,10 @@ function renderKhList(){
 
 /* ---------- HOA DON (tao) ---------- */
 function opts(sel){var h='<option value="-1">-- chọn --</option>';CAT.forEach(function(c,i){h+='<option value="'+i+'"'+(i==sel?' selected':'')+'>'+c.t+'</option>'});return h}
+function ckPct(){var v=document.getElementById('ck').value;if(v==='custom')return Number(document.getElementById('ckCustom').value)||0;return Number(v)||0}
+function onCkSel(){document.getElementById('ckCustomWrap').style.display=(document.getElementById('ck').value==='custom')?'block':'none';applyCK()}
+function priceFor(i){return Math.round(CAT[i].g*(1-ckPct()/100))}
+function applyCK(){document.querySelectorAll('#rows .row').forEach(function(r){var i=Number(r.querySelector('select').value);if(i>=0)r.querySelector('.g input').value=priceFor(i)});render()}
 function addRow(){
   var box=document.getElementById('rows');var d=document.createElement('div');d.className='row';
   d.innerHTML='<div class="p"><select onchange="onSel(this)">'+opts(-1)+'</select></div>'
@@ -378,7 +396,7 @@ function addRow(){
    +'<button class="x" onclick="this.parentNode.remove();render()">&times;</button>';
   box.appendChild(d);render();
 }
-function onSel(sel){var i=Number(sel.value);var row=sel.closest('.row');var g=row.querySelector('.g input');if(i>=0){g.value=CAT[i].g}render()}
+function onSel(sel){var i=Number(sel.value);var row=sel.closest('.row');var g=row.querySelector('.g input');if(i>=0){g.value=priceFor(i)}render()}
 function readItems(){
   var out=[];
   document.querySelectorAll('#rows .row').forEach(function(r){
@@ -408,6 +426,7 @@ function render(){
     totRows='<tr class="tong"><td class="r" colspan="5">TỔNG CỘNG</td><td class="r">'+fmt(sub)+'</td></tr>';
   }
   var note=hasVat?('Giá chưa gồm VAT — đã cộng thuế GTGT '+rate+'%. Giao nội thành.'):'Giá đã gồm VAT + giao nội thành.';
+  var ckn=ckPct();if(ckn>0)note=note+' Đã áp dụng chiết khấu '+ckn+'%.';
   var thu=(document.getElementById('thu').value||'').trim();
   var ttcol=ttv==='Đã thanh toán'?'#0f9d58':(ttv==='Chưa thanh toán'?'#c8102e':'#e08a00');
   var payLine='<div class="kv" style="margin-top:6px"><b>Thanh toán:</b> <span style="color:'+ttcol+';font-weight:800">'+ttv+'</span>'+(thu?' &nbsp;|&nbsp; <b>Người thu:</b> '+thu:'')+'</div>';
