@@ -176,8 +176,7 @@
   <div class="sc" id="s-ton">
     <div class="card">
       <h2>Ton kho hien tai</h2>
-      <div class="hint">Ton tinh tu du lieu tren Sheet kho (ton dau + nhap - xuat + thu hoi).</div>
-      <button class="addp" style="margin-bottom:8px" onclick="loadReport(function(ok){if(ok){renderTon();toast('Da tai tu Sheet')}})">Tai lai tu Sheet</button>
+      <div class="hint">Ton = ton dau ky + tong nhap - tong xuat (tinh tu du lieu tren may).</div>
       <table id="tonTbl"><thead><tr><th>Ma hang</th><th class="num">Dau ky</th><th class="num">Nhap</th><th class="num">Xuat</th><th class="num">Ton</th><th class="num">Gia tri</th></tr></thead><tbody id="tonBody"></tbody></table>
     </div>
   </div>
@@ -188,7 +187,6 @@
       <span class="pill" data-r="month" onclick="pickRange(this)">Thang nay</span>
       <span class="pill" data-r="all" onclick="pickRange(this)">Tat ca</span>
     </div>
-    <button class="addp" style="margin-bottom:12px" onclick="loadReport(function(ok){if(ok){renderDash();toast('Da tai tu Sheet')}})">Tai lai tu Sheet</button>
     <div class="kpi">
       <div class="b"><div class="l">Doanh thu ban</div><div class="v" id="dDt">0</div></div>
       <div class="b"><div class="l">Tong nhap</div><div class="v" id="dNh">0</div></div>
@@ -274,7 +272,7 @@ function go(id){
   document.getElementById('s-'+id).classList.add('on');
   var b=document.getElementById('nv-'+id);if(b)b.classList.add('on');
   window.scrollTo(0,0);
-  if(id==='home')renderHome();if(id==='ton')showReport('ton');if(id==='dash')showReport('dash');if(id==='dm')renderDM();
+  if(id==='home')renderHome();if(id==='ton')renderTon();if(id==='dash')renderDash();if(id==='dm')renderDM();
   if(id==='xuat'||id==='thu')refreshDL();
 }
 
@@ -411,35 +409,6 @@ function lsKeys(pre){var o=[];for(var i=0;i<localStorage.length;i++){var k=local
 function allRecs(t){var o=[];lsKeys('kda_'+t+'_').forEach(function(k){ld(k,[]).forEach(function(r){o.push(r);});});return o;}
 function inRange(d,r){if(r==='all')return true;if(r==='today')return d===curDate;if(r==='month')return d.slice(0,7)===curDate.slice(0,7);return true;}
 
-var SREP=null;
-function loadReport(cb){
-  var url=ld('kda_gs_url','');if(!url){toast('Chua ket noi Sheet');if(cb)cb(false);return;}
-  var cbn='__onRep_'+Date.now();
-  window[cbn]=function(res){try{delete window[cbn];}catch(e){}
-    if(res&&res.ok){SREP={nhap:res.nhap||[],xuat:res.xuat||[],thu:res.thu||[]};if(cb)cb(true);else{renderDash();renderTon();}}
-    else{toast('Loi tai bao cao'+(res&&res.error?': '+res.error:''));if(cb)cb(false);}};
-  var sc=document.createElement('script');
-  sc.src=url+(url.indexOf('?')<0?'?':'&')+'action=report&callback='+cbn+'&t='+Date.now();
-  sc.onerror=function(){try{delete window[cbn];}catch(e){}toast('Khong ket noi Web App');if(cb)cb(false);};
-  document.body.appendChild(sc);
-}
-function showReport(which){
-  function done(){which==='ton'?renderTon():renderDash();}
-  if(SREP){done();}else{toast('Dang tai bao cao tu Sheet...');loadReport(function(){done();});}
-}
-function repTon(){
-  var m={};if(!SREP)return m;
-  SREP.nhap.forEach(function(l){var o=m[l.ma]||(m[l.ma]={nhap:0,ban:0,tang:0,thuhoi:0});o.nhap+=Number(l.sl)||0;});
-  SREP.xuat.forEach(function(l){var o=m[l.ma]||(m[l.ma]={nhap:0,ban:0,tang:0,thuhoi:0});var q=Number(l.sl)||0;if(l.lt==='ThuHoi')o.thuhoi+=q;else if(l.lt==='Tang')o.tang+=q;else o.ban+=q;});
-  return m;
-}
-function repDebt(){
-  var d={};if(!SREP)return d;
-  SREP.xuat.forEach(function(l){var no=Number(l.no)||0;if(no>0){d[l.khach]=(d[l.khach]||0)+no;}});
-  SREP.thu.forEach(function(t){d[t.dl]=(d[t.dl]||0)-(Number(t.tien)||0);});
-  return d;
-}
-
 function tonMap(){
   var nh={},xu={};
   allRecs('nhap').forEach(function(p){(p.lines||[]).forEach(function(l){nh[l.ma]=(nh[l.ma]||0)+l.sl;});});
@@ -455,32 +424,27 @@ function debtMap(){
   return d;
 }
 function renderTon(){
-  if(!SREP){document.getElementById('tonBody').innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:16px">Bam nut Tai lai tu Sheet o tren.</td></tr>';return;}
-  var local=ld('kda_tondau',{});var m=repTon();var body='';var tGT=0;
+  var td=ld('kda_tondau',{});var m=tonMap();var body='';var tGT=0;
   CAT.forEach(function(c){
-    var o=m[c.ma]||{nhap:0,ban:0,tang:0,thuhoi:0};
-    var dau=c.gtondau||local[c.ma]||0;var xuatNet=o.ban+o.tang-o.thuhoi;var ton=dau+o.nhap-xuatNet;var gt=ton*(c.gv||0);tGT+=gt;
-    body+='<tr><td>'+esc(c.ma)+'</td><td class="num">'+fmt(dau)+'</td><td class="num pos">'+fmt(o.nhap)+'</td><td class="num neg">'+fmt(xuatNet)+'</td><td class="num" style="font-weight:700">'+fmt(ton)+'</td><td class="num">'+fmt(gt)+'</td></tr>';
+    var dau=td[c.ma]||0,nh=m.nh[c.ma]||0,xu=m.xu[c.ma]||0;var ton=dau+nh-xu;var gt=ton*c.gv;tGT+=gt;
+    body+='<tr><td>'+esc(c.ma)+'</td><td class="num">'+fmt(dau)+'</td><td class="num pos">'+fmt(nh)+'</td><td class="num neg">'+fmt(xu)+'</td><td class="num" style="font-weight:700">'+fmt(ton)+'</td><td class="num">'+fmt(gt)+'</td></tr>';
   });
   body+='<tr><td style="font-weight:700">Tong gia tri ton</td><td colspan="4"></td><td class="num" style="font-weight:800">'+fmt(tGT)+'</td></tr>';
   document.getElementById('tonBody').innerHTML=body;
 }
 function renderDash(){
-  var el=document.querySelector('#dashPills .pill.on')||document.querySelector('#dashPills .pill');
-  var r=el?el.getAttribute('data-r'):'today';
+  var r=(document.querySelector('#dashPills .pill.on')||{}).getAttribute?document.querySelector('#dashPills .pill.on').getAttribute('data-r'):'today';
   var dt=0,nh=0;
-  if(SREP){
-    SREP.xuat.forEach(function(l){if(l.lt==='Ban'&&inRange(l.ngay,r))dt+=Number(l.tien)||0;});
-    SREP.nhap.forEach(function(l){if(inRange(l.ngay,r))nh+=Number(l.tien)||0;});
-  }
-  var d=repDebt();var tNo=0;var rows='';
+  allRecs('xuat').forEach(function(p){if(inRange(p.date,r))dt+=p.total||0;});
+  allRecs('nhap').forEach(function(p){if(inRange(p.date,r))nh+=p.total||0;});
+  var d=debtMap();var tNo=0;var rows='';
   Object.keys(d).forEach(function(k){if(d[k]>0.5){tNo+=d[k];rows+='<div class="li"><div class="h"><span>'+esc(k)+'</span><span class="neg">'+fmt(d[k])+'</span></div></div>';}});
-  var local=ld('kda_tondau',{});var m=repTon();var tGT=0;CAT.forEach(function(c){var o=m[c.ma]||{nhap:0,ban:0,tang:0,thuhoi:0};tGT+=((c.gtondau||local[c.ma]||0)+o.nhap-o.ban-o.tang+o.thuhoi)*(c.gv||0);});
+  var td=ld('kda_tondau',{});var m=tonMap();var tGT=0;CAT.forEach(function(c){tGT+=((td[c.ma]||0)+(m.nh[c.ma]||0)-(m.xu[c.ma]||0))*c.gv;});
   document.getElementById('dDt').textContent=fmt(dt);
   document.getElementById('dNh').textContent=fmt(nh);
   document.getElementById('dNo').textContent=fmt(tNo);
   document.getElementById('dTon').textContent=fmt(tGT);
-  document.getElementById('dashNo').innerHTML=rows||(SREP?'<div class="hint">Khong co cong no.</div>':'<div class="hint">Bam Tai lai tu Sheet.</div>');
+  document.getElementById('dashNo').innerHTML=rows||'<div class="hint">Khong co cong no.</div>';
 }
 function pickRange(el){document.querySelectorAll('#dashPills .pill').forEach(function(p){p.classList.remove('on');});el.classList.add('on');renderDash();}
 
@@ -545,7 +509,7 @@ function pushToSheet(){
   .then(function(){
     function mk(a){return a.map(function(v){return Object.assign({},v,{synced:true});});}
     svRecs('nhap',null,mk(nh));svRecs('xuat',null,mk(xu));svRecs('thu',null,mk(tu));
-    SREP=null;document.getElementById('gsDot').className='gsdot on';renderHome();toast('Da dong bo len Sheet!');
+    document.getElementById('gsDot').className='gsdot on';renderHome();toast('Da dong bo len Sheet!');
   }).catch(function(e){document.getElementById('gsDot').className='gsdot';toast('Loi: '+e.message);});
 }
 
