@@ -196,6 +196,11 @@
       <div class="b"><div class="l">Gia tri ton</div><div class="v" id="dTon">0</div></div>
     </div>
     <div class="card"><h2>Cong no theo dai ly</h2><div id="dashNo"></div></div>
+    <div class="card">
+      <h2>Nhap - Xuat - Ton theo ngay</h2>
+      <select id="nxtSku" onchange="renderNXT()" style="margin-bottom:8px"><option value="">Tat ca san pham</option></select>
+      <div style="overflow-x:auto"><table id="nxtTbl"><thead><tr><th>Ngay</th><th class="num">Nhap</th><th class="num">Ban</th><th class="num">Tang</th><th class="num">Thu hoi</th><th class="num">Doanh thu</th><th class="num">Ton cuoi</th></tr></thead><tbody id="nxtBody"></tbody></table></div>
+    </div>
   </div>
 
   <div class="sc" id="s-dm">
@@ -481,6 +486,22 @@ function renderDash(){
   document.getElementById('dNo').textContent=fmt(tNo);
   document.getElementById('dTon').textContent=fmt(tGT);
   document.getElementById('dashNo').innerHTML=rows||(SREP?'<div class="hint">Khong co cong no.</div>':'<div class="hint">Bam Tai lai tu Sheet.</div>');
+  renderNXT();
+}
+function renderNXT(){
+  var sel=document.getElementById('nxtSku');if(!sel)return;
+  if(sel.options.length<=1 && CAT.length){var oh='<option value="">Tat ca san pham</option>';CAT.forEach(function(c){oh+='<option value="'+esc(c.ma)+'">'+esc(c.ma)+'</option>';});sel.innerHTML=oh;}
+  var sku=sel.value;var body=document.getElementById('nxtBody');
+  if(!SREP){body.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--mut);padding:14px">Bam Tai lai tu Sheet.</td></tr>';return;}
+  var day={};function g(n){return day[n]||(day[n]={nhap:0,ban:0,tang:0,thuhoi:0,dt:0});}
+  SREP.nhap.forEach(function(l){if(sku&&l.ma!==sku)return;g(l.ngay).nhap+=Number(l.sl)||0;});
+  SREP.xuat.forEach(function(l){if(sku&&l.ma!==sku)return;var o=g(l.ngay);var q=Number(l.sl)||0;if(l.lt==='ThuHoi')o.thuhoi+=q;else if(l.lt==='Tang')o.tang+=q;else{o.ban+=q;o.dt+=Number(l.tien)||0;}});
+  var days=Object.keys(day).filter(function(d){return d;}).sort();
+  var dau=0;if(sku){var c=catByMa(sku);dau=c?(Number(c.gtondau)||0):0;}else{CAT.forEach(function(c){dau+=Number(c.gtondau)||0;});}
+  var run=dau;var h='';
+  days.forEach(function(d){var o=day[d];run+=o.nhap-o.ban-o.tang+o.thuhoi;
+    h+='<tr><td>'+d+'</td><td class="num pos">'+fmt(o.nhap)+'</td><td class="num neg">'+fmt(o.ban)+'</td><td class="num">'+fmt(o.tang)+'</td><td class="num">'+fmt(o.thuhoi)+'</td><td class="num">'+fmt(o.dt)+'</td><td class="num" style="font-weight:700">'+fmt(run)+'</td></tr>';});
+  body.innerHTML=h||'<tr><td colspan="7" style="text-align:center;color:var(--mut);padding:14px">Chua co du lieu.</td></tr>';
 }
 function pickRange(el){document.querySelectorAll('#dashPills .pill').forEach(function(p){p.classList.remove('on');});el.classList.add('on');renderDash();}
 
