@@ -283,14 +283,15 @@ function jsonp(url,cb){
   s.onerror=function(){cleanup();cb(null)};
   document.body.appendChild(s);
 }
-function loadData(manual){
-  if(!GS){document.getElementById('dataInfo').textContent='Chưa cấu hình — bấm Cài đặt';if(manual)caiDat();return}
+function loadData(manual,cb){
+  if(!GS){document.getElementById('dataInfo').textContent='Chưa cấu hình — bấm Cài đặt';if(manual)caiDat();if(cb)cb(false);return}
   document.getElementById('dataInfo').textContent='Đang tải dữ liệu...';
   jsonp(GS,function(d){
-    if(!d||!d.ok){document.getElementById('dataInfo').textContent='Lỗi tải dữ liệu';if(manual)alert('Không tải được dữ liệu. Kiểm tra URL backend đã deploy đúng chưa.');return}
+    if(!d||!d.ok){document.getElementById('dataInfo').textContent='Lỗi tải dữ liệu';if(manual)alert('Không tải được dữ liệu. Kiểm tra URL backend đã deploy đúng chưa.');if(cb)cb(false);return}
     KH=d.khach||[];HD=d.hoadon||[];
     document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn';
     fillKhSelect();renderMaPreview();renderKhList();renderBaoCao();renderCongNo();renderCSKH();
+    if(cb)cb(true);
   });
 }
 function countInvoices(){var s={};HD.forEach(function(x){s[x.id]=1});return Object.keys(s).length}
@@ -325,19 +326,25 @@ function themKhach(){
   if(!ten){alert('Nhập tên khách');return}
   if(!GS){alert('Chưa cấu hình backend. Bấm Cài đặt để dán URL.');return}
   var tt=document.getElementById('k_tt').value;
-  var k={ma:genMaKH(),ten:ten,sdt:(document.getElementById('k_sdt').value||'').trim(),
+  var k={ten:ten,sdt:(document.getElementById('k_sdt').value||'').trim(),
     qh:(document.getElementById('k_qh').value||'').trim(),kho:KHO,tt:tt,
-    kyhan:tt==='Công nợ'?Number(document.getElementById('k_kyhan').value)||0:0,ngay:today()};
-  var b=event&&event.target;if(b)b.textContent='Đang lưu...';
+    kyhan:tt==='Công nợ'?Number(document.getElementById('k_kyhan').value)||0:0};
+  var b=event&&event.target;if(b){b.disabled=true;b.textContent='Đang lưu...'}
   fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({loai:'khach',kh:k})})
    .then(function(){
-     KH.push(k);
-     document.getElementById('k_ten').value='';document.getElementById('k_sdt').value='';document.getElementById('k_qh').value='';
-     fillKhSelect();renderMaPreview();renderKhList();
-     if(b)b.textContent='Lưu khách lên Sheet';
-     alert('Đã tạo khách '+k.ma+' — '+k.ten);
+     setTimeout(function(){
+       loadData(false,function(){
+         if(b){b.disabled=false;b.textContent='Lưu khách lên Sheet'}
+         var found=null;
+         for(var i=KH.length-1;i>=0;i--){var c=KH[i];if(c.kho===KHO&&c.ten===k.ten&&String(c.sdt)===String(k.sdt)){found=c;break}}
+         document.getElementById('k_ten').value='';document.getElementById('k_sdt').value='';document.getElementById('k_qh').value='';
+         renderMaPreview();renderKhList();
+         if(found){document.getElementById('khSel').value=found.ma;onKhSel();showTab('hd');alert('Đã tạo khách '+found.ma+' — '+found.ten+'. Đã chọn sẵn ở tab Hoá đơn.')}
+         else{alert('Đã gửi tạo khách. Bấm Làm mới nếu chưa thấy trong danh sách.')}
+       });
+     },1300);
    })
-   .catch(function(e){if(b)b.textContent='Lưu khách lên Sheet';alert('Lỗi lưu: '+e.message)});
+   .catch(function(e){if(b){b.disabled=false;b.textContent='Lưu khách lên Sheet'}alert('Lỗi lưu: '+e.message)});
 }
 function renderKhList(){
   var list=khInKho();document.getElementById('khCount').textContent=list.length;

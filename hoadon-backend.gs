@@ -1,16 +1,16 @@
 // ============================================================
 // BACKEND cho app Hoa don + CRM (hoadon.html)
 // Ghi & doc du lieu tren Sheet DA05: tab "KhachHang" va "HoaDon".
+// Co khoa ghi tuan tu (LockService) + backend tu cap ma khach.
 // ------------------------------------------------------------
 // CACH DUNG:
-//  1. Vao script.google.com -> mo project cu (hoac tao New project)
-//     -> dan TOAN BO code nay de len ban cu -> Luu.
+//  1. script.google.com -> mo project cu -> dan TOAN BO code nay
+//     de len ban cu -> Luu.
 //  2. Deploy -> Manage deployments -> ban Web app hien tai
-//     -> bam but chi (Edit) -> Version: New version -> Deploy.
-//     (Neu chua co: Deploy -> New deployment -> Web app ->
+//     -> but chi (Edit) -> Version: New version -> Deploy.
+//     (Chua co thi: Deploy -> New deployment -> Web app ->
 //      Execute as: Me,  Who has access: Anyone -> Deploy.)
-//  3. URL /exec giu nguyen. Mo app -> dan URL 1 lan la chay.
-// Luu y: tai khoan chay script phai co quyen sua Sheet DA05.
+//  3. URL /exec giu nguyen. Neu bao thieu quyen: chay tay ham capQuyen 1 lan.
 // ============================================================
 
 var SHEET_ID = '1NFWBTjzkgk-Rj6syw46gm5F5tRIDxnU5qBc1OK35Y6A';
@@ -26,17 +26,20 @@ var HD_HEAD = ['ID hoa don', 'Ngay', 'Ma KH', 'Khach', 'SDT', 'Kho',
 // ---------- GHI (POST tu app, che do no-cors) ----------
 function doPost(e) {
   var out = { ok: true };
+  var lock = LockService.getScriptLock();
   try {
+    lock.waitLock(30000); // xep hang: 1 lenh ghi tai 1 thoi diem -> khong trung/mat dong
     var p = JSON.parse(e.postData.getDataAsString());
     var ss = SpreadsheetApp.openById(SHEET_ID);
 
     if (p.loai === 'khach' && p.kh) {
       var sh = ensureSheet_(ss, 'KhachHang', KH_HEAD);
       var k = p.kh;
-      sh.appendRow([k.ma || '', k.ten || '', k.sdt || '', k.qh || '',
+      var ma = nextMa_(sh, k.kho); // backend tu cap ma duoi khoa -> chong trung tuyet doi
+      sh.appendRow([ma, k.ten || '', k.sdt || '', k.qh || '',
                     k.kho || '', k.tt || '', k.kyhan || 0,
                     Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm')]);
-      out.added = 1;
+      out.added = 1; out.ma = ma;
     } else if (p.loai === 'hoadon' && p.rows && p.rows.length) {
       var sh2 = ensureSheet_(ss, 'HoaDon', HD_HEAD);
       p.rows.forEach(function (r) { sh2.appendRow(r); });
@@ -44,9 +47,26 @@ function doPost(e) {
     }
   } catch (err) {
     out = { ok: false, error: err.message };
+  } finally {
+    try { lock.releaseLock(); } catch (e2) {}
   }
   return ContentService.createTextOutput(JSON.stringify(out))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// Cap ma khach tiep theo theo kho (HN0001 / HY0001...). Goi trong khoa doPost.
+function nextMa_(sh, kho) {
+  var pre = (String(kho).indexOf('Hưng') >= 0) ? 'HY' : 'HN';
+  var max = 0, last = sh.getLastRow();
+  if (last >= 2) {
+    var vals = sh.getRange(2, 1, last - 1, 1).getValues();
+    var re = new RegExp('^' + pre + '(\\d+)');
+    vals.forEach(function (r) {
+      var m = String(r[0]).match(re);
+      if (m) { var num = parseInt(m[1], 10); if (num > max) max = num; }
+    });
+  }
+  return pre + ('0000' + (max + 1)).slice(-4);
 }
 
 // ---------- DOC (GET, tra ve JSONP cho app doc duoc Sheet rieng tu) ----------
@@ -72,7 +92,6 @@ function ensureSheet_(ss, name, head) {
   var first = sh.getRange(1, 1, 1, head.length).getValues()[0]
     .map(function (x) { return String(x).trim(); });
   if (first.join('|') !== head.join('|')) {
-    // Header khac schema moi -> giu du lieu cu sang tab _old, tao tab moi sach
     sh.setName(name + '_old_' + Date.now());
     var ns = ss.insertSheet(name); ns.appendRow(head); ns.setFrozenRows(1);
     return ns;
@@ -90,6 +109,11 @@ function rowsOf_(ss, name) {
 }
 
 function idx_(head, name) { return head.indexOf(name); }
+
+function num_(v) {
+  var s = String(v == null ? '' : v).replace(/[.,\s]/g, '');
+  var x = parseFloat(s); return isNaN(x) ? 0 : x;
+}
 
 function readKhach_(ss) {
   var d = rowsOf_(ss, 'KhachHang'); if (!d.head.length) return [];
@@ -118,7 +142,6 @@ function readHoaDon_(ss) {
       iGia = idx_(h, 'Don gia'), iTien = idx_(h, 'Thanh tien'), iVat = idx_(h, 'VAT %'),
       iCoc = idx_(h, 'Coc binh'), iTong = idx_(h, 'Tong thanh toan'),
       iDathu = idx_(h, 'Da thu'), iTt = idx_(h, 'Trang thai TT'), iThu = idx_(h, 'Nguoi thu');
-  function n(v) { var s = String(v == null ? '' : v).replace(/[.,\s]/g, ''); var x = parseFloat(s); return isNaN(x) ? 0 : x; }
   var out = [];
   d.rows.forEach(function (r) {
     if (!String(r[iId] || '').trim()) return;
@@ -127,9 +150,9 @@ function readHoaDon_(ss) {
       ngay: String(r[iNg] || '').slice(0, 10),
       ma: String(r[iMa] || '').trim(),
       khach: r[iKh] || '', sdt: String(r[iSd] || ''), kho: r[iKho] || '',
-      sp: r[iSp] || '', dvt: r[iDv] || '', sl: n(r[iSl]), gia: n(r[iGia]),
-      tien: n(r[iTien]), vat: n(r[iVat]), coc: n(r[iCoc]),
-      tong: n(r[iTong]), dathu: n(r[iDathu]),
+      sp: r[iSp] || '', dvt: r[iDv] || '', sl: num_(r[iSl]), gia: num_(r[iGia]),
+      tien: num_(r[iTien]), vat: num_(r[iVat]), coc: num_(r[iCoc]),
+      tong: num_(r[iTong]), dathu: num_(r[iDathu]),
       tt: r[iTt] || '', thu: r[iThu] || ''
     });
   });
