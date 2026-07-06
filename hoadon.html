@@ -259,6 +259,7 @@ function showTab(t){
   document.getElementById('tab-'+t).style.display='block';
   document.querySelectorAll('.tb').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-t')===t)});
   document.getElementById('bar').style.display=(t==='hd')?'flex':'none';
+  if(t==='hd')fillKhSelect();
   if(t==='kh'){renderMaPreview();renderKhList()}
   if(t==='bc')renderBaoCao();
   if(t==='cn')renderCongNo();
@@ -329,20 +330,27 @@ function themKhach(){
   var k={ten:ten,sdt:(document.getElementById('k_sdt').value||'').trim(),
     qh:(document.getElementById('k_qh').value||'').trim(),kho:KHO,tt:tt,
     kyhan:tt==='Công nợ'?Number(document.getElementById('k_kyhan').value)||0:0};
-  var b=event&&event.target;if(b){b.disabled=true;b.textContent='Đang lưu...'}
+  var b=document.querySelector('#tab-kh .bgrn');if(b){b.disabled=true;b.textContent='Đang lưu...'}
   fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({loai:'khach',kh:k})})
    .then(function(){
+     // Hien khach NGAY (ma du kien), khong bat cho tai lai
+     var tmp={ma:genMaKH(),ten:k.ten,sdt:k.sdt,qh:k.qh,kho:KHO,tt:k.tt,kyhan:k.kyhan,ngay:today()};
+     KH.push(tmp);
+     fillKhSelect();renderKhList();renderMaPreview();
+     document.getElementById('khSel').value=tmp.ma;onKhSel();
+     document.getElementById('k_ten').value='';document.getElementById('k_sdt').value='';document.getElementById('k_qh').value='';
+     if(b){b.disabled=false;b.textContent='Lưu khách lên Sheet'}
+     showTab('hd');
+     alert('Đã tạo khách '+tmp.ma+' — '+tmp.ten+'. Đã chọn sẵn ở tab Hoá đơn.');
+     // Nen: dong bo lai lay ma that tu Sheet (thay ma du kien neu lech)
      setTimeout(function(){
-       loadData(false,function(){
-         if(b){b.disabled=false;b.textContent='Lưu khách lên Sheet'}
+       loadData(false,function(ok){
+         if(!ok)return;
          var found=null;
          for(var i=KH.length-1;i>=0;i--){var c=KH[i];if(c.kho===KHO&&c.ten===k.ten&&String(c.sdt)===String(k.sdt)){found=c;break}}
-         document.getElementById('k_ten').value='';document.getElementById('k_sdt').value='';document.getElementById('k_qh').value='';
-         renderMaPreview();renderKhList();
-         if(found){document.getElementById('khSel').value=found.ma;onKhSel();showTab('hd');alert('Đã tạo khách '+found.ma+' — '+found.ten+'. Đã chọn sẵn ở tab Hoá đơn.')}
-         else{alert('Đã gửi tạo khách. Bấm Làm mới nếu chưa thấy trong danh sách.')}
+         if(found){document.getElementById('khSel').value=found.ma;onKhSel()}
        });
-     },1300);
+     },1600);
    })
    .catch(function(e){if(b){b.disabled=false;b.textContent='Lưu khách lên Sheet'}alert('Lỗi lưu: '+e.message)});
 }
