@@ -86,7 +86,7 @@ function doGet(e){
   var out;
   try {
     if (action === 'report') {
-      out = { ok: true, nhap: readNhap_(ss), xuat: readXuat_(ss), thu: readThu_(ss) };
+      out = { ok: true, cat: readCat_(ss), nhap: readNhap_(ss), xuat: readXuat_(ss), thu: readThu_(ss) };
     } else {
       out = { ok: true, cat: readCat_(ss) };
     }
@@ -121,21 +121,32 @@ function readCat_(ss){
 
 function readNhap_(ss){
   var sh = ss.getSheetByName('NhapKho'); if (!sh || sh.getLastRow() < 2) return [];
-  var v = sh.getDataRange().getValues(); var out = [];
+  var v = sh.getDataRange().getValues(); var out = []; var seen = {};
   // 0 LineID,1 PhieuID,2 Ngay,3 Nguoi,4 Ma,5 Ten,6 DVT,7 SL,8 Giavon,9 Thanhtien,10 NCC,11 Ghichu
-  for (var i = 1; i < v.length; i++) { var r = v[i]; if (!r[0]) continue;
+  for (var i = 1; i < v.length; i++) { var r = v[i]; var lid = String(r[0] || ''); if (!lid) continue; if (seen[lid]) continue; seen[lid] = 1;
     out.push({ ngay: fmtYmd_(r[2]), ma: String(r[4]).trim(), sl: n2_(r[7]), tien: n2_(r[9]) }); }
   return out;
 }
 
 function readXuat_(ss){
-  var sh = ss.getSheetByName('XuatKho'); if (!sh || sh.getLastRow() < 2) return [];
-  var v = sh.getDataRange().getValues(); var out = [];
+  // Gop XuatKho + KhoHN (ban le HN). KhoHN khong co Ma nen chi vao doanh thu.
+  return readXuatTab_(ss, 'XuatKho').concat(readXuatTab_(ss, 'KhoHN'));
+}
+function readXuatTab_(ss, name){
+  var sh = ss.getSheetByName(name); if (!sh || sh.getLastRow() < 2) return [];
+  var v = sh.getDataRange().getValues(); var out = []; var seen = {};
   // 0 LineID,1 PhieuID,2 Ngay,3 Loai,4 Bac,5 Khach,6 SDT,7 Ma,8 Ten,9 DVT,10 SL,11 Giaban,12 Thanhtien,13 Dathu,14 Conno,15 Ghichu
-  for (var i = 1; i < v.length; i++) { var r = v[i]; if (!r[0]) continue;
+  for (var i = 1; i < v.length; i++) { var r = v[i];
+    var lid = String(r[0] || '');
+    if (lid) { if (seen[lid]) continue; seen[lid] = 1; }
+    if (!lid && !r[10] && !r[12]) continue;
     var ten = String(r[8] || '').toUpperCase();
-    var lt = ten.indexOf('[THUHOI]') >= 0 ? 'ThuHoi' : (ten.indexOf('[TANG]') >= 0 ? 'Tang' : 'Ban');
-    out.push({ ngay: fmtYmd_(r[2]), ma: String(r[7]).trim(), sl: n2_(r[10]), tien: n2_(r[12]), lt: lt, khach: String(r[5] || ''), no: n2_(r[14]) }); }
+    var ghi = String(r[15] || '').toLowerCase();
+    var tien = n2_(r[12]);
+    var isTang = ten.indexOf('[TANG]') >= 0 || ((ghi.indexOf('tặng') >= 0 || ghi.indexOf('tang') >= 0) && tien === 0);
+    var lt = ten.indexOf('[THUHOI]') >= 0 ? 'ThuHoi' : (isTang ? 'Tang' : 'Ban');
+    out.push({ ngay: fmtYmd_(r[2]), ma: String(r[7] || '').trim(), sl: n2_(r[10]), tien: tien, lt: lt, khach: String(r[5] || r[8] || ''), no: n2_(r[14]) });
+  }
   return out;
 }
 

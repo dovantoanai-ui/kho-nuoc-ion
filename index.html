@@ -416,7 +416,7 @@ function loadReport(cb){
   var url=ld('kda_gs_url','');if(!url){toast('Chua ket noi Sheet');if(cb)cb(false);return;}
   var cbn='__onRep_'+Date.now();
   window[cbn]=function(res){try{delete window[cbn];}catch(e){}
-    if(res&&res.ok){SREP={nhap:res.nhap||[],xuat:res.xuat||[],thu:res.thu||[]};if(cb)cb(true);else{renderDash();renderTon();}}
+    if(res&&res.ok){SREP={nhap:res.nhap||[],xuat:res.xuat||[],thu:res.thu||[]};if(res.cat&&res.cat.length){CAT=res.cat;sv('kda_catalog',CAT);refreshProdSelects();}if(cb)cb(true);else{renderDash();renderTon();}}
     else{toast('Loi tai bao cao'+(res&&res.error?': '+res.error:''));if(cb)cb(false);}};
   var sc=document.createElement('script');
   sc.src=url+(url.indexOf('?')<0?'?':'&')+'action=report&callback='+cbn+'&t='+Date.now();
@@ -456,10 +456,10 @@ function debtMap(){
 }
 function renderTon(){
   if(!SREP){document.getElementById('tonBody').innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:16px">Bam nut Tai lai tu Sheet o tren.</td></tr>';return;}
-  var local=ld('kda_tondau',{});var m=repTon();var body='';var tGT=0;
+  var m=repTon();var body='';var tGT=0;
   CAT.forEach(function(c){
     var o=m[c.ma]||{nhap:0,ban:0,tang:0,thuhoi:0};
-    var dau=c.gtondau||local[c.ma]||0;var xuatNet=o.ban+o.tang-o.thuhoi;var ton=dau+o.nhap-xuatNet;var gt=ton*(c.gv||0);tGT+=gt;
+    var dau=Number(c.gtondau)||0;var xuatNet=o.ban+o.tang-o.thuhoi;var ton=dau+o.nhap-xuatNet;var gt=ton*(c.gv||0);tGT+=gt;
     body+='<tr><td>'+esc(c.ma)+'</td><td class="num">'+fmt(dau)+'</td><td class="num pos">'+fmt(o.nhap)+'</td><td class="num neg">'+fmt(xuatNet)+'</td><td class="num" style="font-weight:700">'+fmt(ton)+'</td><td class="num">'+fmt(gt)+'</td></tr>';
   });
   body+='<tr><td style="font-weight:700">Tong gia tri ton</td><td colspan="4"></td><td class="num" style="font-weight:800">'+fmt(tGT)+'</td></tr>';
@@ -475,7 +475,7 @@ function renderDash(){
   }
   var d=repDebt();var tNo=0;var rows='';
   Object.keys(d).forEach(function(k){if(d[k]>0.5){tNo+=d[k];rows+='<div class="li"><div class="h"><span>'+esc(k)+'</span><span class="neg">'+fmt(d[k])+'</span></div></div>';}});
-  var local=ld('kda_tondau',{});var m=repTon();var tGT=0;CAT.forEach(function(c){var o=m[c.ma]||{nhap:0,ban:0,tang:0,thuhoi:0};tGT+=((c.gtondau||local[c.ma]||0)+o.nhap-o.ban-o.tang+o.thuhoi)*(c.gv||0);});
+  var m=repTon();var tGT=0;CAT.forEach(function(c){var o=m[c.ma]||{nhap:0,ban:0,tang:0,thuhoi:0};tGT+=((Number(c.gtondau)||0)+o.nhap-o.ban-o.tang+o.thuhoi)*(c.gv||0);});
   document.getElementById('dDt').textContent=fmt(dt);
   document.getElementById('dNh').textContent=fmt(nh);
   document.getElementById('dNo').textContent=fmt(tNo);
