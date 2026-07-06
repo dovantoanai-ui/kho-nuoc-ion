@@ -327,14 +327,15 @@ function themKhach(){
   if(!ten){alert('Nhập tên khách');return}
   if(!GS){alert('Chưa cấu hình backend. Bấm Cài đặt để dán URL.');return}
   var tt=document.getElementById('k_tt').value;
-  var k={ten:ten,sdt:(document.getElementById('k_sdt').value||'').trim(),
+  var predMa=genMaKH();
+  var k={ma:predMa,ten:ten,sdt:(document.getElementById('k_sdt').value||'').trim(),
     qh:(document.getElementById('k_qh').value||'').trim(),kho:KHO,tt:tt,
     kyhan:tt==='Công nợ'?Number(document.getElementById('k_kyhan').value)||0:0};
   var b=document.querySelector('#tab-kh .bgrn');if(b){b.disabled=true;b.textContent='Đang lưu...'}
   fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({loai:'khach',kh:k})})
    .then(function(){
      // Hien khach NGAY (ma du kien), khong bat cho tai lai
-     var tmp={ma:genMaKH(),ten:k.ten,sdt:k.sdt,qh:k.qh,kho:KHO,tt:k.tt,kyhan:k.kyhan,ngay:today()};
+     var tmp={ma:predMa,ten:k.ten,sdt:k.sdt,qh:k.qh,kho:KHO,tt:k.tt,kyhan:k.kyhan,ngay:today()};
      KH.push(tmp);
      fillKhSelect();renderKhList();renderMaPreview();
      document.getElementById('khSel').value=tmp.ma;onKhSel();
