@@ -195,6 +195,7 @@
 
     <!-- ===== TAB BAO CAO ===== -->
     <div id="tab-bc" class="tab-pane" style="display:none">
+      <div class="muted" id="bcKhoLbl" style="margin-bottom:10px;font-weight:700;color:var(--red)"></div>
       <div class="kpi" id="bcKpi"></div>
       <div class="card">
         <h2>Bán hàng theo ngày (từ Sheet)</h2>
@@ -498,6 +499,7 @@ function conNoOf(inv){if(inv.tt==='Đã thanh toán')return 0;var c=inv.tong-inv
 
 /* ---------- BAO CAO ---------- */
 function renderBaoCao(){
+  var lbl=document.getElementById('bcKhoLbl');if(lbl)lbl.textContent='Báo cáo kho: '+KHO;
   var tstr=today();var mm=tstr.slice(3);
   var dtToday=0,slToday=0,dtMonth=0,cust={};
   HD.forEach(function(x){
