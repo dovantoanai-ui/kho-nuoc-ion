@@ -105,6 +105,7 @@
       <button class="tb active" data-t="hd" onclick="showTab('hd')">Hoá đơn</button>
       <button class="tb" data-t="kh" onclick="showTab('kh')">Khách</button>
       <button class="tb" data-t="bc" onclick="showTab('bc')">Báo cáo</button>
+      <button class="tb" data-t="dh" onclick="showTab('dh')">Đơn</button>
       <button class="tb" data-t="cn" onclick="showTab('cn')">Công nợ</button>
       <button class="tb" data-t="cs" onclick="showTab('cs')">CSKH</button>
     </div>
@@ -152,7 +153,9 @@
 
       <div class="card">
         <h2>Thanh toán</h2>
-        <div class="row" style="align-items:stretch">
+        <label>Hình thức thanh toán</label>
+        <select id="ht" onchange="onHt()"><option>Tiền mặt</option><option>Công nợ</option><option>TK Anh Hưng</option><option>TK công ty Fuji</option></select>
+        <div class="row" style="align-items:stretch;margin-top:7px">
           <div style="flex:1"><label>Trạng thái</label><select id="tt" onchange="render()"><option>Đã thanh toán</option><option>Chưa thanh toán</option><option>Thanh toán 1 phần</option></select></div>
           <div style="flex:1"><label>Người thu tiền</label><input id="thu" oninput="render()" placeholder="Tên người thu"></div>
         </div>
@@ -206,6 +209,13 @@
         <button class="btn bgrn" style="width:100%;margin-bottom:8px" onclick="loadData(true)">Tải lại từ Sheet</button>
         <div style="overflow-x:auto"><table class="rpt"><thead><tr><th>Ngày</th><th>Số HĐ</th><th>SL</th><th>Doanh thu</th><th>Đã thu</th><th>Còn nợ</th></tr></thead><tbody id="bcDays"></tbody></table></div>
       </div>
+    </div>
+
+    <!-- ===== TAB DON HANG ===== -->
+    <div id="tab-dh" class="tab-pane" style="display:none">
+      <div class="muted" id="dhKhoLbl" style="margin-bottom:8px;font-weight:700;color:var(--red)"></div>
+      <button class="btn bgrn" style="width:100%;margin-bottom:10px" onclick="loadData(true)">Tải lại từ Sheet</button>
+      <div id="dhList"></div>
     </div>
 
     <!-- ===== TAB CONG NO ===== -->
@@ -287,6 +297,7 @@ function showTab(t){
   if(t==='hd')fillKhSelect();
   if(t==='kh'){renderMaPreview();renderKhList()}
   if(t==='bc')renderBaoCao();
+  if(t==='dh')renderDonHang();
   if(t==='cn')renderCongNo();
   if(t==='cs')renderCSKH();
   window.scrollTo(0,0);
@@ -337,9 +348,11 @@ function onKhSel(){
   box.style.display='block';
   box.innerHTML='SĐT: '+(k.sdt||'—')+' &nbsp;·&nbsp; '+(k.qh||'—')+' &nbsp;·&nbsp; '+k.tt+(k.tt==='Công nợ'?' ('+k.kyhan+' ngày)':'');
   document.getElementById('tt').value=(k.tt==='Công nợ')?'Chưa thanh toán':'Đã thanh toán';
+  document.getElementById('ht').value=(k.tt==='Công nợ')?'Công nợ':'Tiền mặt';
   render();
 }
 function selKh(){var ma=document.getElementById('khSel').value;return ma?khByMa(ma):null}
+function onHt(){var ht=document.getElementById('ht').value;var tt=document.getElementById('tt');if(ht==='Công nợ')tt.value='Chưa thanh toán';else if(tt.value==='Chưa thanh toán')tt.value='Đã thanh toán';render();}
 function genMaKH(){
   var pre=KHOCODE,max=0,re=new RegExp('^'+pre+'(\\d+)');
   KH.forEach(function(k){var m=String(k.ma).match(re);if(m){var num=parseInt(m[1],10);if(num>max)max=num}});
@@ -440,7 +453,8 @@ function render(){
   var ckn=ckPct();if(ckn>0)note=note+' Đã áp dụng chiết khấu '+ckn+'%.';
   var thu=(document.getElementById('thu').value||'').trim();
   var ttcol=ttv==='Đã thanh toán'?'#0f9d58':(ttv==='Chưa thanh toán'?'#c8102e':'#e08a00');
-  var payLine='<div class="kv" style="margin-top:6px"><b>Thanh toán:</b> <span style="color:'+ttcol+';font-weight:800">'+ttv+'</span>'+(thu?' &nbsp;|&nbsp; <b>Người thu:</b> '+thu:'')+'</div>';
+  var htv=document.getElementById('ht').value;
+  var payLine='<div class="kv" style="margin-top:6px"><b>Thanh toán:</b> <span style="color:'+ttcol+';font-weight:800">'+ttv+'</span> &nbsp;|&nbsp; <b>Hình thức:</b> '+htv+(thu?' &nbsp;|&nbsp; <b>Người thu:</b> '+thu:'')+'</div>';
   var rows='';
   items.forEach(function(x,n){rows+='<tr><td class="c">'+(n+1)+'</td><td>'+x.t+'</td><td class="c">'+x.dv+'</td><td class="c">'+x.sl+'</td><td class="r">'+fmt(x.gia)+'</td><td class="r">'+fmt(x.tt)+'</td></tr>'});
   if(!items.length)rows='<tr><td class="c" colspan="6" style="color:#999;padding:14px">Chưa có sản phẩm</td></tr>';
@@ -465,19 +479,20 @@ function dongBo(){
   var hasVat=document.getElementById('vat').checked;var rate=Number(document.getElementById('vatr').value)||0;
   var vat=hasVat?Math.round(sub*rate/100):0;var coc=Number(document.getElementById('coc').value)||0;var tong=sub+vat+coc;
   var ttv=document.getElementById('tt').value;var thu=(document.getElementById('thu').value||'').trim();
+  var htv=document.getElementById('ht').value;
   var dathu=ttv==='Đã thanh toán'?tong:(ttv==='Thanh toán 1 phần'?(Number(document.getElementById('dathu').value)||0):0);
   var id='HD'+Date.now();var ng=today();var rows=[];
   items.forEach(function(x,i){
     rows.push([id,ng,cust.ma,i===0?cust.ten:'',i===0?cust.sdt:'',KHO,x.t,x.dv,x.sl,x.gia,x.tt,
-      i===0?(hasVat?rate:0):'',i===0?coc:'',i===0?tong:'',i===0?dathu:'',i===0?ttv:'',i===0?thu:'']);
+      i===0?(hasVat?rate:0):'',i===0?coc:'',i===0?tong:'',i===0?dathu:'',i===0?ttv:'',i===0?thu:'',i===0?htv:'']);
   });
   var b=document.getElementById('dbBtn');b.textContent='Đang đồng bộ...';
   fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({loai:'hoadon',rows:rows})})
    .then(function(){
-     rows.forEach(function(r){HD.push({id:r[0],ngay:String(r[1]).slice(0,10),ma:String(r[2]),khach:r[3],sdt:String(r[4]),kho:r[5],sp:r[6],dvt:r[7],sl:Number(r[8])||0,gia:Number(r[9])||0,tien:Number(r[10])||0,vat:Number(r[11])||0,coc:Number(r[12])||0,tong:Number(r[13])||0,dathu:Number(r[14])||0,tt:r[15],thu:r[16]})});
+     rows.forEach(function(r){HD.push({id:r[0],ngay:String(r[1]).slice(0,10),ma:String(r[2]),khach:r[3],sdt:String(r[4]),kho:r[5],sp:r[6],dvt:r[7],sl:Number(r[8])||0,gia:Number(r[9])||0,tien:Number(r[10])||0,vat:Number(r[11])||0,coc:Number(r[12])||0,tong:Number(r[13])||0,dathu:Number(r[14])||0,tt:r[15],thu:r[16],ht:r[17]})});
      document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn';
      b.textContent='Đã đồng bộ ✓ (bấm để gửi tiếp)';
-     renderBaoCao();renderCongNo();renderCSKH();
+     renderBaoCao();renderCongNo();renderCSKH();renderDonHang();
      alert('Đã lưu hoá đơn '+id+' lên Sheet.');
    })
    .catch(function(e){b.textContent='Lưu & đồng bộ hoá đơn lên Sheet';alert('Lỗi đồng bộ: '+e.message)});
@@ -535,6 +550,38 @@ function renderBaoCao(){
   tb.innerHTML=t;
 }
 
+/* ---------- DON HANG (tung don) ---------- */
+function invoiceList(){
+  var m={};
+  HD.forEach(function(x){ if(x.kho!==KHO)return;
+    var g=m[x.id]||(m[x.id]={id:x.id,ngay:x.ngay,ma:x.ma,khach:x.khach,lines:[],tong:0,dathu:0,tt:'',ht:'',thu:''});
+    g.lines.push({sp:x.sp,sl:x.sl,gia:x.gia,tien:x.tien});
+    if(x.tong>g.tong)g.tong=x.tong; if(x.dathu>g.dathu)g.dathu=x.dathu;
+    if(x.tt)g.tt=x.tt; if(x.ht)g.ht=x.ht; if(x.thu)g.thu=x.thu;
+    if(!g.khach&&x.khach)g.khach=x.khach; if(!g.ngay&&x.ngay)g.ngay=x.ngay;
+  });
+  var arr=[];for(var k in m)arr.push(m[k]);
+  arr.sort(function(a,b){return String(b.id).localeCompare(String(a.id))});
+  return arr;
+}
+function renderDonHang(){
+  var lbl=document.getElementById('dhKhoLbl');if(lbl)lbl.textContent='Đơn hàng kho: '+KHO;
+  var arr=invoiceList();var el=document.getElementById('dhList');
+  if(!arr.length){el.innerHTML='<div class="empty">Chưa có đơn nào trong kho này.</div>';return}
+  var h='';
+  arr.forEach(function(v){
+    var ttcol=v.tt==='Đã thanh toán'?'#0f9d58':(v.tt==='Chưa thanh toán'?'#c8102e':'#e08a00');
+    var conno=v.tt==='Đã thanh toán'?0:Math.max(v.tong-v.dathu,0);
+    var lines=v.lines.map(function(l){return l.sp+' — '+l.sl+' × '+fmt(l.gia)+' = '+fmt(l.tien)}).join('<br>');
+    h+='<div class="card" style="padding:11px 12px;margin-bottom:8px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:baseline"><b>'+v.ngay+'</b><b>'+fmt(v.tong)+' đ</b></div>'
+      +'<div class="muted" style="margin:2px 0">'+(v.ma?v.ma+' · ':'')+(v.khach||'—')+'</div>'
+      +'<div style="font-size:12px;margin:2px 0"><span style="color:'+ttcol+';font-weight:700">'+v.tt+'</span>'+(v.ht?' · '+v.ht:'')+(v.thu?' · thu: '+v.thu:'')+(conno>0?' · <span style="color:#c8102e">còn nợ '+fmt(conno)+'</span>':'')+'</div>'
+      +'<div style="font-size:12.5px;margin-top:4px;color:#333;line-height:1.5">'+lines+'</div>'
+      +'</div>';
+  });
+  el.innerHTML=h;
+}
 /* ---------- CONG NO ---------- */
 function renderCongNo(){
   var invs=invoicesInKho();

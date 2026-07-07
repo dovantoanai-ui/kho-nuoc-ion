@@ -21,7 +21,7 @@ var KH_HEAD = ['Ma KH', 'Ten', 'SDT', 'Quan/Huyen', 'Kho',
 var HD_HEAD = ['ID hoa don', 'Ngay', 'Ma KH', 'Khach', 'SDT', 'Kho',
                'San pham', 'DVT', 'SL', 'Don gia', 'Thanh tien',
                'VAT %', 'Coc binh', 'Tong thanh toan', 'Da thu',
-               'Trang thai TT', 'Nguoi thu'];
+               'Trang thai TT', 'Nguoi thu', 'Hinh thuc TT'];
 
 // ---------- GHI (POST tu app, che do no-cors) ----------
 function doPost(e) {
@@ -89,14 +89,18 @@ function ensureSheet_(ss, name, head) {
   var sh = ss.getSheetByName(name);
   if (!sh) { sh = ss.insertSheet(name); sh.appendRow(head); sh.setFrozenRows(1); return sh; }
   if (sh.getLastRow() === 0) { sh.appendRow(head); sh.setFrozenRows(1); return sh; }
-  var first = sh.getRange(1, 1, 1, head.length).getValues()[0]
-    .map(function (x) { return String(x).trim(); });
-  if (first.join('|') !== head.join('|')) {
-    sh.setName(name + '_old_' + Date.now());
-    var ns = ss.insertSheet(name); ns.appendRow(head); ns.setFrozenRows(1);
-    return ns;
+  var ec = sh.getLastColumn();
+  var eh = sh.getRange(1, 1, 1, ec).getValues()[0].map(function (x) { return String(x).trim(); });
+  var isPrefix = eh.length <= head.length;
+  for (var i = 0; i < eh.length; i++) { if (eh[i] !== head[i]) { isPrefix = false; break; } }
+  if (isPrefix) {
+    if (eh.length < head.length) sh.getRange(1, 1, 1, head.length).setValues([head]); // them cot, giu data
+    return sh;
   }
-  return sh;
+  // khac schema hoan toan -> giu du lieu cu sang _old
+  sh.setName(name + '_old_' + Date.now());
+  var ns = ss.insertSheet(name); ns.appendRow(head); ns.setFrozenRows(1);
+  return ns;
 }
 
 function rowsOf_(ss, name) {
@@ -147,7 +151,8 @@ function readHoaDon_(ss) {
       iSp = idx_(h, 'San pham'), iDv = idx_(h, 'DVT'), iSl = idx_(h, 'SL'),
       iGia = idx_(h, 'Don gia'), iTien = idx_(h, 'Thanh tien'), iVat = idx_(h, 'VAT %'),
       iCoc = idx_(h, 'Coc binh'), iTong = idx_(h, 'Tong thanh toan'),
-      iDathu = idx_(h, 'Da thu'), iTt = idx_(h, 'Trang thai TT'), iThu = idx_(h, 'Nguoi thu');
+      iDathu = idx_(h, 'Da thu'), iTt = idx_(h, 'Trang thai TT'), iThu = idx_(h, 'Nguoi thu'),
+      iHt = idx_(h, 'Hinh thuc TT');
   var out = [];
   d.rows.forEach(function (r) {
     if (!String(r[iId] || '').trim()) return;
@@ -159,7 +164,7 @@ function readHoaDon_(ss) {
       sp: r[iSp] || '', dvt: r[iDv] || '', sl: num_(r[iSl]), gia: num_(r[iGia]),
       tien: num_(r[iTien]), vat: num_(r[iVat]), coc: num_(r[iCoc]),
       tong: num_(r[iTong]), dathu: num_(r[iDathu]),
-      tt: r[iTt] || '', thu: r[iThu] || ''
+      tt: r[iTt] || '', thu: r[iThu] || '', ht: iHt >= 0 ? (r[iHt] || '') : ''
     });
   });
   return out;
