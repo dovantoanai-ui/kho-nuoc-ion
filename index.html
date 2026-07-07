@@ -92,6 +92,7 @@
   </div>
 
   <div class="sc on" id="s-home">
+    <div id="homeAlert"></div>
     <div class="dpick">
       <span style="font-size:13px;color:var(--mut)">Ngay</span>
       <input type="date" id="homeDate" onchange="onDateChange()">
@@ -174,6 +175,14 @@
   </div>
 
   <div class="sc" id="s-ton">
+    <div class="card" id="alertCard" style="display:none;border-color:var(--am)">
+      <h2 style="color:var(--am)">Canh bao ton kho thap</h2>
+      <div class="row" style="align-items:center;margin-bottom:6px">
+        <span class="hint" style="flex:1;margin:0">Canh bao khi ton duoi <b><span id="alertPctLbl">20</span>%</b> so voi nhap trong thang</span>
+        <input id="alertPct" type="number" style="width:64px;text-align:center;flex:0 0 64px" value="20" onchange="sv('kda_alert_pct',this.value);renderAlert()">
+      </div>
+      <div id="alertList"></div>
+    </div>
     <div class="card">
       <h2>Ton kho hien tai</h2>
       <div class="hint">Ton tinh tu du lieu tren Sheet kho (ton dau + nhap - xuat + thu hoi).</div>
@@ -465,7 +474,7 @@ function debtMap(){
   return d;
 }
 function renderTon(){
-  if(!SREP){document.getElementById('tonBody').innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:16px">Bam nut Tai lai tu Sheet o tren.</td></tr>';renderMH();return;}
+  if(!SREP){document.getElementById('tonBody').innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:16px">Bam nut Tai lai tu Sheet o tren.</td></tr>';renderMH();renderAlert();return;}
   var m=repTon();var body='';var tGT=0;
   CAT.forEach(function(c){
     var o=m[c.ma]||{nhap:0,ban:0,tang:0,thuhoi:0};
@@ -531,6 +540,28 @@ function renderNXT(){
   days.forEach(function(d){var o=day[d];run+=o.nhap-o.ban-o.tang+o.thuhoi;
     h+='<tr><td>'+d+'</td><td class="num pos">'+fmt(o.nhap)+'</td><td class="num neg">'+fmt(o.ban)+'</td><td class="num">'+fmt(o.tang)+'</td><td class="num">'+fmt(o.thuhoi)+'</td><td class="num">'+fmt(o.dt)+'</td><td class="num" style="font-weight:700">'+fmt(run)+'</td></tr>';});
   body.innerHTML=h||'<tr><td colspan="7" style="text-align:center;color:var(--mut);padding:14px">Chua co du lieu.</td></tr>';
+}
+function renderAlert(){
+  var pct=Number(ld('kda_alert_pct',20))||20;
+  var inp=document.getElementById('alertPct');if(inp)inp.value=pct;
+  var lbl=document.getElementById('alertPctLbl');if(lbl)lbl.textContent=pct;
+  var card=document.getElementById('alertCard');var hb=document.getElementById('homeAlert');
+  if(!SREP){if(card)card.style.display='none';if(hb)hb.innerHTML='';return;}
+  var month=todayStr().slice(0,7);var nt={};
+  SREP.nhap.forEach(function(l){if(String(l.ngay).slice(0,7)===month)nt[l.ma]=(nt[l.ma]||0)+(Number(l.sl)||0);});
+  var m=repTon();var items=[];
+  CAT.forEach(function(c){var o=m[c.ma]||{nhap:0,ban:0,tang:0,thuhoi:0};
+    var ton=(Number(c.gtondau)||0)+o.nhap-o.ban-o.tang+o.thuhoi;
+    var n=nt[c.ma]||0;var ng=Math.round(n*pct/100);
+    if((n>0&&ton<ng)||ton<=0){items.push({ma:c.ma,ten:c.ten,ton:ton,n:n,ng:ng});}});
+  items.sort(function(a,b){return a.ton-b.ton;});
+  if(card){
+    if(!items.length){card.style.display='none';}
+    else{card.style.display='block';var h='';items.forEach(function(x){
+      h+='<div class="li" style="border-color:var(--am)"><div class="h"><span>'+esc(x.ma)+' - '+esc(x.ten)+'</span><span class="neg">Ton '+fmt(x.ton)+'</span></div><div class="m">Nhap thang '+fmt(x.n)+' | nguong '+pct+'% = '+fmt(x.ng)+' -> can nhap them</div></div>';});
+      document.getElementById('alertList').innerHTML=h;}
+  }
+  if(hb){hb.innerHTML=items.length?('<div class="card" style="border-color:var(--am);background:var(--amb)"><span style="color:#8a5a00"><b>Canh bao ton thap:</b> '+items.length+' mat hang duoi '+pct+'% nhap thang. Vao tab Ton kho de xem.</span></div>'):'';}
 }
 function pickRange(el){document.querySelectorAll('#dashPills .pill').forEach(function(p){p.classList.remove('on');});el.classList.add('on');renderDash();}
 
@@ -603,7 +634,7 @@ function init(){
   buildNav();document.getElementById('homeDate').value=curDate;
   addRow('nh');addRow('xu');addRow('bl');
   setTop();renderHome();refreshDL();
-  if(ld('kda_gs_url',''))loadCatalog();
+  if(ld('kda_gs_url','')){loadCatalog();loadReport(function(){renderAlert();});}
 }
 init();
 </script>
