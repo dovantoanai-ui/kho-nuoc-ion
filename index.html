@@ -180,6 +180,11 @@
       <button class="addp" style="margin-bottom:8px" onclick="loadReport(function(ok){if(ok){renderTon();toast('Da tai tu Sheet')}})">Tai lai tu Sheet</button>
       <table id="tonTbl"><thead><tr><th>Ma hang</th><th class="num">Dau ky</th><th class="num">Nhap</th><th class="num">Xuat</th><th class="num">Ton</th><th class="num">Gia tri</th></tr></thead><tbody id="tonBody"></tbody></table>
     </div>
+    <div class="card">
+      <h2>Bang tong hop ma hang (theo ngay)</h2>
+      <select id="mhDay" onchange="renderMH()" style="margin-bottom:8px"><option value="">Tat ca (tong)</option></select>
+      <div style="overflow-x:auto"><table id="mhTbl"><thead><tr><th>Ma</th><th>Ten</th><th class="num">Nhap</th><th class="num">Ban</th><th class="num">Tang</th><th class="num">Thu hoi</th><th class="num">Ton cuoi</th><th class="num">Gia tri</th></tr></thead><tbody id="mhBody"></tbody></table></div>
+    </div>
   </div>
 
   <div class="sc" id="s-dash">
@@ -460,7 +465,7 @@ function debtMap(){
   return d;
 }
 function renderTon(){
-  if(!SREP){document.getElementById('tonBody').innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:16px">Bam nut Tai lai tu Sheet o tren.</td></tr>';return;}
+  if(!SREP){document.getElementById('tonBody').innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:16px">Bam nut Tai lai tu Sheet o tren.</td></tr>';renderMH();return;}
   var m=repTon();var body='';var tGT=0;
   CAT.forEach(function(c){
     var o=m[c.ma]||{nhap:0,ban:0,tang:0,thuhoi:0};
@@ -469,6 +474,30 @@ function renderTon(){
   });
   body+='<tr><td style="font-weight:700">Tong gia tri ton</td><td colspan="4"></td><td class="num" style="font-weight:800">'+fmt(tGT)+'</td></tr>';
   document.getElementById('tonBody').innerHTML=body;
+  renderMH();
+}
+function renderMH(){
+  var sel=document.getElementById('mhDay');if(!sel)return;var body=document.getElementById('mhBody');
+  if(!SREP){body.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--mut);padding:14px">Bam Tai lai tu Sheet.</td></tr>';return;}
+  var dset={};SREP.nhap.forEach(function(l){if(l.ngay)dset[l.ngay]=1;});SREP.xuat.forEach(function(l){if(l.ngay)dset[l.ngay]=1;});
+  var days=Object.keys(dset).sort();
+  if(sel.options.length!==days.length+1){var oh='<option value="">Tat ca (tong)</option>';days.forEach(function(d){oh+='<option value="'+d+'">'+d+'</option>';});var cur=sel.value;sel.innerHTML=oh;sel.value=cur;}
+  var day=sel.value;
+  var agg={};function ga(ma){return agg[ma]||(agg[ma]={nhap:0,ban:0,tang:0,thuhoi:0,net:0,dau:0});}
+  CAT.forEach(function(c){ga(c.ma).dau=Number(c.gtondau)||0;});
+  function inP(ng){return !day||ng===day;}
+  function upTo(ng){return !day||ng<=day;}
+  SREP.nhap.forEach(function(l){var a=ga(l.ma);var q=Number(l.sl)||0;if(inP(l.ngay))a.nhap+=q;if(upTo(l.ngay))a.net+=q;});
+  SREP.xuat.forEach(function(l){var a=ga(l.ma);var q=Number(l.sl)||0;
+    if(inP(l.ngay)){if(l.lt==='ThuHoi')a.thuhoi+=q;else if(l.lt==='Tang')a.tang+=q;else a.ban+=q;}
+    if(upTo(l.ngay)){if(l.lt==='ThuHoi')a.net+=q;else a.net-=q;}});
+  var h='';var T={nhap:0,ban:0,tang:0,thuhoi:0,ton:0,gt:0};
+  CAT.forEach(function(c){var a=agg[c.ma];if(!a)a={nhap:0,ban:0,tang:0,thuhoi:0,net:0,dau:Number(c.gtondau)||0};
+    var ton=a.dau+a.net;var gt=ton*(c.gv||0);
+    T.nhap+=a.nhap;T.ban+=a.ban;T.tang+=a.tang;T.thuhoi+=a.thuhoi;T.ton+=ton;T.gt+=gt;
+    h+='<tr><td>'+esc(c.ma)+'</td><td>'+esc(c.ten)+'</td><td class="num pos">'+fmt(a.nhap)+'</td><td class="num neg">'+fmt(a.ban)+'</td><td class="num">'+fmt(a.tang)+'</td><td class="num">'+fmt(a.thuhoi)+'</td><td class="num" style="font-weight:700">'+fmt(ton)+'</td><td class="num">'+fmt(gt)+'</td></tr>';});
+  h+='<tr style="font-weight:800;background:var(--sf)"><td colspan="2">TONG</td><td class="num">'+fmt(T.nhap)+'</td><td class="num">'+fmt(T.ban)+'</td><td class="num">'+fmt(T.tang)+'</td><td class="num">'+fmt(T.thuhoi)+'</td><td class="num">'+fmt(T.ton)+'</td><td class="num">'+fmt(T.gt)+'</td></tr>';
+  body.innerHTML=h;
 }
 function renderDash(){
   var el=document.querySelector('#dashPills .pill.on')||document.querySelector('#dashPills .pill');
