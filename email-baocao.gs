@@ -12,7 +12,7 @@
 //     (Tat: chay tatLichBaoCao.)
 // ============================================================
 
-var EMAIL_TO = 'tnv9090@gmail.com';
+var EMAIL_TO = 'tnv9090@gmail.com,dovantoan.ai@gmail.com';
 var GIO_GUI = 21; // gio gui hang ngay (0-23)
 
 function bc_ss(){ return SpreadsheetApp.getActiveSpreadsheet(); }
