@@ -72,6 +72,11 @@
   .p-warn{background:#fff3df;color:var(--amb)}
   .p-bad{background:#fdeceb;color:var(--red)}
   .empty{padding:22px 12px;text-align:center;color:var(--mut);font-size:13px}
+  .rpt{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:0}
+  .rpt th{background:#eef1f4;color:var(--ink);border:1px solid var(--line);padding:6px 5px;font-size:11px;text-align:right;white-space:nowrap}
+  .rpt th:first-child{text-align:left}
+  .rpt td{border:1px solid var(--line);padding:6px 5px;text-align:right;white-space:nowrap}
+  .rpt td:first-child{text-align:left}
   @media print{ body{background:#fff} .top,.tabs,.card:not(#cardPreview),.btns,#ovl,.tab-pane:not(#tab-hd){display:none !important}
     #tab-hd .card:not(#cardPreview){display:none !important}
     .wrap{padding:0;max-width:none} #cardPreview{border:none;padding:0;margin:0} #cardPreview h2,#cardPreview .muted,#dbBtn{display:none !important} }
@@ -192,8 +197,9 @@
     <div id="tab-bc" class="tab-pane" style="display:none">
       <div class="kpi" id="bcKpi"></div>
       <div class="card">
-        <h2>Doanh thu theo ngày (gần đây)</h2>
-        <div id="bcDays"></div>
+        <h2>Bán hàng theo ngày (từ Sheet)</h2>
+        <button class="btn bgrn" style="width:100%;margin-bottom:8px" onclick="loadData(true)">Tải lại từ Sheet</button>
+        <div style="overflow-x:auto"><table class="rpt"><thead><tr><th>Ngày</th><th>Số HĐ</th><th>SL</th><th>Doanh thu</th><th>Đã thu</th><th>Còn nợ</th></tr></thead><tbody id="bcDays"></tbody></table></div>
       </div>
     </div>
 
@@ -504,12 +510,15 @@ function renderBaoCao(){
   var kpi=[['Doanh thu hôm nay',fmt(dtToday)],['Công nợ đang thu',fmt(no)],['SL bán hôm nay',slToday],['DT tháng này',fmt(dtMonth)],['Số khách',Object.keys(cust).length],['Số hoá đơn',invs.length]];
   var h='';kpi.forEach(function(a){h+='<div class="kbox"><div class="l">'+a[0]+'</div><div class="v">'+a[1]+'</div></div>'});
   document.getElementById('bcKpi').innerHTML=h;
-  // theo ngay
-  var day={};HD.forEach(function(x){if(x.kho!==KHO)return;var g=day[x.ngay];if(!g)g=day[x.ngay]={dt:0,sl:0};g.dt+=x.tien;g.sl+=x.sl});
-  var ds=Object.keys(day).filter(function(d){return d}).sort(function(a,b){return (parseD(b)||0)-(parseD(a)||0)}).slice(0,10);
-  if(!ds.length){document.getElementById('bcDays').innerHTML='<div class="empty">Chưa có dữ liệu bán.</div>';return}
-  var t='';ds.forEach(function(d){t+='<div class="li"><div class="t1">'+d+'</div><div class="rt"><div class="t1">'+fmt(day[d].dt)+' đ</div><div class="t2">'+day[d].sl+' sp</div></div></div>'});
-  document.getElementById('bcDays').innerHTML=t;
+  // theo ngay (chi tiet)
+  var day={};function gd(n){return day[n]||(day[n]={dt:0,sl:0,dathu:0,conno:0,hd:0})}
+  HD.forEach(function(x){if(x.kho!==KHO)return;var g=gd(x.ngay);g.dt+=x.tien;g.sl+=x.sl});
+  invs.forEach(function(v){var g=gd(v.ngay);g.dathu+=v.dathu;g.conno+=conNoOf(v);g.hd++});
+  var ds=Object.keys(day).filter(function(d){return d}).sort(function(a,b){return (parseD(b)||0)-(parseD(a)||0)});
+  var tb=document.getElementById('bcDays');
+  if(!ds.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:14px">Chưa có dữ liệu bán.</td></tr>';return}
+  var t='';ds.forEach(function(d){var g=day[d];t+='<tr><td>'+d+'</td><td>'+g.hd+'</td><td>'+g.sl+'</td><td>'+fmt(g.dt)+'</td><td>'+fmt(g.dathu)+'</td><td style="color:'+(g.conno>0?'#c8102e':'inherit')+'">'+fmt(g.conno)+'</td></tr>'});
+  tb.innerHTML=t;
 }
 
 /* ---------- CONG NO ---------- */
