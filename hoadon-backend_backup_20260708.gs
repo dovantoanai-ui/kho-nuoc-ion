@@ -21,7 +21,7 @@ var KH_HEAD = ['Ma KH', 'Ten', 'SDT', 'Quan/Huyen', 'Kho',
 var HD_HEAD = ['ID hoa don', 'Ngay', 'Ma KH', 'Khach', 'SDT', 'Kho',
                'San pham', 'DVT', 'SL', 'Don gia', 'Thanh tien',
                'VAT %', 'Coc binh', 'Tong thanh toan', 'Da thu',
-               'Trang thai TT', 'Nguoi thu', 'Hinh thuc TT', 'Ghi chu'];
+               'Trang thai TT', 'Nguoi thu', 'Hinh thuc TT'];
 
 // ---------- GHI (POST tu app, che do no-cors) ----------
 function doPost(e) {
@@ -152,7 +152,7 @@ function readHoaDon_(ss) {
       iGia = idx_(h, 'Don gia'), iTien = idx_(h, 'Thanh tien'), iVat = idx_(h, 'VAT %'),
       iCoc = idx_(h, 'Coc binh'), iTong = idx_(h, 'Tong thanh toan'),
       iDathu = idx_(h, 'Da thu'), iTt = idx_(h, 'Trang thai TT'), iThu = idx_(h, 'Nguoi thu'),
-      iHt = idx_(h, 'Hinh thuc TT'), iGc = idx_(h, 'Ghi chu');
+      iHt = idx_(h, 'Hinh thuc TT');
   var out = [];
   d.rows.forEach(function (r) {
     if (!String(r[iId] || '').trim()) return;
@@ -164,8 +164,7 @@ function readHoaDon_(ss) {
       sp: r[iSp] || '', dvt: r[iDv] || '', sl: num_(r[iSl]), gia: num_(r[iGia]),
       tien: num_(r[iTien]), vat: num_(r[iVat]), coc: num_(r[iCoc]),
       tong: num_(r[iTong]), dathu: num_(r[iDathu]),
-      tt: r[iTt] || '', thu: r[iThu] || '', ht: iHt >= 0 ? (r[iHt] || '') : '',
-      ghichu: iGc >= 0 ? (r[iGc] || '') : ''
+      tt: r[iTt] || '', thu: r[iThu] || '', ht: iHt >= 0 ? (r[iHt] || '') : ''
     });
   });
   return out;

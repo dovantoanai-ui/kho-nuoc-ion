@@ -161,7 +161,6 @@
         </div>
         <div id="dathuWrap" style="display:none"><label>Số tiền đã thu (đ)</label><input id="dathu" type="number" inputmode="numeric" placeholder="0" oninput="render()"></div>
         <label>Cọc bình (đ)</label><input id="coc" type="number" inputmode="numeric" placeholder="0" oninput="render()">
-        <label>Ghi chú (tuỳ chọn)</label><textarea id="ghichu" rows="2" placeholder="VD: giao giờ hành chính, gọi trước khi giao..." oninput="render()" style="width:100%;font:inherit;font-size:15px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);resize:vertical"></textarea>
       </div>
 
       <div class="card" id="cardPreview">
@@ -456,8 +455,6 @@ function render(){
   var ttcol=ttv==='Đã thanh toán'?'#0f9d58':(ttv==='Chưa thanh toán'?'#c8102e':'#e08a00');
   var htv=document.getElementById('ht').value;
   var payLine='<div class="kv" style="margin-top:6px"><b>Thanh toán:</b> <span style="color:'+ttcol+';font-weight:800">'+ttv+'</span> &nbsp;|&nbsp; <b>Hình thức:</b> '+htv+(thu?' &nbsp;|&nbsp; <b>Người thu:</b> '+thu:'')+'</div>';
-  var ghichu=(document.getElementById('ghichu').value||'').trim();
-  var gcLine=ghichu?'<div class="kv" style="margin-top:4px"><b>Ghi chú:</b> '+ghichu.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>':'';
   var rows='';
   items.forEach(function(x,n){rows+='<tr><td class="c">'+(n+1)+'</td><td>'+x.t+'</td><td class="c">'+x.dv+'</td><td class="c">'+x.sl+'</td><td class="r">'+fmt(x.gia)+'</td><td class="r">'+fmt(x.tt)+'</td></tr>'});
   if(!items.length)rows='<tr><td class="c" colspan="6" style="color:#999;padding:14px">Chưa có sản phẩm</td></tr>';
@@ -471,7 +468,6 @@ function render(){
    +'<table><thead><tr><th>TT</th><th>Tên hàng</th><th>ĐVT</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>'
    +'<tbody>'+rows+totRows+'</tbody></table>'
    +payLine
-   +gcLine
    +'<div class="ivf">'+note+' Cảm ơn Quý khách!<br>Đặt hàng: 090.809.88.66 &nbsp;|&nbsp; ionfuji.vietnam@gmail.com</div></div>';
   document.getElementById('inv').innerHTML=h;
 }
@@ -485,16 +481,15 @@ function dongBo(){
   var ttv=document.getElementById('tt').value;var thu=(document.getElementById('thu').value||'').trim();
   var htv=document.getElementById('ht').value;
   var dathu=ttv==='Đã thanh toán'?tong:(ttv==='Thanh toán 1 phần'?(Number(document.getElementById('dathu').value)||0):0);
-  var ghichu=(document.getElementById('ghichu').value||'').trim();
   var id='HD'+Date.now();var ng=today();var rows=[];
   items.forEach(function(x,i){
-    rows.push([id,ng,cust.ma,cust.ten,cust.sdt,KHO,x.t,x.dv,x.sl,x.gia,x.tt,
-      (hasVat?rate:0),coc,tong,dathu,ttv,thu,htv,ghichu]);
+    rows.push([id,ng,cust.ma,i===0?cust.ten:'',i===0?cust.sdt:'',KHO,x.t,x.dv,x.sl,x.gia,x.tt,
+      i===0?(hasVat?rate:0):'',i===0?coc:'',i===0?tong:'',i===0?dathu:'',i===0?ttv:'',i===0?thu:'',i===0?htv:'']);
   });
   var b=document.getElementById('dbBtn');b.textContent='Đang đồng bộ...';
   fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({loai:'hoadon',rows:rows})})
    .then(function(){
-     rows.forEach(function(r){HD.push({id:r[0],ngay:String(r[1]).slice(0,10),ma:String(r[2]),khach:r[3],sdt:String(r[4]),kho:r[5],sp:r[6],dvt:r[7],sl:Number(r[8])||0,gia:Number(r[9])||0,tien:Number(r[10])||0,vat:Number(r[11])||0,coc:Number(r[12])||0,tong:Number(r[13])||0,dathu:Number(r[14])||0,tt:r[15],thu:r[16],ht:r[17],ghichu:r[18]})});
+     rows.forEach(function(r){HD.push({id:r[0],ngay:String(r[1]).slice(0,10),ma:String(r[2]),khach:r[3],sdt:String(r[4]),kho:r[5],sp:r[6],dvt:r[7],sl:Number(r[8])||0,gia:Number(r[9])||0,tien:Number(r[10])||0,vat:Number(r[11])||0,coc:Number(r[12])||0,tong:Number(r[13])||0,dathu:Number(r[14])||0,tt:r[15],thu:r[16],ht:r[17]})});
      document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn';
      b.textContent='Đã đồng bộ ✓ (bấm để gửi tiếp)';
      renderBaoCao();renderCongNo();renderCSKH();renderDonHang();
