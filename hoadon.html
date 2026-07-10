@@ -256,7 +256,7 @@
 </div>
 
 <script>
-var CAT=[
+var DEFAULT_CAT=[
  {t:'Nước ion kiềm 350ml',dv:'Thùng',g:110000},
  {t:'Nước ion kiềm 500ml',dv:'Thùng',g:130000},
  {t:'Nước ion kiềm 1250ml',dv:'Thùng',g:134000},
@@ -265,6 +265,7 @@ var CAT=[
  {t:'Ion kiềm Luxury 500ml',dv:'Thùng',g:152000},
  {t:'Nước ion kiềm 5L',dv:'Chai',g:33000}
 ];
+var CAT=JSON.parse(localStorage.getItem('hd_cat')||'null')||DEFAULT_CAT;
 var GS=localStorage.getItem('hd_gs_url')||'';
 var KHO=localStorage.getItem('hd_kho')||'';
 var KHOCODE='HN';
@@ -327,6 +328,7 @@ function loadData(manual,cb){
   jsonp(GS,function(d){
     if(!d||!d.ok){document.getElementById('dataInfo').textContent='Lỗi tải dữ liệu';if(manual)alert('Không tải được dữ liệu. Kiểm tra URL backend đã deploy đúng chưa.');if(cb)cb(false);return}
     KH=d.khach||[];HD=d.hoadon||[];
+    if(d.cat&&d.cat.length){CAT=d.cat;try{localStorage.setItem('hd_cat',JSON.stringify(CAT))}catch(e){}refreshRows();}
     document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn';
     fillKhSelect();renderMaPreview();renderKhList();renderBaoCao();renderCongNo();renderCSKH();
     if(cb)cb(true);
@@ -409,6 +411,7 @@ function renderKhList(){
 
 /* ---------- HOA DON (tao) ---------- */
 function opts(sel){var h='<option value="-1">-- chọn --</option>';CAT.forEach(function(c,i){h+='<option value="'+i+'"'+(i==sel?' selected':'')+'>'+c.t+'</option>'});return h}
+function refreshRows(){document.querySelectorAll('#rows .row').forEach(function(r){var sel=r.querySelector('select');if(sel){var v=sel.value;sel.innerHTML=opts(Number(v));}});}
 function ckPct(){var v=document.getElementById('ck').value;if(v==='custom')return Number(document.getElementById('ckCustom').value)||0;return Number(v)||0}
 function onCkSel(){document.getElementById('ckCustomWrap').style.display=(document.getElementById('ck').value==='custom')?'block':'none';applyCK()}
 function priceFor(i){return Math.round(CAT[i].g*(1-ckPct()/100))}

@@ -14,6 +14,7 @@
 // ============================================================
 
 var SHEET_ID = '1NFWBTjzkgk-Rj6syw46gm5F5tRIDxnU5qBc1OK35Y6A';
+var KHO_SHEET_ID = '1tQEhM51DiYHN3tV_zKa6OT1tLXkPBft4TtOgp1_uAck'; // Sheet kho, tab Data co gia le
 
 var KH_HEAD = ['Ma KH', 'Ten', 'SDT', 'Quan/Huyen', 'Kho',
                'Thanh toan', 'Ky han no', 'Ngay tao'];
@@ -77,6 +78,7 @@ function doGet(e) {
     var ss = SpreadsheetApp.openById(SHEET_ID);
     out.khach = readKhach_(ss);
     out.hoadon = readHoaDon_(ss);
+    out.cat = readCatLe_();
   } catch (err) {
     out = { ok: false, error: err.message };
   }
@@ -168,6 +170,24 @@ function readHoaDon_(ss) {
       ghichu: iGc >= 0 ? (r[iGc] || '') : ''
     });
   });
+  return out;
+}
+
+// Doc danh muc gia le tu tab Data cua Sheet kho (cot Ten hang, DVT, Gia le)
+function readCatLe_() {
+  var out = [];
+  try {
+    var sh = SpreadsheetApp.openById(KHO_SHEET_ID).getSheetByName('Data');
+    if (!sh || sh.getLastRow() < 2) return out;
+    var v = sh.getDataRange().getValues();
+    for (var i = 1; i < v.length; i++) {
+      var r = v[i];
+      var ten = String(r[1] || '').trim();
+      var gle = num_(r[8]); // cot I "Gia le"
+      if (!ten || gle <= 0) continue;
+      out.push({ t: ten, dv: String(r[2] || '').trim(), g: gle });
+    }
+  } catch (e) {}
   return out;
 }
 
