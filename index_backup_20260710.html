@@ -100,7 +100,7 @@
     <button onclick="loadCatalog()" style="width:100%;border:1px dashed var(--ac);background:var(--acb);color:var(--ac);font:inherit;font-weight:600;font-size:13px;padding:9px;border-radius:10px;cursor:pointer;margin-bottom:10px">Tai lai danh muc tu Google Sheet</button>
     <div class="kpi">
       <div class="b"><div class="l">Nhap trong ngay</div><div class="v" id="hNhap">0</div></div>
-      <div class="b"><div class="l">SL xuat trong ngay</div><div class="v" id="hXuat">0</div></div>
+      <div class="b"><div class="l">Xuat ban</div><div class="v" id="hXuat">0</div></div>
     </div>
     <div id="homeList"></div>
   </div>
@@ -121,17 +121,44 @@
 
   <div class="sc" id="s-xuat">
     <div class="card">
-      <h2>Xuat kho / Giao hang</h2>
-      <label>Doi tuong nhan (NV / dai ly)</label><input id="xuDL" placeholder="Ten nhan vien / dai ly" list="dlList">
+      <h2>Xuat ban cho dai ly</h2>
+      <label>Dai ly</label><input id="xuDL" placeholder="Ten dai ly" list="dlList">
       <datalist id="dlList"></datalist>
-      <label>San pham (chi so luong, khong tinh tien)</label>
+      <label>Chiet khau dai ly (bam chon nhanh hoac dien %)</label>
+      <div class="seg" id="xuBac">
+        <button data-b="NPP" data-ck="42" class="on" onclick="pickBac(this)">NPP 42%</button>
+        <button data-b="C1" data-ck="32" onclick="pickBac(this)">C1 32%</button>
+        <button data-b="C2" data-ck="27" onclick="pickBac(this)">C2 27%</button>
+        <button data-b="C3" data-ck="20" onclick="pickBac(this)">C3 20%</button>
+      </div>
+      <label>% chiet khau (tren gia le)</label>
+      <input id="xuCK" type="number" inputmode="decimal" value="42" oninput="onCK()">
+      <label>San pham</label>
       <div id="xuRows"></div>
       <button class="addp" onclick="addRow('xu')">+ Them san pham</button>
+      <div class="tot"><span>Tong tien hang</span><span class="v" id="xuTot">0</span></div>
+      <div class="row"><div><label>Khach da tra</label><input id="xuThu" type="number" inputmode="numeric" placeholder="0" oninput="calcXu()"></div>
+        <div><label>Con no</label><input id="xuNo" readonly style="background:var(--sf)"></div></div>
       <label>Ghi chu</label><input id="xuNote" placeholder="Ghi chu...">
-      <button class="save pu" onclick="saveXuat()">Luu phieu xuat</button>
+      <button class="save pu" onclick="saveXuat('DL')">Luu phieu xuat</button>
     </div>
   </div>
 
+  <div class="sc" id="s-banle">
+    <div class="card">
+      <h2>Ban le khach cuoi</h2>
+      <div class="row"><div><label>Ten khach</label><input id="blKh" placeholder="Ten khach"></div>
+        <div><label>SDT</label><input id="blSdt" type="tel" placeholder="So dien thoai"></div></div>
+      <label>San pham (gia le)</label>
+      <div id="blRows"></div>
+      <button class="addp" onclick="addRow('bl')">+ Them san pham</button>
+      <div class="tot"><span>Tong tien</span><span class="v" id="blTot">0</span></div>
+      <div class="row"><div><label>Khach da tra</label><input id="blThu" type="number" inputmode="numeric" placeholder="0" oninput="calcBl()"></div>
+        <div><label>Con no</label><input id="blNo" readonly style="background:var(--sf)"></div></div>
+      <label>Ghi chu</label><input id="blNote" placeholder="Vi du: giam 10%...">
+      <button class="save am" style="background:var(--am)" onclick="saveXuat('Le')">Luu don ban le</button>
+    </div>
+  </div>
 
   <div class="sc" id="s-thu">
     <div class="card">
@@ -165,7 +192,7 @@
     <div class="card">
       <h2>Bang tong hop ma hang (theo ngay)</h2>
       <select id="mhDay" onchange="renderMH()" style="margin-bottom:8px"><option value="">Tat ca (tong)</option></select>
-      <div style="overflow-x:auto"><table id="mhTbl"><thead><tr><th>Ma</th><th>Ten</th><th class="num">Nhap</th><th class="num">Xuat</th><th class="num">Tang</th><th class="num">Thu hoi</th><th class="num">Ton cuoi</th><th class="num">Gia tri</th></tr></thead><tbody id="mhBody"></tbody></table></div>
+      <div style="overflow-x:auto"><table id="mhTbl"><thead><tr><th>Ma</th><th>Ten</th><th class="num">Nhap</th><th class="num">Ban</th><th class="num">Tang</th><th class="num">Thu hoi</th><th class="num">Ton cuoi</th><th class="num">Gia tri</th></tr></thead><tbody id="mhBody"></tbody></table></div>
     </div>
   </div>
 
@@ -177,13 +204,16 @@
     </div>
     <button class="addp" style="margin-bottom:12px" onclick="loadReport(function(ok){if(ok){renderDash();toast('Da tai tu Sheet')}})">Tai lai tu Sheet</button>
     <div class="kpi">
-      <div class="b"><div class="l">Tong nhap (tien)</div><div class="v" id="dNh">0</div></div>
-      <div class="b"><div class="l">Gia tri ton (von)</div><div class="v" id="dTon">0</div></div>
+      <div class="b"><div class="l">Doanh thu ban</div><div class="v" id="dDt">0</div></div>
+      <div class="b"><div class="l">Tong nhap</div><div class="v" id="dNh">0</div></div>
+      <div class="b"><div class="l">Cong no dai ly</div><div class="v neg" id="dNo">0</div></div>
+      <div class="b"><div class="l">Gia tri ton</div><div class="v" id="dTon">0</div></div>
     </div>
+    <div class="card"><h2>Cong no theo dai ly</h2><div id="dashNo"></div></div>
     <div class="card">
       <h2>Nhap - Xuat - Ton theo ngay</h2>
       <select id="nxtSku" onchange="renderNXT()" style="margin-bottom:8px"><option value="">Tat ca san pham</option></select>
-      <div style="overflow-x:auto"><table id="nxtTbl"><thead><tr><th>Ngay</th><th class="num">Nhap</th><th class="num">Xuat</th><th class="num">Tang</th><th class="num">Thu hoi</th><th class="num">Ton cuoi</th></tr></thead><tbody id="nxtBody"></tbody></table></div>
+      <div style="overflow-x:auto"><table id="nxtTbl"><thead><tr><th>Ngay</th><th class="num">Nhap</th><th class="num">Ban</th><th class="num">Tang</th><th class="num">Thu hoi</th><th class="num">Doanh thu</th><th class="num">Ton cuoi</th></tr></thead><tbody id="nxtBody"></tbody></table></div>
     </div>
   </div>
 
@@ -240,10 +270,11 @@ function xuPrice(c){return c?Math.round(c.gle*(1-ckPct()/100)):0;}
 function getLT(row){var s=row.querySelector('.pt select');return s?s.value:'Ban';}
 function updHint(row){var h=row.querySelector('.pl-hint');if(!h)return;var pd=row.querySelector('.pd select');var c=catByMa(pd?pd.value:'');var lt=getLT(row);if(!c){h.textContent='';return;}if(lt==='Tang'){h.textContent='Tang - gia 0 (van tru ton)';return;}if(lt==='ThuHoi'){h.textContent='Thu hoi - cong lai ton';return;}h.textContent='Gia le '+fmt(c.gle)+' x (1-'+ckPct()+'%) = ban '+fmt(xuPrice(c));}
 
-var SCREENS=['home','nhap','xuat','thu','ton','dash','dm'];
+var SCREENS=['home','nhap','xuat','banle','thu','ton','dash','dm'];
 var NAV=[['home','Trang chu','M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z'],
  ['nhap','Nhap','M12 3v12m0 0l-4-4m4 4l4-4M4 19h16'],
- ['xuat','Xuat kho','M12 21V9m0 0l4 4m-4-4l-4 4M4 5h16'],
+ ['xuat','Xuat DL','M12 21V9m0 0l4 4m-4-4l-4 4M4 5h16'],
+ ['banle','Ban le','M6 6h15l-1.5 9h-12zM6 6L5 3H3m3 15a1 1 0 100 2 1 1 0 000-2zm11 0a1 1 0 100 2 1 1 0 000-2z'],
  ['thu','Thu tien','M12 8v8m0 0c-2 0-3-1-3-2m3 2c2 0 3-1 3-2m-3-6c2 0 3 1 3 2m-3-2c-2 0-3 1-3 2m3-2V6m0 12v2M4 6a8 8 0 1016 0 8 8 0 00-16 0z'],
  ['ton','Ton kho','M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10'],
  ['dash','Bao cao','M4 20V10m5 10V4m5 16v-6m5 6V8'],
@@ -273,14 +304,14 @@ function svRecs(t,d,a){sv('kda_'+t+'_'+(d||curDate),a);}
 function renderHome(){
   document.getElementById('homeDate').value=curDate;
   var nh=getRecs('nhap'),xu=getRecs('xuat'),tu=getRecs('thu');
-  var tNhap=0,slXuat=0;
+  var tNhap=0,tXuat=0;
   nh.forEach(function(p){tNhap+=p.total||0;});
-  xu.forEach(function(p){(p.lines||[]).forEach(function(l){slXuat+=l.sl||0;});});
+  xu.forEach(function(p){tXuat+=p.total||0;});
   document.getElementById('hNhap').textContent=fmt(tNhap);
-  document.getElementById('hXuat').textContent=slXuat;
+  document.getElementById('hXuat').textContent=fmt(tXuat);
   var h='';
   nh.forEach(function(p){h+='<div class="li"><div class="h"><span><span class="tag nh">NHAP</span> '+esc(p.ncc||'Nhap kho')+'</span><span>'+fmt(p.total)+'</span></div><div class="m">'+p.lines.length+' mat hang - '+esc(p.nv||'')+(p.synced?' - da dong bo':'')+'</div></div>';});
-  xu.forEach(function(p){var sl=0;(p.lines||[]).forEach(function(l){sl+=l.sl||0;});h+='<div class="li"><div class="h"><span><span class="tag xu">XUAT</span> '+esc(p.kh||'')+'</span><span>'+sl+' sp</span></div><div class="m">'+p.lines.length+' mat hang'+(p.synced?' - da dong bo':'')+'</div></div>';});
+  xu.forEach(function(p){var tg=p.loai==='Le'?'le':'xu';h+='<div class="li"><div class="h"><span><span class="tag '+tg+'">'+(p.loai==='Le'?'BAN LE':'XUAT '+p.bac)+'</span> '+esc(p.kh||'')+'</span><span>'+fmt(p.total)+'</span></div><div class="m">'+p.lines.length+' mat hang'+(p.no>0?' - con no '+fmt(p.no):'')+(p.synced?' - da dong bo':'')+'</div></div>';});
   tu.forEach(function(p){h+='<div class="li"><div class="h"><span><span class="tag th">THU</span> '+esc(p.dl||'')+'</span><span>'+fmt(p.tien)+'</span></div><div class="m">'+esc(p.ht||'')+(p.synced?' - da dong bo':'')+'</div></div>';});
   document.getElementById('homeList').innerHTML=h||'<div class="hint" style="text-align:center;padding:24px">Chua co phieu nao trong ngay nay.</div>';
 }
@@ -293,20 +324,32 @@ function addRow(t){
   var box=document.getElementById(t+'Rows');
   var div=document.createElement('div');div.className='prow';
   var q="'"+t+"'";
-  var price=(t==='nh')?'<div class="pp"><input type="number" inputmode="numeric" placeholder="Gia von" oninput="calc('+q+')"></div>':'';
-  var ts=(t!=='nh')?'<div class="pt"><select onchange="onLT('+q+',this)"><option value="Ban">Xuat</option><option value="Tang">Tang</option><option value="ThuHoi">Thu hoi</option></select></div>':'';
+  var ts=(t!=='nh')?'<div class="pt"><select onchange="onLT('+q+',this)"><option value="Ban">Ban</option><option value="Tang">Tang</option><option value="ThuHoi">Thu hoi</option></select></div>':'';
+  var hint=(t==='xu')?'<div class="pl-hint"></div>':'';
   div.innerHTML='<div class="pd"><select onchange="onProd('+q+',this)">'+prodOptions('')+'</select></div>'
     +'<div class="pq"><input type="number" inputmode="numeric" placeholder="SL" oninput="calc('+q+')"></div>'
-    +price+ts
-    +'<button class="xbtn" onclick="this.parentNode.remove();calc('+q+')">&times;</button>';
+    +'<div class="pp"><input type="number" inputmode="numeric" placeholder="Gia" oninput="calc('+q+')"></div>'
+    +ts
+    +'<button class="xbtn" onclick="this.parentNode.remove();calc('+q+')">&times;</button>'
+    +hint;
   box.appendChild(div);
 }
 function onProd(t,selEl){
   var row=selEl.closest('.prow');var c=catByMa(selEl.value);var pinp=row.querySelector('.pp input');
-  if(pinp&&c){pinp.value=c.gv;} // chi phieu nhap co gia (gia von)
+  var lt=getLT(row);
+  if(lt==='Tang'||lt==='ThuHoi'){pinp.value=0;}
+  else if(c){pinp.value = t==='nh'?c.gv : (t==='bl'?c.gle : xuPrice(c));}
+  if(t==='xu')updHint(row);
   calc(t);
 }
-function onLT(t,sel){ calc(t); }
+function onLT(t,sel){
+  var row=sel.closest('.prow');var pd=row.querySelector('.pd select');var c=catByMa(pd?pd.value:'');
+  var pinp=row.querySelector('.pp input');var lt=sel.value;
+  if(lt==='Tang'||lt==='ThuHoi'){pinp.value=0;}
+  else if(c){pinp.value = t==='bl'?c.gle : xuPrice(c);}
+  if(t==='xu')updHint(row);
+  calc(t);
+}
 function onCK(){
   document.querySelectorAll('#xuRows .prow').forEach(function(r){
     if(getLT(r)==='Ban'){var pd=r.querySelector('.pd select');var c=catByMa(pd?pd.value:'');if(c)r.querySelector('.pp input').value=xuPrice(c);}
@@ -318,8 +361,9 @@ function calc(t){
   var tot=0;
   document.querySelectorAll('#'+t+'Rows .prow').forEach(function(r){
     var sl=Number(r.querySelector('.pq input').value)||0;
-    var pin=r.querySelector('.pp input');var pr=pin?(Number(pin.value)||0):0;tot+=sl*pr;});
-  var el=document.getElementById(t+'Tot');if(el)el.textContent=fmt(tot);
+    var pr=Number(r.querySelector('.pp input').value)||0;tot+=sl*pr;});
+  document.getElementById(t+'Tot').textContent=fmt(tot);
+  if(t==='xu')calcXu(tot);if(t==='bl')calcBl(tot);
 }
 function readLines(t){
   var out=[];
@@ -353,17 +397,23 @@ function saveNhap(){
   document.getElementById('nhNCC').value='';document.getElementById('nhNote').value='';document.getElementById('nhTot').textContent='0';
   toast('Da luu phieu nhap');go('home');if(ld('kda_gs_url',''))pushToSheet();
 }
-function saveXuat(){
-  var lines=readLines('xu');if(!lines.length)return toast('Chua chon san pham');
-  var kh=document.getElementById('xuDL').value.trim();
-  if(!kh)return toast('Nhap doi tuong nhan');
-  var p={id:uid(),date:curDate,loai:'DL',bac:'',kh:kh,sdt:'',nv:'',lines:lines,total:0,thu:0,no:0,ck:'',
-    note:document.getElementById('xuNote').value.trim(),synced:false};
+function saveXuat(loai){
+  var t=loai==='Le'?'bl':'xu';var lines=readLines(t);if(!lines.length)return toast('Chua chon san pham');
+  var tot=0;lines.forEach(function(l){tot+=l.tt;});
+  var thu=Number(document.getElementById(t+'Thu').value)||0;
+  var p={id:uid(),date:curDate,loai:loai,bac:loai==='Le'?'Le':xuBac,
+    kh:loai==='Le'?document.getElementById('blKh').value.trim():document.getElementById('xuDL').value.trim(),
+    sdt:loai==='Le'?document.getElementById('blSdt').value.trim():'',
+    nv:'',lines:lines,total:tot,thu:thu,no:Math.max(tot-thu,0),ck:(loai==='Le'?'':ckPct()),
+    note:document.getElementById(t+'Note').value.trim(),synced:false};
+  if(!p.kh)return toast(loai==='Le'?'Nhap ten khach':'Nhap ten dai ly');
   var a=getRecs('xuat');a.unshift(p);svRecs('xuat',null,a);
-  var dls=ld('kda_dealers',[]);if(dls.indexOf(p.kh)<0){dls.push(p.kh);sv('kda_dealers',dls);}
-  document.getElementById('xuRows').innerHTML='';addRow('xu');
-  document.getElementById('xuNote').value='';
-  toast('Da luu phieu xuat');go('home');if(ld('kda_gs_url',''))pushToSheet();
+  if(loai!=='Le'){var dls=ld('kda_dealers',[]);if(dls.indexOf(p.kh)<0){dls.push(p.kh);sv('kda_dealers',dls);}}
+  document.getElementById(t+'Rows').innerHTML='';addRow(t);
+  document.getElementById(t+'Thu').value='';document.getElementById(t+'Note').value='';
+  document.getElementById(t+'Tot').textContent='0';document.getElementById(t+'No').value='';
+  if(loai==='Le'){document.getElementById('blKh').value='';document.getElementById('blSdt').value='';}
+  toast('Da luu phieu');go('home');if(ld('kda_gs_url',''))pushToSheet();
 }
 function saveThu(){
   var dl=document.getElementById('tuDL').value.trim();var tien=Number(document.getElementById('tuTien').value)||0;
@@ -461,18 +511,26 @@ function renderMH(){
 function renderDash(){
   var el=document.querySelector('#dashPills .pill.on')||document.querySelector('#dashPills .pill');
   var r=el?el.getAttribute('data-r'):'today';
-  var nh=0;
-  if(SREP){SREP.nhap.forEach(function(l){if(inRange(l.ngay,r))nh+=Number(l.tien)||0;});}
+  var dt=0,nh=0;
+  if(SREP){
+    SREP.xuat.forEach(function(l){if(l.lt==='Ban'&&inRange(l.ngay,r))dt+=Number(l.tien)||0;});
+    SREP.nhap.forEach(function(l){if(inRange(l.ngay,r))nh+=Number(l.tien)||0;});
+  }
+  var d=repDebt();var tNo=0;var rows='';
+  Object.keys(d).forEach(function(k){if(d[k]>0.5){tNo+=d[k];rows+='<div class="li"><div class="h"><span>'+esc(k)+'</span><span class="neg">'+fmt(d[k])+'</span></div></div>';}});
   var m=repTon();var tGT=0;CAT.forEach(function(c){var o=m[c.ma]||{nhap:0,ban:0,tang:0,thuhoi:0};tGT+=((Number(c.gtondau)||0)+o.nhap-o.ban-o.tang+o.thuhoi)*(c.gv||0);});
+  document.getElementById('dDt').textContent=fmt(dt);
   document.getElementById('dNh').textContent=fmt(nh);
+  document.getElementById('dNo').textContent=fmt(tNo);
   document.getElementById('dTon').textContent=fmt(tGT);
+  document.getElementById('dashNo').innerHTML=rows||(SREP?'<div class="hint">Khong co cong no.</div>':'<div class="hint">Bam Tai lai tu Sheet.</div>');
   renderNXT();
 }
 function renderNXT(){
   var sel=document.getElementById('nxtSku');if(!sel)return;
   if(sel.options.length<=1 && CAT.length){var oh='<option value="">Tat ca san pham</option>';CAT.forEach(function(c){oh+='<option value="'+esc(c.ma)+'">'+esc(c.ma)+'</option>';});sel.innerHTML=oh;}
   var sku=sel.value;var body=document.getElementById('nxtBody');
-  if(!SREP){body.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:14px">Bam Tai lai tu Sheet.</td></tr>';return;}
+  if(!SREP){body.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--mut);padding:14px">Bam Tai lai tu Sheet.</td></tr>';return;}
   var day={};function g(n){return day[n]||(day[n]={nhap:0,ban:0,tang:0,thuhoi:0,dt:0});}
   SREP.nhap.forEach(function(l){if(sku&&l.ma!==sku)return;g(l.ngay).nhap+=Number(l.sl)||0;});
   SREP.xuat.forEach(function(l){if(sku&&l.ma!==sku)return;var o=g(l.ngay);var q=Number(l.sl)||0;if(l.lt==='ThuHoi')o.thuhoi+=q;else if(l.lt==='Tang')o.tang+=q;else{o.ban+=q;o.dt+=Number(l.tien)||0;}});
@@ -480,8 +538,8 @@ function renderNXT(){
   var dau=0;if(sku){var c=catByMa(sku);dau=c?(Number(c.gtondau)||0):0;}else{CAT.forEach(function(c){dau+=Number(c.gtondau)||0;});}
   var run=dau;var h='';
   days.forEach(function(d){var o=day[d];run+=o.nhap-o.ban-o.tang+o.thuhoi;
-    h+='<tr><td>'+d+'</td><td class="num pos">'+fmt(o.nhap)+'</td><td class="num neg">'+fmt(o.ban)+'</td><td class="num">'+fmt(o.tang)+'</td><td class="num">'+fmt(o.thuhoi)+'</td><td class="num" style="font-weight:700">'+fmt(run)+'</td></tr>';});
-  body.innerHTML=h||'<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:14px">Chua co du lieu.</td></tr>';
+    h+='<tr><td>'+d+'</td><td class="num pos">'+fmt(o.nhap)+'</td><td class="num neg">'+fmt(o.ban)+'</td><td class="num">'+fmt(o.tang)+'</td><td class="num">'+fmt(o.thuhoi)+'</td><td class="num">'+fmt(o.dt)+'</td><td class="num" style="font-weight:700">'+fmt(run)+'</td></tr>';});
+  body.innerHTML=h||'<tr><td colspan="7" style="text-align:center;color:var(--mut);padding:14px">Chua co du lieu.</td></tr>';
 }
 function renderAlert(){
   var pct=Number(ld('kda_alert_pct',20))||20;
@@ -574,7 +632,7 @@ function pushToSheet(){
 
 function init(){
   buildNav();document.getElementById('homeDate').value=curDate;
-  addRow('nh');addRow('xu');
+  addRow('nh');addRow('xu');addRow('bl');
   setTop();renderHome();refreshDL();
   if(ld('kda_gs_url','')){loadCatalog();loadReport(function(){renderAlert();});}
 }
