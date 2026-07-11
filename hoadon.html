@@ -409,7 +409,8 @@ function renderKhList(){
     if(last){
       var sp=last.lines.map(function(l){return l.sp+(l.sl>1?' ×'+l.sl:'');}).join(', ');
       if(sp.length>72)sp=sp.slice(0,72)+'…';
-      lastLine='<b>Đơn gần nhất '+last.ngay+':</b> '+sp;
+      var dd=daysSince(last.ngay);var ago=dd<=0?'hôm nay':dd+' ngày trước';
+      lastLine='<b>Đơn gần nhất '+last.ngay+'</b> <span style="color:#c8102e">('+ago+')</span>: '+sp;
     }else{lastLine='<span style="color:var(--mut)">Chưa có đơn</span>';}
     h+='<div class="li" style="display:block">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
