@@ -400,11 +400,23 @@ function renderKhList(){
   var list=khInKho();document.getElementById('khCount').textContent=list.length;
   var el=document.getElementById('khList');
   if(!list.length){el.innerHTML='<div class="empty">Chưa có khách trong kho này.</div>';return}
+  var invs=invoiceList();var lastByMa={};
+  invs.forEach(function(v){if(v.ma&&!lastByMa[v.ma])lastByMa[v.ma]=v;});
   var h='';
   list.forEach(function(k){
-    h+='<div class="li"><div><div class="t1">'+k.ma+' · '+k.ten+'</div>'
-      +'<div class="t2">'+(k.sdt||'—')+' · '+(k.qh||'—')+'</div></div>'
-      +'<div class="rt"><span class="pill '+(k.tt==='Công nợ'?'p-warn':'p-ok')+'">'+k.tt+(k.tt==='Công nợ'?' '+k.kyhan+'d':'')+'</span></div></div>';
+    var pill='<span class="pill '+(k.tt==='Công nợ'?'p-warn':'p-ok')+'">'+k.tt+(k.tt==='Công nợ'?' '+k.kyhan+'d':'')+'</span>';
+    var last=lastByMa[k.ma];var lastLine;
+    if(last){
+      var sp=last.lines.map(function(l){return l.sp+(l.sl>1?' ×'+l.sl:'');}).join(', ');
+      if(sp.length>72)sp=sp.slice(0,72)+'…';
+      lastLine='<b>Đơn gần nhất '+last.ngay+':</b> '+sp;
+    }else{lastLine='<span style="color:var(--mut)">Chưa có đơn</span>';}
+    h+='<div class="li" style="display:block">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+      +'<div><div class="t1">'+k.ma+' · '+k.ten+'</div><div class="t2">'+(k.sdt||'—')+' · '+(k.qh||'—')+'</div></div>'
+      +pill+'</div>'
+      +'<div class="t2" style="margin-top:6px;border-top:1px solid var(--line);padding-top:5px">'+lastLine+'</div>'
+      +'</div>';
   });
   el.innerHTML=h;
 }
