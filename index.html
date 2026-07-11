@@ -326,7 +326,7 @@ function readLines(t){
   document.querySelectorAll('#'+t+'Rows .prow').forEach(function(r){
     var ma=r.querySelector('.pd select').value;if(!ma)return;
     var sl=Number(r.querySelector('.pq input').value)||0;
-    var pr=Number(r.querySelector('.pp input').value)||0;if(!sl)return;
+    var pin=r.querySelector('.pp input');var pr=pin?(Number(pin.value)||0):0;if(!sl)return;
     var c=catByMa(ma);var lt=getLT(r);
     out.push({ma:ma,ten:c?c.ten:ma,dvt:c?c.dvt:'',sl:sl,price:pr,lt:lt,tt:sl*pr});
   });
