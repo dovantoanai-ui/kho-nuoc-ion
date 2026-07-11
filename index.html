@@ -288,7 +288,7 @@ function esc(s){return String(s==null?'':s).replace(/[<>&]/g,function(c){return 
 </script>
 <script>
 function prodOptions(sel){var h=CAT.length?'<option value="">-- chon SP --</option>':'<option value="">-- vao Danh muc de tai --</option>';CAT.forEach(function(c){h+='<option value="'+c.ma+'"'+(c.ma===sel?' selected':'')+'>'+esc(c.ten)+'</option>';});return h;}
-function refreshProdSelects(){document.querySelectorAll('.prow select').forEach(function(sel){var v=sel.value;sel.innerHTML=prodOptions(v);});}
+function refreshProdSelects(){document.querySelectorAll('.prow .pd select').forEach(function(sel){var v=sel.value;sel.innerHTML=prodOptions(v);});}
 function addRow(t){
   var box=document.getElementById(t+'Rows');
   var div=document.createElement('div');div.className='prow';
