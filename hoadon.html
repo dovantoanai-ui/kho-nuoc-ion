@@ -407,7 +407,7 @@ function renderKhList(){
     var pill='<span class="pill '+(k.tt==='Công nợ'?'p-warn':'p-ok')+'">'+k.tt+(k.tt==='Công nợ'?' '+k.kyhan+'d':'')+'</span>';
     var last=lastByMa[k.ma];var lastLine;
     if(last){
-      var sp=last.lines.map(function(l){return l.sp+(l.sl>1?' ×'+l.sl:'');}).join(', ');
+      var sp=last.lines.map(function(l){return l.sp+((Number(l.gia)>0&&l.sl>1)?' ×'+l.sl:'');}).join(', ');
       if(sp.length>72)sp=sp.slice(0,72)+'…';
       var dd=daysSince(last.ngay);var ago=dd<=0?'hôm nay':dd+' ngày trước';
       lastLine='<b>Đơn gần nhất '+last.ngay+'</b> <span style="color:#c8102e">('+ago+')</span>: '+sp;
@@ -502,11 +502,10 @@ function dongBo(){
   var htv=document.getElementById('ht').value;
   var dathu=ttv==='Đã thanh toán'?tong:(ttv==='Thanh toán 1 phần'?(Number(document.getElementById('dathu').value)||0):0);
   var ghichu=(document.getElementById('ghichu').value||'').trim();
-  var id='HD'+Date.now();var ng=today();var rows=[];
-  items.forEach(function(x,i){
-    rows.push([id,ng,cust.ma,cust.ten,cust.sdt,KHO,x.t,x.dv,x.sl,x.gia,x.tt,
-      (hasVat?rate:0),coc,tong,dathu,ttv,thu,htv,ghichu]);
-  });
+  var id='HD'+Date.now();var ng=today();
+  var spText=items.map(function(x){return x.t+' ×'+x.sl}).join(', ');
+  var totSL=0;items.forEach(function(x){totSL+=x.sl});
+  var rows=[[id,ng,cust.ma,cust.ten,cust.sdt,KHO,spText,'',totSL,'',sub,(hasVat?rate:0),coc,tong,dathu,ttv,thu,htv,ghichu]];
   var b=document.getElementById('dbBtn');b.textContent='Đang đồng bộ...';
   fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({loai:'hoadon',rows:rows})})
    .then(function(){
@@ -593,7 +592,7 @@ function renderDonHang(){
   arr.forEach(function(v){
     var ttcol=v.tt==='Đã thanh toán'?'#0f9d58':(v.tt==='Chưa thanh toán'?'#c8102e':'#e08a00');
     var conno=v.tt==='Đã thanh toán'?0:Math.max(v.tong-v.dathu,0);
-    var lines=v.lines.map(function(l){return l.sp+' — '+l.sl+' × '+fmt(l.gia)+' = '+fmt(l.tien)}).join('<br>');
+    var lines=v.lines.map(function(l){return (Number(l.gia)>0)?(l.sp+' — '+l.sl+' × '+fmt(l.gia)+' = '+fmt(l.tien)):(l.sp+(l.tien?' = '+fmt(l.tien):''))}).join('<br>');
     h+='<div class="card" style="padding:11px 12px;margin-bottom:8px">'
       +'<div style="display:flex;justify-content:space-between;align-items:baseline"><b>'+v.ngay+'</b><b>'+fmt(v.tong)+' đ</b></div>'
       +'<div class="muted" style="margin:2px 0">'+(v.ma?v.ma+' · ':'')+(v.khach||'—')+'</div>'
