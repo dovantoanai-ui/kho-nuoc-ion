@@ -12,7 +12,8 @@
 var HEAD = {
   NhapKho: ['LineID','PhieuID','Ngay','Nguoi nhap','Ma','Ten','DVT','SL','Gia von','Thanh tien','NCC','Ghi chu'],
   XuatKho: ['LineID','PhieuID','Ngay','Loai','Bac','Khach/DL','SDT','Ma','Ten','DVT','SL','Gia ban','Thanh tien','Da thu','Con no','Ghi chu'],
-  ThuTien: ['ID','Ngay','Dai ly/Khach','So tien','Hinh thuc','Nguoi thu','Ghi chu']
+  ThuTien: ['ID','Ngay','Dai ly/Khach','So tien','Hinh thuc','Nguoi thu','Ghi chu'],
+  KiemKe: ['LineID','PhieuID','Ngay','Kho','Ma','Ten','SL dem','Nguoi dem','Ghi chu']
 };
 
 function doPost(e){
@@ -23,6 +24,7 @@ function doPost(e){
     if (p.nhap && p.nhap.length) upsert(ss, 'NhapKho', p.nhap);
     if (p.xuat && p.xuat.length) upsert(ss, 'XuatKho', p.xuat);
     if (p.thu && p.thu.length) upsert(ss, 'ThuTien', p.thu);
+    if (p.kiemke && p.kiemke.length) upsert(ss, 'KiemKe', p.kiemke);
   } catch (err) {
     out = { ok: false, error: err.message };
   }
