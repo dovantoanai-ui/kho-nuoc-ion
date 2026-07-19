@@ -107,6 +107,7 @@
       <button class="tb" data-t="bc" onclick="showTab('bc')">Báo cáo</button>
       <button class="tb" data-t="dh" onclick="showTab('dh')">Đơn</button>
       <button class="tb" data-t="cn" onclick="showTab('cn')">Công nợ</button>
+      <button class="tb" data-t="kk" onclick="showTab('kk')">Kiểm kê</button>
       <button class="tb" data-t="cs" onclick="showTab('cs')">CSKH</button>
     </div>
   </div>
@@ -228,6 +229,19 @@
       </div>
     </div>
 
+    <!-- ===== TAB KIEM KE ===== -->
+    <div id="tab-kk" class="tab-pane" style="display:none">
+      <div class="card">
+        <h2>Kiểm kê kho — <span id="kkKhoLbl">—</span></h2>
+        <div class="muted" style="margin-bottom:8px">Đếm hàng thực tế rồi nhập vào cột "SL đếm". Cột "Tồn sổ" để đối chiếu (chỉ có ở kho Hưng Yên). Lưu xong ghi vào Sheet kho để agent lấy làm mốc tồn.</div>
+        <label>Người đếm</label><input id="kkNV" placeholder="Tên người đếm">
+        <div style="overflow-x:auto;margin-top:8px"><table class="rpt"><thead><tr><th>Sản phẩm</th><th>Tồn sổ</th><th>SL đếm</th><th>Lệch</th></tr></thead><tbody id="kkBody"><tr><td colspan="4" style="text-align:center;color:var(--mut);padding:14px">Vào tab này để tải danh mục kho…</td></tr></tbody></table></div>
+        <button class="btn bgrn" style="width:100%;margin-top:10px" onclick="saveKiemKe()">Lưu kiểm kê lên Sheet kho</button>
+        <div class="muted" id="kkInfo" style="margin-top:8px"></div>
+        <div style="margin-top:6px"><a href="#" onclick="cfgKhoUrl();return false" style="font-size:12px;color:var(--mut)">⚙ Đổi URL backend kho</a></div>
+      </div>
+    </div>
+
     <!-- ===== TAB CSKH ===== -->
     <div id="tab-cs" class="tab-pane" style="display:none">
       <div class="card">
@@ -301,6 +315,7 @@ function showTab(t){
   if(t==='bc')renderBaoCao();
   if(t==='dh')renderDonHang();
   if(t==='cn')renderCongNo();
+  if(t==='kk'){document.getElementById('kkKhoLbl').textContent=KHO;if(!KKCAT.length)loadKhoKiemKe();else renderKK();}
   if(t==='cs')renderCSKH();
   window.scrollTo(0,0);
 }
@@ -649,6 +664,72 @@ function renderCSKH(){
       +'<div class="rt"><span class="pill p-warn">gọi lại</span></div></div>';
   });
   el.innerHTML=h;
+}
+
+/* ---------- KIEM KE (ghi vao backend KHO proj1) ---------- */
+var KHO_URL=localStorage.getItem('hd_kho_url')||'https://script.google.com/macros/s/AKfycbwR-pXX_1YV2QrWPsEBs9gNRYZzn_XLuhMwhGyGhSJf-BrHl7ZsovSNUwnz9SvAeU3mLQ/exec';
+var KKREP=null, KKCAT=[];
+function cfgKhoUrl(){var u=prompt('Dan URL Web App (/exec) cua backend KHO (giong URL trong app kho phan Danh muc):',KHO_URL);if(u===null)return;u=u.trim().replace(/^["']|["']$/g,'');KHO_URL=u;localStorage.setItem('hd_kho_url',u);KKCAT=[];loadKhoKiemKe();}
+function kkTonMap(){
+  var m={};if(!KKREP)return m;
+  (KKREP.nhap||[]).forEach(function(l){var o=m[l.ma]||(m[l.ma]={nhap:0,ban:0,tang:0,thuhoi:0});o.nhap+=Number(l.sl)||0;});
+  (KKREP.xuat||[]).forEach(function(l){var o=m[l.ma]||(m[l.ma]={nhap:0,ban:0,tang:0,thuhoi:0});var q=Number(l.sl)||0;if(l.lt==='ThuHoi')o.thuhoi+=q;else if(l.lt==='Tang')o.tang+=q;else o.ban+=q;});
+  return m;
+}
+function kkTon(c){var mm=kkTonMap();var o=mm[c.ma]||{nhap:0,ban:0,tang:0,thuhoi:0};return (Number(c.gtondau)||0)+o.nhap-o.ban-o.tang+o.thuhoi;}
+function loadKhoKiemKe(){
+  var body=document.getElementById('kkBody');
+  if(!KHO_URL){body.innerHTML='<tr><td colspan="4" style="text-align:center;padding:14px">Chua co URL kho. Bam "Doi URL backend kho".</td></tr>';return;}
+  body.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--mut);padding:14px">Dang tai danh muc kho...</td></tr>';
+  jsonp(KHO_URL+'?action=report',function(d){
+    if(!d||!d.ok){body.innerHTML='<tr><td colspan="4" style="text-align:center;color:#c8102e;padding:14px">Loi tai danh muc kho. Bam "Doi URL backend kho" de dan lai URL.</td></tr>';return;}
+    KKCAT=d.cat||[];KKREP={nhap:d.nhap||[],xuat:d.xuat||[]};
+    renderKK();
+  });
+}
+function renderKK(){
+  var lbl=document.getElementById('kkKhoLbl');if(lbl)lbl.textContent=KHO;
+  var body=document.getElementById('kkBody');if(!body)return;
+  if(!KKCAT.length){body.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--mut);padding:14px">Chua co danh muc. Bam "Doi URL backend kho".</td></tr>';return;}
+  var h='';
+  KKCAT.forEach(function(c){
+    var ton=(KHOCODE==='HY')?kkTon(c):null;
+    var tonTxt=(ton==null)?'-':fmt(ton);
+    h+='<tr data-ma="'+c.ma+'" data-ton="'+(ton==null?'':ton)+'">'
+      +'<td>'+(c.ten||c.ma)+'</td>'
+      +'<td>'+tonTxt+'</td>'
+      +'<td style="padding:3px 4px"><input type="number" inputmode="numeric" oninput="kkLech(this)" style="width:62px;text-align:center;padding:7px 4px;font-weight:700"></td>'
+      +'<td class="kklech">-</td></tr>';
+  });
+  body.innerHTML=h;
+}
+function kkLech(inp){
+  var tr=inp.closest('tr');if(!tr)return;var cell=tr.querySelector('.kklech');if(!cell)return;
+  var ta=tr.getAttribute('data-ton');var v=inp.value;
+  if(ta===''||v===''){cell.textContent='-';cell.style.color='';return;}
+  var d=Number(v)-Number(ta);cell.textContent=(d>0?'+':'')+d;cell.style.color=d>0?'#0f9d58':(d<0?'#c8102e':'');
+}
+function todayISO(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function saveKiemKe(){
+  if(!KHO_URL){alert('Chua co URL backend kho. Bam "Doi URL backend kho".');return;}
+  var nv=(document.getElementById('kkNV').value||'').trim();
+  var ngay=todayISO();var khoName=(KHOCODE==='HY')?'Hung Yen':'Ha Noi';
+  var pid='KK'+Date.now();var rows=[];var i=0;
+  document.querySelectorAll('#kkBody tr').forEach(function(tr){
+    var ma=tr.getAttribute('data-ma');if(!ma)return;
+    var inp=tr.querySelector('input');if(!inp||inp.value==='')return;
+    var c=null;for(var j=0;j<KKCAT.length;j++){if(KKCAT[j].ma===ma){c=KKCAT[j];break;}}
+    rows.push([pid+'_'+i,pid,ngay,khoName,ma,(c?c.ten:ma),Number(inp.value)||0,(i===0?nv:''),'']);i++;
+  });
+  if(!rows.length){alert('Chua nhap so dem nao.');return;}
+  var b=document.querySelector('#tab-kk .bgrn');if(b){b.disabled=true;b.textContent='Dang luu...';}
+  fetch(KHO_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({kiemke:rows})})
+   .then(function(){
+     if(b){b.disabled=false;b.textContent='Luu kiem ke len Sheet kho';}
+     document.getElementById('kkInfo').textContent='Da luu '+rows.length+' ma - kho '+khoName+' - '+ngay+'. Agent se lay lam moc ton.';
+     alert('Da luu kiem ke '+rows.length+' ma len Sheet kho.');
+   })
+   .catch(function(e){if(b){b.disabled=false;b.textContent='Luu kiem ke len Sheet kho';}alert('Loi luu: '+e.message);});
 }
 
 /* ---------- Export anh ---------- */
