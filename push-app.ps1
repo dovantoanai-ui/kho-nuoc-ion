@@ -5,6 +5,7 @@
 # ============================================================
 
 $ErrorActionPreference = "Continue"
+$env:GIT_REDIRECT_STDERR = "2>&1"   # git in tien trinh ra stdout -> khong bi PowerShell to do
 $repo = "E:\Sieu du an\opc-nemthanh\du-an\DA05-nuoc-ion-kiem\web-kho-nuoc-ion"
 
 Set-Location $repo
