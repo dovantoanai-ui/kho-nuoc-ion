@@ -155,7 +155,8 @@
       <div class="card">
         <h2>Thanh toán</h2>
         <label>Hình thức thanh toán</label>
-        <select id="ht" onchange="onHt()"><option>Tiền mặt</option><option>Công nợ</option><option>TK Anh Hưng</option><option>TK công ty Fuji</option></select>
+        <select id="ht" onchange="onHt()"><option>Tiền mặt</option><option>Chuyển khoản</option><option>Công nợ</option></select>
+        <div id="htTKWrap" style="display:none;margin-top:7px"><label>Tài khoản nhận</label><select id="htTK" onchange="render()"><option>TK công ty Fuji</option><option>TK Anh Hưng</option><option>TK Anh Vũ</option></select></div>
         <div class="row" style="align-items:stretch;margin-top:7px">
           <div style="flex:1"><label>Trạng thái</label><select id="tt" onchange="render()"><option>Đã thanh toán</option><option>Chưa thanh toán</option><option>Thanh toán 1 phần</option></select></div>
           <div style="flex:1"><label>Người thu tiền</label><input id="thu" oninput="render()" placeholder="Tên người thu"></div>
@@ -366,11 +367,12 @@ function onKhSel(){
   box.style.display='block';
   box.innerHTML='SĐT: '+(k.sdt||'—')+' &nbsp;·&nbsp; '+(k.qh||'—')+' &nbsp;·&nbsp; '+k.tt+(k.tt==='Công nợ'?' ('+k.kyhan+' ngày)':'');
   document.getElementById('tt').value=(k.tt==='Công nợ')?'Chưa thanh toán':'Đã thanh toán';
-  document.getElementById('ht').value=(k.tt==='Công nợ')?'Công nợ':'Tiền mặt';
+  document.getElementById('ht').value=(k.tt==='Công nợ')?'Công nợ':'Tiền mặt';document.getElementById('htTKWrap').style.display='none';
   render();
 }
 function selKh(){var ma=document.getElementById('khSel').value;return ma?khByMa(ma):null}
-function onHt(){var ht=document.getElementById('ht').value;var tt=document.getElementById('tt');if(ht==='Công nợ')tt.value='Chưa thanh toán';else if(tt.value==='Chưa thanh toán')tt.value='Đã thanh toán';render();}
+function onHt(){var ht=document.getElementById('ht').value;document.getElementById('htTKWrap').style.display=(ht==='Chuyển khoản')?'block':'none';var tt=document.getElementById('tt');if(ht==='Công nợ')tt.value='Chưa thanh toán';else if(tt.value==='Chưa thanh toán')tt.value='Đã thanh toán';render();}
+function htValue(){var m=document.getElementById('ht').value;if(m==='Chuyển khoản'){var tk=document.getElementById('htTK');return tk?tk.value:'Chuyển khoản';}return m;}
 function genMaKH(){
   var pre=KHOCODE,max=0,re=new RegExp('^'+pre+'(\\d+)');
   KH.forEach(function(k){var m=String(k.ma).match(re);if(m){var num=parseInt(m[1],10);if(num>max)max=num}});
@@ -485,7 +487,7 @@ function render(){
   var ckn=ckPct();if(ckn>0)note=note+' Đã áp dụng chiết khấu '+ckn+'%.';
   var thu=(document.getElementById('thu').value||'').trim();
   var ttcol=ttv==='Đã thanh toán'?'#0f9d58':(ttv==='Chưa thanh toán'?'#c8102e':'#e08a00');
-  var htv=document.getElementById('ht').value;
+  var htv=htValue();
   var payLine='<div class="kv" style="margin-top:6px"><b>Thanh toán:</b> <span style="color:'+ttcol+';font-weight:800">'+ttv+'</span> &nbsp;|&nbsp; <b>Hình thức:</b> '+htv+(thu?' &nbsp;|&nbsp; <b>Người thu:</b> '+thu:'')+'</div>';
   var ghichu=(document.getElementById('ghichu').value||'').trim();
   var gcLine=ghichu?'<div class="kv" style="margin-top:4px"><b>Ghi chú:</b> '+ghichu.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>':'';
@@ -514,7 +516,7 @@ function dongBo(){
   var hasVat=document.getElementById('vat').checked;var rate=Number(document.getElementById('vatr').value)||0;
   var vat=hasVat?Math.round(sub*rate/100):0;var coc=Number(document.getElementById('coc').value)||0;var tong=sub+vat+coc;
   var ttv=document.getElementById('tt').value;var thu=(document.getElementById('thu').value||'').trim();
-  var htv=document.getElementById('ht').value;
+  var htv=htValue();
   var dathu=ttv==='Đã thanh toán'?tong:(ttv==='Thanh toán 1 phần'?(Number(document.getElementById('dathu').value)||0):0);
   var ghichu=(document.getElementById('ghichu').value||'').trim();
   var id='HD'+Date.now();var ng=today();var rows=[];
