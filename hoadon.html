@@ -154,13 +154,14 @@
 
       <div class="card">
         <h2>Thanh toán</h2>
-        <label>Hình thức thanh toán</label>
-        <select id="ht" onchange="onHt()"><option>Tiền mặt</option><option>Chuyển khoản</option><option>Công nợ</option></select>
-        <div id="htTKWrap" style="display:none;margin-top:7px"><label>Tài khoản nhận</label><select id="htTK" onchange="render()"><option>TK công ty Fuji</option><option>TK Anh Hưng</option><option>TK Anh Vũ</option></select></div>
-        <div class="row" style="align-items:stretch;margin-top:7px">
-          <div style="flex:1"><label>Trạng thái</label><select id="tt" onchange="render()"><option>Đã thanh toán</option><option>Chưa thanh toán</option><option>Thanh toán 1 phần</option></select></div>
-          <div style="flex:1"><label>Người thu tiền</label><input id="thu" oninput="render()" placeholder="Tên người thu"></div>
+        <label>Trạng thái</label>
+        <select id="tt" onchange="onTt()"><option>Đã thanh toán</option><option>Chưa thanh toán</option><option>Thanh toán 1 phần</option></select>
+        <div id="htBlock" style="margin-top:7px">
+          <label>Hình thức thanh toán</label>
+          <select id="ht" onchange="onHt()"><option>Tiền mặt</option><option>Chuyển khoản</option></select>
+          <div id="htTKWrap" style="display:none;margin-top:7px"><label>Tài khoản nhận</label><select id="htTK" onchange="render()"><option>TK công ty Fuji</option><option>TK Anh Hưng</option><option>TK Anh Vũ</option></select></div>
         </div>
+        <label>Người thu tiền</label><input id="thu" oninput="render()" placeholder="Tên người thu">
         <div id="dathuWrap" style="display:none"><label>Số tiền đã thu (đ)</label><input id="dathu" type="number" inputmode="numeric" placeholder="0" oninput="render()"></div>
         <label>Cọc bình (đ)</label><input id="coc" type="number" inputmode="numeric" placeholder="0" oninput="render()">
         <label>Ghi chú (tuỳ chọn)</label><textarea id="ghichu" rows="2" placeholder="VD: giao giờ hành chính, gọi trước khi giao..." oninput="render()" style="width:100%;font:inherit;font-size:15px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);resize:vertical"></textarea>
@@ -367,12 +368,12 @@ function onKhSel(){
   box.style.display='block';
   box.innerHTML='SĐT: '+(k.sdt||'—')+' &nbsp;·&nbsp; '+(k.qh||'—')+' &nbsp;·&nbsp; '+k.tt+(k.tt==='Công nợ'?' ('+k.kyhan+' ngày)':'');
   document.getElementById('tt').value=(k.tt==='Công nợ')?'Chưa thanh toán':'Đã thanh toán';
-  document.getElementById('ht').value=(k.tt==='Công nợ')?'Công nợ':'Tiền mặt';document.getElementById('htTKWrap').style.display='none';
-  render();
+  document.getElementById('ht').value='Tiền mặt';document.getElementById('htTKWrap').style.display='none';onTt();
 }
 function selKh(){var ma=document.getElementById('khSel').value;return ma?khByMa(ma):null}
-function onHt(){var ht=document.getElementById('ht').value;document.getElementById('htTKWrap').style.display=(ht==='Chuyển khoản')?'block':'none';var tt=document.getElementById('tt');if(ht==='Công nợ')tt.value='Chưa thanh toán';else if(tt.value==='Chưa thanh toán')tt.value='Đã thanh toán';render();}
-function htValue(){var m=document.getElementById('ht').value;if(m==='Chuyển khoản'){var tk=document.getElementById('htTK');return tk?tk.value:'Chuyển khoản';}return m;}
+function onHt(){document.getElementById('htTKWrap').style.display=(document.getElementById('ht').value==='Chuyển khoản')?'block':'none';render();}
+function onTt(){var paid=(document.getElementById('tt').value!=='Chưa thanh toán');document.getElementById('htBlock').style.display=paid?'block':'none';if(!paid)document.getElementById('htTKWrap').style.display='none';render();}
+function htValue(){if(document.getElementById('tt').value==='Chưa thanh toán')return 'Công nợ';var m=document.getElementById('ht').value;if(m==='Chuyển khoản'){var tk=document.getElementById('htTK');return tk?tk.value:'Chuyển khoản';}return m;}
 function genMaKH(){
   var pre=KHOCODE,max=0,re=new RegExp('^'+pre+'(\\d+)');
   KH.forEach(function(k){var m=String(k.ma).match(re);if(m){var num=parseInt(m[1],10);if(num>max)max=num}});
