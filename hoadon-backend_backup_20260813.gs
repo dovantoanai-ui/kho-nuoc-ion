@@ -22,8 +22,7 @@ var KH_HEAD = ['Ma KH', 'Ten', 'SDT', 'Quan/Huyen', 'Kho',
 var HD_HEAD = ['ID hoa don', 'Ngay', 'Ma KH', 'Khach', 'SDT', 'Kho',
                'San pham', 'DVT', 'SL', 'Don gia', 'Thanh tien',
                'VAT %', 'Coc binh', 'Tong thanh toan', 'Da thu',
-               'Trang thai TT', 'Nguoi thu', 'Hinh thuc TT', 'Ghi chu',
-               'Ngày CK']; // 13/08/2026: them cot 20 'Ngày CK' (phai go dung y het vao o T1 cua sheet)
+               'Trang thai TT', 'Nguoi thu', 'Hinh thuc TT', 'Ghi chu'];
 
 // ---------- GHI (POST tu app, che do no-cors) ----------
 function doPost(e) {
@@ -44,19 +43,8 @@ function doPost(e) {
       out.added = 1; out.ma = ma;
     } else if (p.loai === 'hoadon' && p.rows && p.rows.length) {
       var sh2 = ensureSheet_(ss, 'HoaDon', HD_HEAD);
-      // 16/08/2026: chong ghi trung khi bam "dong bo" nhieu lan -
-      // ID hoa don da co tren Sheet thi bo qua ca chum dong cua ID do
-      var daCoId = {};
-      var lastR = sh2.getLastRow();
-      if (lastR >= 2) {
-        sh2.getRange(2, 1, lastR - 1, 1).getValues().forEach(function (r0) {
-          var id0 = String(r0[0] || '').trim(); if (id0) daCoId[id0] = 1;
-        });
-      }
-      var moi = p.rows.filter(function (r) { return !daCoId[String(r[0] || '').trim()]; });
-      moi.forEach(function (r) { sh2.appendRow(r); });
-      out.added = moi.length;
-      out.skipped = p.rows.length - moi.length;
+      p.rows.forEach(function (r) { sh2.appendRow(r); });
+      out.added = p.rows.length;
     }
   } catch (err) {
     out = { ok: false, error: err.message };
@@ -207,70 +195,4 @@ function readCatLe_() {
 function capQuyen() {
   var ss = SpreadsheetApp.openById(SHEET_ID);
   Logger.log('OK: ' + ss.getName());
-}
-
-// ============================================================
-// CHAY TAY 1 LAN (13/08/2026): gop sheet hoa don ve 1 sheet HoaDon.
-// Lam gi: dien header 'Ngày CK' vao o T1 cua sheet gop, xoa cot thua
-// sau cot T, copy hoa don moi tu sheet HoaDon trang sang (khong trung),
-// xoa sheet HoaDon trang, doi ten sheet gop thanh HoaDon.
-// CACH CHAY: chon ham gopHoaDon_13082026 tren thanh cong cu -> Run.
-// LUU Y: deploy New version TRUOC roi moi chay ham nay.
-// Chay xong co the xoa ca khoi code nay di (khong bat buoc).
-// ============================================================
-function gopHoaDon_13082026() {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000); // chan doPost ghi xen vao giua luc gop
-  try {
-    var ss = SpreadsheetApp.openById(SHEET_ID);
-    var gop = ss.getSheetByName('HoaDon_old_1786592187847');
-    if (!gop) {
-      if (ss.getSheetByName('HoaDon') && !ss.getSheetByName('HoaDon_old_1786592187847')) {
-        Logger.log('Khong thay sheet gop — co the da chay xong truoc do. Khong lam gi.');
-        return;
-      }
-      throw new Error('Khong tim thay sheet HoaDon_old_1786592187847');
-    }
-
-    // 1) Header o T1 phai dung y het HD_HEAD cot 20
-    gop.getRange(1, 20).setValue(HD_HEAD[19]); // 'Ngày CK'
-
-    // 2) Xoa han cac cot sau cot T (U tro di) cho sach
-    var mc = gop.getMaxColumns();
-    if (mc > 20) gop.deleteColumns(21, mc - 20);
-
-    // 3) Copy hoa don tu sheet HoaDon trang sang cuoi sheet gop.
-    //    Dedupe theo ID HOA DON (1 hoa don nhieu san pham = nhieu dong cung ID
-    //    -> phai copy du ca chum dong, chi bo qua ID da co san trong sheet gop).
-    var cur = ss.getSheetByName('HoaDon');
-    var daCopy = 0;
-    if (cur && cur.getLastRow() >= 2) {
-      var daCo = {};
-      var last = gop.getLastRow();
-      if (last >= 2) {
-        gop.getRange(2, 1, last - 1, 1).getValues().forEach(function (r) {
-          var id = String(r[0] || '').trim(); if (id) daCo[id] = 1;
-        });
-      }
-      var rows = cur.getRange(2, 1, cur.getLastRow() - 1, 19).getValues();
-      var idMoi = {};
-      rows.forEach(function (r) {
-        var id = String(r[0] || '').trim();
-        if (id && !daCo[id]) idMoi[id] = 1;
-      });
-      rows.forEach(function (r) {
-        var id = String(r[0] || '').trim();
-        if (idMoi[id]) { gop.appendRow(r); daCopy++; }
-      });
-    }
-
-    // 4) Xoa sheet HoaDon trang, doi ten sheet gop thanh HoaDon
-    if (cur) ss.deleteSheet(cur);
-    gop.setName('HoaDon');
-
-    Logger.log('XONG: copy them ' + daCopy + ' dong. Sheet HoaDon hien co ' +
-               (gop.getLastRow() - 1) + ' dong du lieu.');
-  } finally {
-    try { lock.releaseLock(); } catch (e) {}
-  }
 }

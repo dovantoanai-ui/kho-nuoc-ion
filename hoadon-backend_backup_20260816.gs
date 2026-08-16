@@ -44,19 +44,8 @@ function doPost(e) {
       out.added = 1; out.ma = ma;
     } else if (p.loai === 'hoadon' && p.rows && p.rows.length) {
       var sh2 = ensureSheet_(ss, 'HoaDon', HD_HEAD);
-      // 16/08/2026: chong ghi trung khi bam "dong bo" nhieu lan -
-      // ID hoa don da co tren Sheet thi bo qua ca chum dong cua ID do
-      var daCoId = {};
-      var lastR = sh2.getLastRow();
-      if (lastR >= 2) {
-        sh2.getRange(2, 1, lastR - 1, 1).getValues().forEach(function (r0) {
-          var id0 = String(r0[0] || '').trim(); if (id0) daCoId[id0] = 1;
-        });
-      }
-      var moi = p.rows.filter(function (r) { return !daCoId[String(r[0] || '').trim()]; });
-      moi.forEach(function (r) { sh2.appendRow(r); });
-      out.added = moi.length;
-      out.skipped = p.rows.length - moi.length;
+      p.rows.forEach(function (r) { sh2.appendRow(r); });
+      out.added = p.rows.length;
     }
   } catch (err) {
     out = { ok: false, error: err.message };

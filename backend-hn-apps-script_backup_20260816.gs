@@ -17,22 +17,6 @@ var HEAD = {
   KiemKe: ['LineID','PhieuID','Ngay','Kho','Ma','Ten','SL dem','Nguoi dem','Ghi chu']
 };
 
-// ============================================================
-// TU DONG TRU TON THEO HOA DON (16/08/2026)
-// App Hoa don ghi vao Sheet DA05 tab "HoaDon" (co cot Kho).
-// Backend nay DOC them tab do khi tinh bao cao: hoa don cua
-// kho Ha Noi tu ngay HOADON_TU_NGAY duoc cong vao phan Ban
-// -> ton kho HN tu tru, khong can nhap phieu Xuat lan 2.
-// Ten hang tren hoa don sinh tu tab Data kho HUNG YEN, nen map
-// Ten -> Ma dung ca Data kho HY (nguon goc) lan Data kho nay.
-// LUU Y VAN HANH: tu ngay moc, don da nhap o app Hoa don thi
-// KHONG nhap phieu Xuat o app kho nua (se tru 2 lan).
-// ============================================================
-var HOADON_SHEET_ID = '1NFWBTjzkgk-Rj6syw46gm5F5tRIDxnU5qBc1OK35Y6A'; // Sheet DA05 (tab HoaDon)
-var HY_SHEET_ID     = '1tQEhM51DiYHN3tV_zKa6OT1tLXkPBft4TtOgp1_uAck'; // Sheet kho Hung Yen (nguon ten hang)
-var HOADON_TU_NGAY  = '2026-08-16'; // yyyy-mm-dd: chi tinh hoa don tu ngay nay tro di
-
-
 function doPost(e){
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var out = { ok: true };
@@ -111,7 +95,7 @@ function doGet(e){
   var out;
   try {
     if (action === 'report') {
-      out = { ok: true, cat: readCat_(ss), nhap: readNhap_(ss), xuat: readXuat_(ss).concat(readHoaDonBan_(ss)), tra: readTra_(ss) };
+      out = { ok: true, cat: readCat_(ss), nhap: readNhap_(ss), xuat: readXuat_(ss), tra: readTra_(ss) };
     } else {
       out = { ok: true, cat: readCat_(ss) };
     }
@@ -182,110 +166,4 @@ function readTra_(ss){
     out.push({ ngay: fmtYmd_(r[2]), ma: String(r[4]).trim(), sl: n2_(r[7]), nguoi: String(r[3] || '') });
   }
   return out;
-}
-
-// ============================================================
-// DOC HOA DON -> QUY VE SKU (tru ton kho HA NOI nhu dong Ban)
-// ============================================================
-// Chuan hoa ten hang de so khop: bo dau, chu thuong, gon khoang trang
-function chuanTen_(s){
-  s = String(s == null ? '' : s).toLowerCase();
-  try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
-  return s.replace(/\u0111/g, 'd').replace(/\s+/g, ' ').trim();
-}
-// Ngay tren hoa don (dd/MM/yyyy hoac Date) -> yyyy-mm-dd
-function ymdHoaDon_(v){
-  if (v instanceof Date) return Utilities.formatDate(v, 'GMT+7', 'yyyy-MM-dd');
-  var s = String(v == null ? '' : v).trim();
-  var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (m) return m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
-  return s.slice(0, 10);
-}
-// Map Ten -> Ma: lay tu Data kho Hung Yen (nguon sinh ten hoa don) truoc,
-// roi de Data kho nay ghi de (neu trung ten thi tin kho minh).
-function mapTenMa_(ss){
-  var tenMa = {};
-  try {
-    var hy = SpreadsheetApp.openById(HY_SHEET_ID).getSheetByName('Data');
-    if (hy && hy.getLastRow() > 1) {
-      var v = hy.getDataRange().getValues();
-      for (var i = 1; i < v.length; i++) {
-        var ma = String(v[i][0] || '').trim(), ten = String(v[i][1] || '').trim();
-        if (ma && ten) tenMa[chuanTen_(ten)] = ma;
-      }
-    }
-  } catch (e) {}
-  readCat_(ss).forEach(function(c){ if (c.ten) tenMa[chuanTen_(c.ten)] = c.ma; });
-  return tenMa;
-}
-// Doc tab HoaDon cua Sheet DA05: loc Kho = Ha Noi + tu ngay moc,
-// map Ten san pham -> Ma hang, tra ve dang dong Ban.
-function readHoaDonBan_(ss){
-  var out = [];
-  try {
-    var sh = SpreadsheetApp.openById(HOADON_SHEET_ID).getSheetByName('HoaDon');
-    if (!sh || sh.getLastRow() < 2) return out;
-    var tenMa = mapTenMa_(ss);
-    var v = sh.getDataRange().getValues();
-    var seen = {};
-    // 0 ID,1 Ngay,2 MaKH,3 Khach,4 SDT,5 Kho,6 San pham,7 DVT,8 SL,9 Don gia,10 Thanh tien
-    for (var i = 1; i < v.length; i++) {
-      var r = v[i];
-      var id = String(r[0] || '').trim(); if (!id) continue;
-      if (String(r[5] || '').indexOf('H\u01b0ng') >= 0) continue; // bo hoa don Hung Yen -> con lai la Ha Noi
-      var ngay = ymdHoaDon_(r[1]);
-      if (!ngay || ngay < HOADON_TU_NGAY) continue;
-      var sl = n2_(r[8]); if (!sl) continue;
-      var key = id + '|' + String(r[6] || '') + '|' + sl + '|' + n2_(r[9]);
-      if (seen[key]) continue; seen[key] = 1; // chong dong trung (bam dong bo nhieu lan)
-      out.push({
-        ngay: ngay,
-        ma: tenMa[chuanTen_(r[6])] || '',
-        sl: sl, tien: n2_(r[10]), lt: 'Ban',
-        khach: '[HD] ' + String(r[3] || r[2] || '')
-      });
-    }
-  } catch (e) { /* thieu quyen hoac loi mang: bao cao van chay, chi thieu phan hoa don */ }
-  return out;
-}
-// CHAY TAY de kiem tra ket noi hoa don (Run -> xem Logger)
-function testDocHoaDon(){
-  var rows = readHoaDonBan_(SpreadsheetApp.getActiveSpreadsheet());
-  var thieuMa = rows.filter(function(r){ return !r.ma; }).length;
-  Logger.log('Doc duoc ' + rows.length + ' dong hoa don kho Ha Noi tu ' + HOADON_TU_NGAY +
-             (thieuMa ? (' | CANH BAO: ' + thieuMa + ' dong khong khop duoc Ma hang') : ' | Tat ca khop Ma hang'));
-}
-
-// ============================================================
-// CHAY TAY 1 LAN (16/08/2026): dong bo tab Data kho HN theo
-// tab Data kho HUNG YEN — du 13 SKU, ten co dau y het hoa don.
-// GIU NGUYEN cot Ton dau hien co theo Ma hang.
-// CACH CHAY: chon ham capNhatDanhMucTuHY tren thanh cong cu -> Run.
-// Xong vao app hn.html -> Danh muc -> "Tai lai danh muc tu Google Sheet".
-// ============================================================
-function capNhatDanhMucTuHY(){
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var cur = ss.getSheetByName('Data');
-  var tondau = {};
-  if (cur && cur.getLastRow() > 1) {
-    var v0 = cur.getDataRange().getValues();
-    for (var i = 1; i < v0.length; i++) {
-      var m0 = String(v0[i][0] || '').trim();
-      if (m0) tondau[m0] = Number(v0[i][9]) || 0;
-    }
-  }
-  var hy = SpreadsheetApp.openById(HY_SHEET_ID).getSheetByName('Data');
-  if (!hy || hy.getLastRow() < 2) throw new Error('Khong doc duoc tab Data kho Hung Yen');
-  var v = hy.getDataRange().getValues();
-  var rows = [];
-  for (var j = 1; j < v.length; j++) {
-    var r = v[j]; var m = String(r[0] || '').trim(); if (!m) continue;
-    rows.push([m, r[1] || '', r[2] || '', r[3] || 0, r[4] || 0, r[5] || 0, r[6] || 0, r[7] || 0, r[8] || 0, tondau[m] || 0]);
-  }
-  if (!cur) cur = ss.insertSheet('Data');
-  cur.clear();
-  cur.appendRow(['Ma hang','Ten hang','DVT','Gia von','Gia NPP','Gia C1','Gia C2','Gia C3','Gia le','Ton dau']);
-  if (rows.length) cur.getRange(2, 1, rows.length, 10).setValues(rows);
-  cur.setFrozenRows(1);
-  Logger.log('Da dong bo ' + rows.length + ' SKU tu kho Hung Yen. Ton dau giu nguyen theo Ma hang.');
 }
