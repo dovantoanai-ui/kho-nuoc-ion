@@ -484,7 +484,7 @@ function render(){
   }else{
     totRows='<tr class="tong"><td class="r" colspan="5">TỔNG CỘNG</td><td class="r">'+fmt(sub)+'</td></tr>';
   }
-  var note=hasVat?('Giá chưa gồm VAT — đã cộng thuế GTGT '+rate+'%. Giao nội thành.'):'Giao nội thành.';
+  var note=hasVat?('Giá chưa gồm VAT — đã cộng thuế GTGT '+rate+'%. Miễn phí giao hàng nội thành.'):'Miễn phí giao hàng nội thành.';
   var ckn=ckPct();if(ckn>0)note=note+' Đã áp dụng chiết khấu '+ckn+'%.';
   var thu=(document.getElementById('thu').value||'').trim();
   var ttcol=ttv==='Đã thanh toán'?'#0f9d58':(ttv==='Chưa thanh toán'?'#c8102e':'#e08a00');
