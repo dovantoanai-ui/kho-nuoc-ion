@@ -232,10 +232,16 @@
       </div>
     </div>
 
-    <!-- ===== TAB THU NO (so phieu thu) ===== -->
+    <!-- ===== TAB THU NO (hoa don chua thu + so phieu thu) ===== -->
     <div id="tab-tn" class="tab-pane" style="display:none">
       <div class="card">
-        <h2>Sổ thu công nợ — kho <span id="tnKhoLbl">—</span></h2>
+        <h2>Hoá đơn chưa thu — kho <span id="tnKhoLbl">—</span></h2>
+        <div class="muted" style="margin-bottom:8px">Còn phải thu: <b id="tnConNo">0</b> đ · <span id="tnSoHd">0</span> hoá đơn — bấm <b>Thu</b> để lập phiếu.</div>
+        <input id="tnTim" placeholder="Tìm mã khách, tên khách hoặc mã hoá đơn" oninput="renderThuNo()">
+        <div id="tnNoList" style="margin-top:8px"></div>
+      </div>
+      <div class="card">
+        <h2>Lịch sử phiếu thu</h2>
         <div class="muted" style="margin-bottom:8px">Thu tháng này: <b id="tnThang">0</b> đ · Tổng đã thu: <b id="tnTong">0</b> đ</div>
         <button class="btn bgrn" style="width:100%;margin-bottom:10px" onclick="loadData(true)">Tải lại từ Sheet</button>
         <div id="tnList"></div>
@@ -331,6 +337,7 @@ var KHO=localStorage.getItem('hd_kho')||'';
 var KHOCODE='HN';
 var KH=[], HD=[], TT=[];
 var PT={ma:'',ten:'',list:[],anh:null}; /* trang thai form phieu thu cong no */
+var TAB='hd'; /* tab dang mo - de sau khi luu phieu thu quay ve dung cho */
 
 function pad(n){return String(n).padStart(2,'0')}
 function today(){var d=new Date();return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()}
@@ -353,6 +360,7 @@ function setKho(name){
 }
 function doiKho(){document.getElementById('app').style.display='none';document.getElementById('screenKho').style.display='flex'}
 function showTab(t){
+  TAB=t;
   document.querySelectorAll('.tab-pane').forEach(function(p){p.style.display='none'});
   document.getElementById('tab-'+t).style.display='block';
   document.querySelectorAll('.tb').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-t')===t)});
@@ -734,7 +742,50 @@ function thangHienTai(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMon
 function thangCua(s){var d=parseD(s);return d?(d.getFullYear()+'-'+pad(d.getMonth()+1)):''}
 function isoToVn(s){var p=String(s||'').split('-');
   return p.length<3?today():(p[2]+'/'+p[1]+'/'+p[0]);}
+/* So ngay qua han cua 1 hoa don (am = con trong han) */
+function qhOf(v){var k=khByMa(v.ma);return daysSince(v.ngay)-((k&&k.kyhan)||0)}
+/* Phan tren tab Thu no: tung hoa don chua thu, qua han lau nhat len dau */
+function renderTnNo(){
+  var el=document.getElementById('tnNoList');if(!el)return;
+  var all=invoicesInKho().filter(function(v){return conNoOf(v)>0});
+  var tong=0;all.forEach(function(v){tong+=conNoOf(v)});
+  document.getElementById('tnConNo').textContent=fmt(tong);
+  document.getElementById('tnSoHd').textContent=all.length;
+  var q=(document.getElementById('tnTim').value||'').trim().toLowerCase();
+  var arr=all;
+  if(q)arr=all.filter(function(v){
+    var k=khByMa(v.ma);
+    return (v.id+' '+v.ma+' '+(v.khach||'')+' '+((k&&k.ten)||'')).toLowerCase().indexOf(q)>=0;
+  });
+  arr.sort(function(a,b){return qhOf(b)-qhOf(a)});
+  if(!arr.length){
+    el.innerHTML='<div class="empty">'+(all.length?'Không có hoá đơn nào khớp từ khoá.':'Không còn hoá đơn nào chưa thu.')+'</div>';
+    return;
+  }
+  var h='';
+  arr.forEach(function(v){
+    var d=qhOf(v),pill,txt;
+    if(d>0){pill='p-bad';txt='quá hạn '+d+' ngày'}
+    else if(d>=-3){pill='p-warn';txt='sắp đến hạn'}
+    else{pill='p-ok';txt='trong hạn'}
+    var k=khByMa(v.ma);
+    h+='<div class="li" style="display:block">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+      +'<div><div class="t1">'+esc(v.ma)+' · '+esc(v.khach||(k?k.ten:'')||'—')+'</div>'
+      +'<div class="t2">'+esc(v.ngay)+' · '+esc(v.id)+'</div></div>'
+      +'<div class="rt"><div class="t1" style="color:var(--red)">'+fmt(conNoOf(v))+' đ</div>'
+      +'<span class="pill '+pill+'">'+txt+'</span></div></div>'
+      +'<button class="btn bred" style="width:100%;margin-top:8px" '
+      +'data-tn-ma="'+esc(v.ma)+'" data-tn-hd="'+esc(v.id)+'">Thu hoá đơn này</button>'
+      +'</div>';
+  });
+  el.innerHTML=h;
+  el.querySelectorAll('[data-tn-hd]').forEach(function(b){
+    b.onclick=function(){moPhieuThu(b.getAttribute('data-tn-ma'),b.getAttribute('data-tn-hd'))};
+  });
+}
 function renderThuNo(){
+  renderTnNo();
   var el=document.getElementById('tnList');if(!el)return;
   var arr=TT.filter(function(x){return x.kho===KHO});
   arr.sort(function(a,b){return String(b.id).localeCompare(String(a.id))});
@@ -894,7 +945,7 @@ function ptXacNhan(idPhieu,lan){
       var co=false;TT.forEach(function(x){if(x.id===idPhieu)co=true});
       if(co){
         btn.disabled=false;btn.textContent='Lưu phiếu thu';
-        ptDong();showTab('cn');
+        ptDong();showTab(TAB==='tn'?'tn':'cn');
         alert('Đã lưu phiếu thu '+idPhieu+' và cập nhật công nợ.');
       }else if(lan<2){
         ptXacNhan(idPhieu,lan+1);
