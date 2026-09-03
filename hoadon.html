@@ -77,7 +77,7 @@
   .rpt th:first-child{text-align:left}
   .rpt td{border:1px solid var(--line);padding:6px 5px;text-align:right;white-space:nowrap}
   .rpt td:first-child{text-align:left}
-  @media print{ body{background:#fff} .top,.tabs,.card:not(#cardPreview),.btns,#ovl,.tab-pane:not(#tab-hd){display:none !important}
+  @media print{ body{background:#fff} .top,.tabs,.card:not(#cardPreview),.btns,#ovl,#ptOvl,.tab-pane:not(#tab-hd){display:none !important}
     #tab-hd .card:not(#cardPreview){display:none !important}
     .wrap{padding:0;max-width:none} #cardPreview{border:none;padding:0;margin:0} #cardPreview h2,#cardPreview .muted,#dbBtn{display:none !important} }
 </style>
@@ -107,6 +107,7 @@
       <button class="tb" data-t="bc" onclick="showTab('bc')">Báo cáo</button>
       <button class="tb" data-t="dh" onclick="showTab('dh')">Đơn</button>
       <button class="tb" data-t="cn" onclick="showTab('cn')">Công nợ</button>
+      <button class="tb" data-t="tn" onclick="showTab('tn')">Thu nợ</button>
       <button class="tb" data-t="kk" onclick="showTab('kk')">Kiểm kê</button>
       <button class="tb" data-t="cs" onclick="showTab('cs')">CSKH</button>
     </div>
@@ -226,8 +227,18 @@
     <div id="tab-cn" class="tab-pane" style="display:none">
       <div class="card">
         <h2>Công nợ theo khách — kho <span id="cnKhoLbl">—</span></h2>
-        <div class="muted" style="margin-bottom:6px">Tổng còn nợ: <b id="cnTong">0</b> đ</div>
+        <div class="muted" style="margin-bottom:6px">Tổng còn nợ: <b id="cnTong">0</b> đ · Bấm vào khách để xem từng hoá đơn và thu tiền.</div>
         <div id="cnList"></div>
+      </div>
+    </div>
+
+    <!-- ===== TAB THU NO (so phieu thu) ===== -->
+    <div id="tab-tn" class="tab-pane" style="display:none">
+      <div class="card">
+        <h2>Sổ thu công nợ — kho <span id="tnKhoLbl">—</span></h2>
+        <div class="muted" style="margin-bottom:8px">Thu tháng này: <b id="tnThang">0</b> đ · Tổng đã thu: <b id="tnTong">0</b> đ</div>
+        <button class="btn bgrn" style="width:100%;margin-bottom:10px" onclick="loadData(true)">Tải lại từ Sheet</button>
+        <div id="tnList"></div>
       </div>
     </div>
 
@@ -265,6 +276,39 @@
   <button style="background:#fff;color:#1a2430;border:none;font:inherit;font-weight:700;padding:11px 24px;border-radius:10px;cursor:pointer" onclick="document.getElementById('ovl').style.display='none'">Đóng</button>
 </div>
 
+<!-- ===== FORM PHIEU THU CONG NO ===== -->
+<div id="ptOvl" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:120;overflow:auto;padding:12px">
+  <div class="card" style="max-width:520px;margin:8px auto 40px">
+    <h2>Phiếu thu công nợ</h2>
+    <div class="li" style="border:none;background:#fdeceb;border-radius:10px;padding:9px 12px;margin-bottom:6px">
+      <div><div class="t1" id="ptKh" style="color:var(--red)">—</div><div class="t2" id="ptNo">—</div></div>
+    </div>
+    <label>Thu cho hoá đơn</label>
+    <select id="ptHd" onchange="ptOnHd()"></select>
+    <label>Ngày thu</label>
+    <input id="ptNgay" type="date">
+    <label>Số tiền thu (đ)</label>
+    <input id="ptTien" type="number" inputmode="numeric" placeholder="0" oninput="ptPreview()">
+    <label>Hình thức</label>
+    <select id="ptHt" onchange="ptOnHt()"><option>Tiền mặt</option><option>Chuyển khoản</option></select>
+    <div id="ptTkWrap" style="display:none"><label>Tài khoản nhận</label>
+      <select id="ptTk"><option>TK công ty Fuji</option><option>TK Anh Hưng</option><option>TK Anh Vũ</option></select>
+    </div>
+    <label>Người thu</label>
+    <input id="ptThu" placeholder="Tên người thu">
+    <label>Ảnh chứng từ (uỷ nhiệm chi / biên nhận)</label>
+    <input id="ptAnh" type="file" accept="image/*" onchange="ptChonAnh(this)">
+    <div class="muted" id="ptAnhInfo" style="margin-top:4px">Chưa chọn ảnh.</div>
+    <label>Ghi chú (tuỳ chọn)</label>
+    <input id="ptGc" placeholder="VD: khách trả trước một phần">
+    <div class="muted" id="ptChia" style="margin-top:8px"></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn b1" style="flex:1;background:#eef1f4;color:var(--ink)" onclick="ptDong()">Huỷ</button>
+      <button class="btn bred" style="flex:2" id="ptSave" onclick="ptLuu()">Lưu phiếu thu</button>
+    </div>
+  </div>
+</div>
+
 <div class="btns" id="bar">
   <button class="b1" onclick="luuAnh()">Lưu ảnh</button>
   <button class="b1" onclick="inPdf()">In / PDF</button>
@@ -285,7 +329,8 @@ var CAT=JSON.parse(localStorage.getItem('hd_cat')||'null')||DEFAULT_CAT;
 var GS=localStorage.getItem('hd_gs_url')||'';
 var KHO=localStorage.getItem('hd_kho')||'';
 var KHOCODE='HN';
-var KH=[], HD=[];
+var KH=[], HD=[], TT=[];
+var PT={ma:'',ten:'',list:[],anh:null}; /* trang thai form phieu thu cong no */
 
 function pad(n){return String(n).padStart(2,'0')}
 function today(){var d=new Date();return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()}
@@ -317,6 +362,7 @@ function showTab(t){
   if(t==='bc')renderBaoCao();
   if(t==='dh')renderDonHang();
   if(t==='cn')renderCongNo();
+  if(t==='tn'){document.getElementById('tnKhoLbl').textContent=KHO;renderThuNo();}
   if(t==='kk'){document.getElementById('kkKhoLbl').textContent=KHO;if(!KKCAT.length)loadKhoKiemKe();else renderKK();}
   if(t==='cs')renderCSKH();
   window.scrollTo(0,0);
@@ -344,10 +390,10 @@ function loadData(manual,cb){
   document.getElementById('dataInfo').textContent='Đang tải dữ liệu...';
   jsonp(GS,function(d){
     if(!d||!d.ok){document.getElementById('dataInfo').textContent='Lỗi tải dữ liệu';if(manual)alert('Không tải được dữ liệu. Kiểm tra URL backend đã deploy đúng chưa.');if(cb)cb(false);return}
-    KH=d.khach||[];HD=d.hoadon||[];
+    KH=d.khach||[];HD=d.hoadon||[];TT=d.thanhtoan||[];
     if(d.cat&&d.cat.length){CAT=d.cat;try{localStorage.setItem('hd_cat',JSON.stringify(CAT))}catch(e){}refreshRows();}
     document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn';
-    fillKhSelect();renderMaPreview();renderKhList();renderBaoCao();renderCongNo();renderCSKH();
+    fillKhSelect();renderMaPreview();renderKhList();renderBaoCao();renderCongNo();renderThuNo();renderCSKH();
     if(cb)cb(true);
   });
 }
@@ -622,6 +668,13 @@ function renderDonHang(){
   el.innerHTML=h;
 }
 /* ---------- CONG NO ---------- */
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+/* Hoa don con no cua 1 khach trong kho hien tai, xep tu CU NHAT -> dung cho chia FIFO */
+function invoicesConNo(ma){
+  return invoicesInKho().filter(function(v){return v.ma===ma&&conNoOf(v)>0})
+    .sort(function(a,b){var da=parseD(a.ngay),db=parseD(b.ngay);
+      return (da?da.getTime():0)-(db?db.getTime():0)});
+}
 function renderCongNo(){
   var invs=invoicesInKho();
   var by={};
@@ -629,8 +682,9 @@ function renderCongNo(){
     var c=conNoOf(v);if(c<=0)return;
     var k=khByMa(v.ma);var kyhan=k?k.kyhan:0;
     var overdue=daysSince(v.ngay)-kyhan;
-    var g=by[v.ma];if(!g)g=by[v.ma]={ma:v.ma,ten:v.khach||(k?k.ten:''),no:0,cnt:0,worst:-9999};
+    var g=by[v.ma];if(!g)g=by[v.ma]={ma:v.ma,ten:v.khach||(k?k.ten:''),no:0,cnt:0,worst:-9999,hd:[]};
     g.no+=c;g.cnt++;if(overdue>g.worst)g.worst=overdue;
+    g.hd.push({id:v.id,ngay:v.ngay,con:c});
   });
   var arr=[];for(var m in by)arr.push(by[m]);
   arr.sort(function(a,b){return b.worst-a.worst});
@@ -644,11 +698,212 @@ function renderCongNo(){
     if(g.worst>0){pill='p-bad';txt='quá hạn '+g.worst+' ngày'}
     else if(g.worst>=-3){pill='p-warn';txt='sắp đến hạn'}
     else{pill='p-ok';txt='trong hạn'}
-    h+='<div class="li"><div><div class="t1">'+g.ma+' · '+(g.ten||'—')+'</div>'
+    g.hd.sort(function(a,b){var da=parseD(a.ngay),db=parseD(b.ngay);
+      return (da?da.getTime():0)-(db?db.getTime():0)});
+    var dong='';
+    g.hd.forEach(function(v){
+      dong+='<div style="display:flex;align-items:center;gap:8px;margin-top:6px">'
+        +'<div class="t2" style="flex:1;margin:0">'+esc(v.ngay)+' · '+esc(v.id)
+        +' · còn <b style="color:var(--red)">'+fmt(v.con)+'</b></div>'
+        +'<button class="btn bred" style="padding:6px 12px;font-size:12px" '
+        +'data-thu-ma="'+esc(g.ma)+'" data-thu-hd="'+esc(v.id)+'">Thu</button></div>';
+    });
+    h+='<div class="li" style="display:block">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+      +'<div><div class="t1">'+esc(g.ma)+' · '+esc(g.ten||'—')+'</div>'
       +'<div class="t2">'+g.cnt+' hoá đơn chưa thu</div></div>'
-      +'<div class="rt"><div class="t1">'+fmt(g.no)+' đ</div><span class="pill '+pill+'">'+txt+'</span></div></div>';
+      +'<div class="rt"><div class="t1">'+fmt(g.no)+' đ</div>'
+      +'<span class="pill '+pill+'">'+txt+'</span></div></div>'
+      +dong
+      +'<button class="add" style="margin-top:9px" data-thu-kh="'+esc(g.ma)+'">'
+      +'Thu theo khách (khách trả gộp 1 lần)</button>'
+      +'</div>';
   });
   el.innerHTML=h;
+  /* Gan handler bang closure - khong dung onclick dang chuoi de ten khach co dau nhay khong lam vo code */
+  el.querySelectorAll('[data-thu-hd]').forEach(function(b){
+    b.onclick=function(){moPhieuThu(b.getAttribute('data-thu-ma'),b.getAttribute('data-thu-hd'))};
+  });
+  el.querySelectorAll('[data-thu-kh]').forEach(function(b){
+    b.onclick=function(){moPhieuThu(b.getAttribute('data-thu-kh'),'')};
+  });
+}
+
+/* ---------- THU CONG NO: so phieu thu ---------- */
+function thangHienTai(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)}
+function thangCua(s){var d=parseD(s);return d?(d.getFullYear()+'-'+pad(d.getMonth()+1)):''}
+function isoToVn(s){var p=String(s||'').split('-');
+  return p.length<3?today():(p[2]+'/'+p[1]+'/'+p[0]);}
+function renderThuNo(){
+  var el=document.getElementById('tnList');if(!el)return;
+  var arr=TT.filter(function(x){return x.kho===KHO});
+  arr.sort(function(a,b){return String(b.id).localeCompare(String(a.id))});
+  var tong=0,thangNay=0,mm=thangHienTai();
+  arr.forEach(function(x){tong+=x.tien;if(thangCua(x.ngay)===mm)thangNay+=x.tien});
+  document.getElementById('tnThang').textContent=fmt(thangNay);
+  document.getElementById('tnTong').textContent=fmt(tong);
+  if(!arr.length){el.innerHTML='<div class="empty">Chưa có phiếu thu nào trong kho này.</div>';return}
+  var h='';
+  arr.forEach(function(x){
+    var anh=(String(x.anh).indexOf('http')===0)
+      ?'<div class="t2"><a href="'+esc(x.anh)+'" target="_blank" rel="noopener">Xem ảnh chứng từ</a></div>':'';
+    h+='<div class="li" style="display:block">'
+      +'<div style="display:flex;justify-content:space-between;align-items:baseline">'
+      +'<div class="t1">'+esc(x.ngay)+' · '+esc(x.ma)+'</div>'
+      +'<div class="t1" style="color:var(--grn)">+'+fmt(x.tien)+' đ</div></div>'
+      +'<div class="t2">'+esc(x.khach||'—')+' · HĐ '+esc(x.idhd)+'</div>'
+      +'<div class="t2">'+esc(x.ht)+(x.thu?' · thu: '+esc(x.thu):'')
+      +(x.ghichu?' · '+esc(x.ghichu):'')+'</div>'+anh+'</div>';
+  });
+  el.innerHTML=h;
+}
+
+/* ---------- THU CONG NO: form phieu thu ---------- */
+function moPhieuThu(ma,idhd){
+  var k=khByMa(ma);
+  PT.ma=ma;PT.ten=(k?k.ten:'')||'';PT.list=invoicesConNo(ma);PT.anh=null;
+  if(!PT.list.length){alert('Khách này không còn hoá đơn nợ trong kho '+KHO+'.');return}
+  var tongNo=0;PT.list.forEach(function(v){tongNo+=conNoOf(v)});
+  if(!PT.ten)PT.list.forEach(function(v){if(!PT.ten&&v.khach)PT.ten=v.khach});
+  document.getElementById('ptKh').textContent=ma+' · '+(PT.ten||'—');
+  document.getElementById('ptNo').textContent=PT.list.length+' hoá đơn chưa thu — tổng '+fmt(tongNo)+' đ';
+  var o='<option value="">Tất cả — chia từ hoá đơn cũ nhất</option>';
+  PT.list.forEach(function(v){
+    o+='<option value="'+esc(v.id)+'">'+esc(v.ngay+' · '+v.id+' · còn '+fmt(conNoOf(v)))+'</option>';
+  });
+  var sel=document.getElementById('ptHd');sel.innerHTML=o;sel.value=idhd||'';
+  document.getElementById('ptNgay').value=todayISO();
+  document.getElementById('ptThu').value=localStorage.getItem('hd_nguoithu')||'';
+  document.getElementById('ptGc').value='';
+  document.getElementById('ptAnh').value='';
+  document.getElementById('ptAnhInfo').textContent='Chưa chọn ảnh.';
+  document.getElementById('ptHt').value='Tiền mặt';
+  var b=document.getElementById('ptSave');b.disabled=false;b.textContent='Lưu phiếu thu';
+  ptOnHt();ptOnHd();
+  document.getElementById('ptOvl').style.display='block';
+  window.scrollTo(0,0);
+}
+function ptDong(){document.getElementById('ptOvl').style.display='none';PT.anh=null}
+function ptOnHt(){
+  document.getElementById('ptTkWrap').style.display=
+    (document.getElementById('ptHt').value==='Chuyển khoản')?'block':'none';
+}
+function ptOnHd(){
+  var chon=document.getElementById('ptHd').value;
+  var tien=0;
+  if(chon){PT.list.forEach(function(v){if(v.id===chon)tien=conNoOf(v)});}
+  else{PT.list.forEach(function(v){tien+=conNoOf(v)});}
+  document.getElementById('ptTien').value=tien;
+  ptPreview();
+}
+/* Chia tien vao cac hoa don CU NHAT truoc (FIFO) */
+function ptChia(tien){
+  var out=[],con=tien;
+  for(var i=0;i<PT.list.length&&con>0;i++){
+    var no=conNoOf(PT.list[i]);if(no<=0)continue;
+    var t=Math.min(no,con);
+    out.push({id:PT.list[i].id,ngay:PT.list[i].ngay,tien:t});
+    con-=t;
+  }
+  return {rows:out,thua:con};
+}
+function ptPreview(){
+  var el=document.getElementById('ptChia');
+  var tien=Number(document.getElementById('ptTien').value)||0;
+  if(document.getElementById('ptHd').value||tien<=0){el.textContent='';return}
+  var p=ptChia(tien);
+  var s='Chia vào: ';
+  p.rows.forEach(function(x,i){s+=(i?' · ':'')+x.ngay+' '+x.id+' → '+fmt(x.tien)});
+  if(p.thua>0)s+=' · THỪA '+fmt(p.thua)+' đ (vượt tổng nợ)';
+  el.innerHTML=esc(s);
+}
+function nenAnh(file,cb){
+  var img=new Image();var url=URL.createObjectURL(file);
+  img.onload=function(){
+    var mx=1280,w=img.width,h=img.height;
+    if(w>mx||h>mx){var s=Math.min(mx/w,mx/h);w=Math.round(w*s);h=Math.round(h*s)}
+    var cv=document.createElement('canvas');cv.width=w;cv.height=h;
+    cv.getContext('2d').drawImage(img,0,0,w,h);
+    URL.revokeObjectURL(url);
+    try{cb(cv.toDataURL('image/jpeg',0.7))}catch(e){cb(null)}
+  };
+  img.onerror=function(){URL.revokeObjectURL(url);cb(null)};
+  img.src=url;
+}
+function ptChonAnh(inp){
+  var f=inp.files&&inp.files[0];
+  var info=document.getElementById('ptAnhInfo');
+  if(!f){PT.anh=null;info.textContent='Chưa chọn ảnh.';return}
+  info.textContent='Đang nén ảnh...';
+  nenAnh(f,function(dataUrl){
+    if(!dataUrl){PT.anh=null;info.textContent='Không đọc được ảnh. Thử chọn ảnh khác.';return}
+    var i=dataUrl.indexOf(',');
+    PT.anh={data:dataUrl.slice(i+1),mime:'image/jpeg',ten:'thu-'+todayISO()+'-'+Date.now()+'.jpg'};
+    info.textContent='Đã đính kèm ảnh (~'+Math.round(PT.anh.data.length*0.75/1024)+' KB).';
+  });
+}
+function ptLuu(){
+  if(!GS){alert('Chưa cấu hình backend. Bấm Cài đặt để dán URL /exec.');return}
+  var tien=Number(document.getElementById('ptTien').value)||0;
+  if(tien<=0){alert('Nhập số tiền thu.');return}
+  var ngayISO=document.getElementById('ptNgay').value;
+  if(!ngayISO){alert('Chọn ngày thu.');return}
+  var thu=(document.getElementById('ptThu').value||'').trim();
+  if(!thu){alert('Nhập tên người thu để lưu vết.');return}
+  var htGoc=document.getElementById('ptHt').value;
+  var ht=(htGoc==='Chuyển khoản')?('Chuyển khoản — '+document.getElementById('ptTk').value):htGoc;
+  var gc=(document.getElementById('ptGc').value||'').trim();
+  var chon=document.getElementById('ptHd').value;
+  var phan;
+  if(chon){
+    var inv=null;PT.list.forEach(function(v){if(v.id===chon)inv=v});
+    if(!inv){alert('Hoá đơn không còn trong danh sách nợ. Bấm Làm mới rồi thử lại.');return}
+    var no=conNoOf(inv);
+    if(tien>no){alert('Số tiền vượt công nợ của hoá đơn này ('+fmt(no)+' đ).\nChọn "Tất cả" nếu khách trả gộp nhiều hoá đơn.');return}
+    phan={rows:[{id:inv.id,tien:tien}],thua:0};
+  }else{
+    phan=ptChia(tien);
+    if(phan.thua>0){alert('Số tiền vượt tổng công nợ của khách '+fmt(phan.thua)+' đ. Giảm số tiền rồi thử lại.');return}
+  }
+  if(htGoc==='Chuyển khoản'&&!PT.anh){
+    if(!confirm('Chưa có ảnh chứng từ chuyển khoản. Vẫn lưu phiếu thu?'))return;
+  }
+  var ngay=isoToVn(ngayISO);
+  var goc='PT'+Date.now();
+  var nhieu=phan.rows.length>1;
+  var rows=phan.rows.map(function(x,i){
+    return [nhieu?(goc+'-'+(i+1)):goc,ngay,PT.ma,PT.ten,KHO,x.id,x.tien,ht,thu,gc];
+  });
+  var body={loai:'thanhtoan',rows:rows};
+  if(PT.anh)body.anh=PT.anh;
+  var btn=document.getElementById('ptSave');btn.disabled=true;btn.textContent='Đang gửi...';
+  try{localStorage.setItem('hd_nguoithu',thu)}catch(e){}
+  fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)})
+   .then(function(){ptXacNhan(rows[0][0],1)})
+   .catch(function(e){
+     btn.disabled=false;btn.textContent='Lưu phiếu thu';
+     alert('Lỗi gửi dữ liệu: '+e.message);
+   });
+}
+/* Che do no-cors khong doc duoc phan hoi -> tai lai Sheet de kiem tra phieu da vao that chua */
+function ptXacNhan(idPhieu,lan){
+  var btn=document.getElementById('ptSave');
+  btn.textContent='Đang kiểm tra trên Sheet...';
+  setTimeout(function(){
+    loadData(false,function(){
+      var co=false;TT.forEach(function(x){if(x.id===idPhieu)co=true});
+      if(co){
+        btn.disabled=false;btn.textContent='Lưu phiếu thu';
+        ptDong();showTab('cn');
+        alert('Đã lưu phiếu thu '+idPhieu+' và cập nhật công nợ.');
+      }else if(lan<2){
+        ptXacNhan(idPhieu,lan+1);
+      }else{
+        btn.disabled=false;btn.textContent='Lưu phiếu thu';
+        alert('Chưa thấy phiếu thu trên Sheet.\n\nCó thể mạng chậm hoặc backend chưa deploy bản mới. Vài phút nữa vào tab Thu nợ bấm "Tải lại từ Sheet" để kiểm tra.\n\nGửi lại phiếu này cũng an toàn: trùng mã phiếu sẽ bị bỏ qua, không cộng tiền hai lần.');
+      }
+    });
+  },lan===1?2500:4000);
 }
 
 /* ---------- CSKH ---------- */

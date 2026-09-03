@@ -23,16 +23,7 @@ var HD_HEAD = ['ID hoa don', 'Ngay', 'Ma KH', 'Khach', 'SDT', 'Kho',
                'San pham', 'DVT', 'SL', 'Don gia', 'Thanh tien',
                'VAT %', 'Coc binh', 'Tong thanh toan', 'Da thu',
                'Trang thai TT', 'Nguoi thu', 'Hinh thuc TT', 'Ghi chu',
-               'Ngày CK', 'Thang']; // 13/08/2026: cot 20 'Ngày CK' | 29/08/2026: cot 21 'Thang' (yyyy-MM, backend tu dien - khong go tay)
-
-// 18/08/2026: so phieu thu cong no. Moi lan thu tien = 1 dong o day, backend
-// dong thoi cap nhat lai 'Da thu' + 'Trang thai TT' cua hoa don goc ben tab HoaDon.
-// Doanh thu VAN doc o tab HoaDon -> phieu thu khong lam doanh thu bi dem doi.
-var TT_HEAD = ['ID phieu', 'Ngay', 'Ma KH', 'Khach', 'Kho', 'ID hoa don',
-               'So tien', 'Hinh thuc', 'Nguoi thu', 'Ghi chu', 'Link anh',
-               'Ghi luc', 'Thang'];
-
-var ANH_FOLDER = 'Anh thanh toan ION FUJI'; // backend tu tao trong Drive neu chua co
+               'Ngày CK']; // 13/08/2026: them cot 20 'Ngày CK' (phai go dung y het vao o T1 cua sheet)
 
 // ---------- GHI (POST tu app, che do no-cors) ----------
 function doPost(e) {
@@ -63,26 +54,9 @@ function doPost(e) {
         });
       }
       var moi = p.rows.filter(function (r) { return !daCoId[String(r[0] || '').trim()]; });
-      // 29/08/2026: ghi them cot 21 'Thang' (yyyy-MM) suy ra tu cot Ngay.
-      // Ghi cot A:T bang appendRow, rieng cot U phai ep dinh dang text ('@')
-      // TRUOC khi ghi - neu khong Sheet tu doi '2026-08' thanh kieu NGAY,
-      // pivot se tach lam 2 dong khac nhau (text vs ngay).
-      var dongDau = sh2.getLastRow() + 1;
-      moi.forEach(function (r) {
-        var row = r.slice(0, 20);
-        while (row.length < 20) row.push('');
-        sh2.appendRow(row);
-      });
-      if (moi.length) {
-        var cotThang = moi.map(function (r) { return [thang_(r[1])]; });
-        sh2.getRange(dongDau, 21, moi.length, 1)
-           .setNumberFormat('@')
-           .setValues(cotThang);
-      }
+      moi.forEach(function (r) { sh2.appendRow(r); });
       out.added = moi.length;
       out.skipped = p.rows.length - moi.length;
-    } else if (p.loai === 'thanhtoan' && p.rows && p.rows.length) {
-      out = ghiThanhToan_(ss, p);
     }
   } catch (err) {
     out = { ok: false, error: err.message };
@@ -111,12 +85,11 @@ function nextMa_(sh, kho) {
 // ---------- DOC (GET, tra ve JSONP cho app doc duoc Sheet rieng tu) ----------
 function doGet(e) {
   var cb = (e && e.parameter && e.parameter.callback) ? e.parameter.callback : 'callback';
-  var out = { ok: true, khach: [], hoadon: [], thanhtoan: [] };
+  var out = { ok: true, khach: [], hoadon: [] };
   try {
     var ss = SpreadsheetApp.openById(SHEET_ID);
     out.khach = readKhach_(ss);
     out.hoadon = readHoaDon_(ss);
-    out.thanhtoan = readThanhToan_(ss);
     out.cat = readCatLe_();
   } catch (err) {
     out = { ok: false, error: err.message };
@@ -164,18 +137,6 @@ function num_(v) {
 function fmtD_(v) {
   if (v instanceof Date) return Utilities.formatDate(v, 'GMT+7', 'dd/MM/yyyy');
   return String(v == null ? '' : v).slice(0, 10);
-}
-
-// 29/08/2026: doi gia tri cot Ngay -> chuoi thang 'yyyy-MM' (vd 07/08/2026 -> '2026-08').
-// Tra ve '' neu khong doc duoc ngay -> de trong, khong bia so.
-function thang_(v) {
-  if (v instanceof Date) return Utilities.formatDate(v, 'GMT+7', 'yyyy-MM');
-  var s = String(v == null ? '' : v).trim();
-  var m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);   // dd/MM/yyyy
-  if (m) return m[3] + '-' + ('0' + m[2]).slice(-2);
-  m = s.match(/^(\d{4})[\/\-](\d{1,2})/);                     // yyyy-MM-dd
-  if (m) return m[1] + '-' + ('0' + m[2]).slice(-2);
-  return '';
 }
 
 function readKhach_(ss) {
@@ -242,139 +203,10 @@ function readCatLe_() {
   return out;
 }
 
-// ============================================================
-// 18/08/2026 — THU CONG NO
-// Ghi phieu thu vao tab 'ThanhToan', up anh chung tu len Drive,
-// roi cap nhat lai 'Da thu' + 'Trang thai TT' cua hoa don goc.
-// ============================================================
-function ghiThanhToan_(ss, p) {
-  var out = { ok: true, added: 0, skipped: 0, capnhat: 0, anh: '' };
-  var sh = ensureSheet_(ss, 'ThanhToan', TT_HEAD);
-
-  // Chong ghi trung khi bam Luu nhieu lan: ID phieu da co tren Sheet thi bo qua
-  var daCo = {};
-  var last = sh.getLastRow();
-  if (last >= 2) {
-    sh.getRange(2, 1, last - 1, 1).getValues().forEach(function (r) {
-      var id = String(r[0] || '').trim(); if (id) daCo[id] = 1;
-    });
-  }
-  var moi = p.rows.filter(function (r) { return !daCo[String(r[0] || '').trim()]; });
-  out.skipped = p.rows.length - moi.length;
-  if (!moi.length) return out;
-
-  // 1 lan chuyen khoan co the tra nhieu hoa don -> up anh 1 lan, dung chung link
-  var link = '';
-  if (p.anh && p.anh.data) link = uploadAnh_(p.anh.data, p.anh.mime, p.anh.ten);
-
-  var ghiLuc = Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm');
-  var dongDau = sh.getLastRow() + 1;
-  moi.forEach(function (r) {
-    var row = r.slice(0, 10);
-    while (row.length < 10) row.push('');
-    row.push(link);   // cot 11 Link anh
-    row.push(ghiLuc); // cot 12 Ghi luc
-    sh.appendRow(row);
-  });
-  // Cot 13 'Thang' phai ep dinh dang text TRUOC khi ghi, neu khong Sheet
-  // tu doi '2026-08' thanh kieu NGAY (giong xu ly ben tab HoaDon).
-  var cotThang = moi.map(function (r) { return [thang_(r[1])]; });
-  sh.getRange(dongDau, 13, moi.length, 1).setNumberFormat('@').setValues(cotThang);
-
-  // Cong so tien vua thu vao dung hoa don ben tab HoaDon
-  var themTheoHD = {};
-  moi.forEach(function (r) {
-    var idhd = String(r[5] || '').trim(); if (!idhd) return;
-    themTheoHD[idhd] = (themTheoHD[idhd] || 0) + num_(r[6]);
-  });
-  out.capnhat = capNhatDaThu_(ss, themTheoHD);
-  out.added = moi.length;
-  out.anh = link;
-  return out;
-}
-
-// Cong don tien thu vao dong DAU TIEN cua moi hoa don (dong mang tong tien
-// va trang thai; cac dong sau chi la san pham). Chi cong phan VUA ghi ->
-// gui lai cung ID phieu se bi bo qua o tren nen khong cong hai lan.
-function capNhatDaThu_(ss, themTheoHD) {
-  var sh = ss.getSheetByName('HoaDon');
-  if (!sh || sh.getLastRow() < 2) return 0;
-  var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]
-               .map(function (x) { return String(x).trim(); });
-  var cId = idx_(head, 'ID hoa don') + 1;
-  var cTong = idx_(head, 'Tong thanh toan') + 1;
-  var cThu = idx_(head, 'Da thu') + 1;
-  var cTt = idx_(head, 'Trang thai TT') + 1;
-  if (cId < 1 || cTong < 1 || cThu < 1 || cTt < 1) return 0;
-
-  var n = sh.getLastRow() - 1;
-  var ids = sh.getRange(2, cId, n, 1).getValues();
-  var dem = 0;
-  for (var id in themTheoHD) {
-    var dong = -1;
-    for (var i = 0; i < n; i++) {
-      if (String(ids[i][0] || '').trim() === id) { dong = i + 2; break; }
-    }
-    if (dong < 0) continue;
-    var tong = num_(sh.getRange(dong, cTong).getValue());
-    var thuMoi = num_(sh.getRange(dong, cThu).getValue()) + themTheoHD[id];
-    if (tong > 0 && thuMoi > tong) thuMoi = tong; // khong ghi vuot tong hoa don
-    sh.getRange(dong, cThu).setValue(thuMoi);
-    sh.getRange(dong, cTt).setValue(thuMoi >= tong ? 'Đã thanh toán' : 'Thanh toán 1 phần');
-    dem++;
-  }
-  return dem;
-}
-
-// Luu anh chung tu vao Drive cua tai khoan chay script. Loi anh KHONG lam
-// hong phieu thu - tra ve chuoi bao loi de con nhin thay tren Sheet.
-function uploadAnh_(b64, mime, ten) {
-  try {
-    var folder = layFolderAnh_();
-    var blob = Utilities.newBlob(Utilities.base64Decode(b64),
-                                 mime || 'image/jpeg',
-                                 ten || ('thu-' + Date.now() + '.jpg'));
-    var f = folder.createFile(blob);
-    try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e2) {}
-    return 'https://drive.google.com/file/d/' + f.getId() + '/view';
-  } catch (err) {
-    return 'LOI ANH: ' + err.message;
-  }
-}
-
-function layFolderAnh_() {
-  var it = DriveApp.getFoldersByName(ANH_FOLDER);
-  return it.hasNext() ? it.next() : DriveApp.createFolder(ANH_FOLDER);
-}
-
-function readThanhToan_(ss) {
-  var d = rowsOf_(ss, 'ThanhToan'); if (!d.head.length) return [];
-  var h = d.head;
-  var iId = idx_(h, 'ID phieu'), iNg = idx_(h, 'Ngay'), iMa = idx_(h, 'Ma KH'),
-      iKh = idx_(h, 'Khach'), iKho = idx_(h, 'Kho'), iHd = idx_(h, 'ID hoa don'),
-      iTien = idx_(h, 'So tien'), iHt = idx_(h, 'Hinh thuc'), iThu = idx_(h, 'Nguoi thu'),
-      iGc = idx_(h, 'Ghi chu'), iAnh = idx_(h, 'Link anh');
-  var out = [];
-  d.rows.forEach(function (r) {
-    if (!String(r[iId] || '').trim()) return;
-    out.push({
-      id: String(r[iId]).trim(), ngay: fmtD_(r[iNg]),
-      ma: String(r[iMa] || '').trim(), khach: r[iKh] || '', kho: r[iKho] || '',
-      idhd: String(r[iHd] || '').trim(), tien: num_(r[iTien]),
-      ht: r[iHt] || '', thu: r[iThu] || '',
-      ghichu: iGc >= 0 ? (r[iGc] || '') : '',
-      anh: iAnh >= 0 ? String(r[iAnh] || '') : ''
-    });
-  });
-  return out;
-}
-
-// Chay tay 1 lan de cap quyen truy cap Sheet + Drive (neu deploy bao thieu quyen).
-// 18/08/2026: co them DriveApp de duoc hoi quyen luu anh chung tu.
+// Chay tay 1 lan de cap quyen truy cap Sheet (neu deploy bao thieu quyen)
 function capQuyen() {
   var ss = SpreadsheetApp.openById(SHEET_ID);
-  var f = layFolderAnh_();
-  Logger.log('OK: ' + ss.getName() + ' | folder anh: ' + f.getName());
+  Logger.log('OK: ' + ss.getName());
 }
 
 // ============================================================
@@ -438,47 +270,6 @@ function gopHoaDon_13082026() {
 
     Logger.log('XONG: copy them ' + daCopy + ' dong. Sheet HoaDon hien co ' +
                (gop.getLastRow() - 1) + ' dong du lieu.');
-  } finally {
-    try { lock.releaseLock(); } catch (e) {}
-  }
-}
-
-// ============================================================
-// CHAY TAY 1 LAN (29/08/2026): them cot 21 'Thang' vao sheet HoaDon.
-// Lam gi: ghi header 'Thang' vao o U1, tinh 'yyyy-MM' tu cot Ngay (cot B)
-// va dien cho toan bo dong da co. Ghi GIA TRI TINH SAN dang text (khong
-// dung cong thuc) de khong lam lech getLastRow() cua doPost khi ghi hoa don.
-// CACH CHAY: deploy New version TRUOC -> chon ham themCotThang_29082026 -> Run.
-// Chay lai nhieu lan van an toan (chi ghi de dung gia tri do).
-// 29/08/2026 (lan 2): chay lai ham nay de chuan hoa cac dong da bi
-// Sheet doi thanh kieu NGAY ve lai text -> pivot gop dung 1 dong/thang.
-// ============================================================
-function themCotThang_29082026() {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000); // chan doPost ghi xen vao giua
-  try {
-    var ss = SpreadsheetApp.openById(SHEET_ID);
-    var sh = ss.getSheetByName('HoaDon');
-    if (!sh) throw new Error('Khong tim thay sheet HoaDon');
-
-    var mc = sh.getMaxColumns();
-    if (mc < 21) sh.insertColumnsAfter(mc, 21 - mc);
-
-    // Ep CA cot U ve dinh dang text truoc, ke ca cac dong con trong ->
-    // dong hoa don moi them sau nay cung thua dinh dang text, khong bi
-    // Sheet doi '2026-08' thanh kieu ngay.
-    sh.getRange(1, 21, sh.getMaxRows(), 1).setNumberFormat('@');
-    sh.getRange(1, 21).setValue(HD_HEAD[20]); // 'Thang'
-
-    var n = sh.getLastRow() - 1;
-    if (n < 1) { Logger.log('Sheet chua co dong du lieu nao. Chi them header.'); return; }
-
-    var ngay = sh.getRange(2, 2, n, 1).getValues(); // cot B 'Ngay'
-    var out = ngay.map(function (r) { return [thang_(r[0])]; });
-    sh.getRange(2, 21, n, 1).setNumberFormat('@').setValues(out); // '@' = text, tranh bi ep thanh ngay
-
-    var trong = out.filter(function (r) { return !r[0]; }).length;
-    Logger.log('XONG: dien Thang cho ' + n + ' dong. Khong doc duoc ngay: ' + trong + ' dong.');
   } finally {
     try { lock.releaseLock(); } catch (e) {}
   }
