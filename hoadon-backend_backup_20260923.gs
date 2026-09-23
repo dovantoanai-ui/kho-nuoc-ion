@@ -34,14 +34,6 @@ var TT_HEAD = ['ID phieu', 'Ngay', 'Ma KH', 'Khach', 'Kho', 'ID hoa don',
 
 var ANH_FOLDER = 'Anh thanh toan ION FUJI'; // backend tu tao trong Drive neu chua co
 
-// 23/09/2026: don giao qua doi tac VIBA. Moi hoa don tich "Giao qua VIBA" = 1 dong.
-// Chi la thong tin giao hang - doanh thu va cong no VAN tinh o tab HoaDon / ThanhToan.
-var VB_HEAD = ['ID hoa don', 'Ngay', 'Kho', 'Ma KH', 'Khach',
-               'Nguoi nhan', 'SDT nhan', 'Dia chi giao', 'Hang hoa',
-               'Tong tien', 'Thu ho', 'Ghi chu giao',
-               'Trang thai', 'Ngay giao', 'Nguoi xac nhan', 'Cap nhat luc', 'Thang'];
-var VB_COT_TEXT = [2, 7, 14, 17]; // Ngay, SDT nhan, Ngay giao, Thang: ep text de Sheet khong mat so 0 dau / doi ngay
-
 // ---------- GHI (POST tu app, che do no-cors) ----------
 function doPost(e) {
   var out = { ok: true };
@@ -89,12 +81,8 @@ function doPost(e) {
       }
       out.added = moi.length;
       out.skipped = p.rows.length - moi.length;
-      // 23/09/2026: hoa don co tich "Giao qua VIBA" -> ghi them 1 dong tab GiaoVIBA
-      if (p.viba && p.viba.row) out.viba = ghiViba_(ss, p.viba.row);
     } else if (p.loai === 'thanhtoan' && p.rows && p.rows.length) {
       out = ghiThanhToan_(ss, p);
-    } else if (p.loai === 'vibagiao' && p.id) {
-      out = xacNhanViba_(ss, p);
     }
   } catch (err) {
     out = { ok: false, error: err.message };
@@ -123,13 +111,12 @@ function nextMa_(sh, kho) {
 // ---------- DOC (GET, tra ve JSONP cho app doc duoc Sheet rieng tu) ----------
 function doGet(e) {
   var cb = (e && e.parameter && e.parameter.callback) ? e.parameter.callback : 'callback';
-  var out = { ok: true, khach: [], hoadon: [], thanhtoan: [], viba: [] };
+  var out = { ok: true, khach: [], hoadon: [], thanhtoan: [] };
   try {
     var ss = SpreadsheetApp.openById(SHEET_ID);
     out.khach = readKhach_(ss);
     out.hoadon = readHoaDon_(ss);
     out.thanhtoan = readThanhToan_(ss);
-    out.viba = readViba_(ss);
     out.cat = readCatLe_();
   } catch (err) {
     out = { ok: false, error: err.message };
@@ -377,83 +364,6 @@ function readThanhToan_(ss) {
       ht: r[iHt] || '', thu: r[iThu] || '',
       ghichu: iGc >= 0 ? (r[iGc] || '') : '',
       anh: iAnh >= 0 ? String(r[iAnh] || '') : ''
-    });
-  });
-  return out;
-}
-
-// ============================================================
-// 23/09/2026 — GIAO HANG QUA VIBA
-// ============================================================
-// Ghi 1 dong don giao VIBA. row tu app: [ID hoa don, Ngay, Kho, Ma KH, Khach,
-// Nguoi nhan, SDT nhan, Dia chi giao, Hang hoa, Tong tien, Thu ho, Ghi chu giao]
-function ghiViba_(ss, r) {
-  var sh = ensureSheet_(ss, 'GiaoVIBA', VB_HEAD);
-  var id = String(r[0] || '').trim();
-  if (!id) return { added: 0 };
-  if (timDongViba_(sh, id) > 0) return { added: 0, skipped: 1 }; // bam dong bo nhieu lan -> khong ghi trung
-
-  var row = r.slice(0, 12);
-  while (row.length < 12) row.push('');
-  row.push('Chờ giao');                                              // 13 Trang thai
-  row.push('');                                                      // 14 Ngay giao
-  row.push('');                                                      // 15 Nguoi xac nhan
-  row.push(Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm')); // 16 Cap nhat luc
-  row.push(thang_(r[1]));                                            // 17 Thang
-
-  // Ep text cac cot de mat so 0 dau SDT / bi doi kieu ngay TRUOC khi ghi
-  var dong = sh.getLastRow() + 1;
-  VB_COT_TEXT.forEach(function (c) { sh.getRange(dong, c).setNumberFormat('@'); });
-  sh.getRange(dong, 1, 1, VB_HEAD.length).setValues([row.map(function (v, i) {
-    return VB_COT_TEXT.indexOf(i + 1) >= 0 ? String(v == null ? '' : v) : v;
-  })]);
-  return { added: 1 };
-}
-
-// ION bam "Xac nhan da giao" trong app -> doi trang thai dung dong cua hoa don
-function xacNhanViba_(ss, p) {
-  var sh = ss.getSheetByName('GiaoVIBA');
-  if (!sh) return { ok: false, error: 'Chua co tab GiaoVIBA' };
-  var dong = timDongViba_(sh, String(p.id).trim());
-  if (dong < 0) return { ok: false, error: 'Khong tim thay don ' + p.id };
-  sh.getRange(dong, 14).setNumberFormat('@');
-  sh.getRange(dong, 13, 1, 4).setValues([[
-    'Đã giao',
-    String(p.ngaygiao || Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy')),
-    String(p.nguoi || ''),
-    Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm')
-  ]]);
-  return { ok: true, capnhat: 1 };
-}
-
-// Tra ve so dong (>=2) cua ID hoa don trong tab GiaoVIBA, -1 neu chua co
-function timDongViba_(sh, id) {
-  var last = sh.getLastRow();
-  if (last < 2) return -1;
-  var ids = sh.getRange(2, 1, last - 1, 1).getValues();
-  for (var i = 0; i < ids.length; i++) {
-    if (String(ids[i][0] || '').trim() === id) return i + 2;
-  }
-  return -1;
-}
-
-function readViba_(ss) {
-  var d = rowsOf_(ss, 'GiaoVIBA'); if (!d.head.length) return [];
-  var h = d.head;
-  var c = {};
-  VB_HEAD.forEach(function (name) { c[name] = idx_(h, name); });
-  function g(r, name) { return c[name] >= 0 ? r[c[name]] : ''; }
-  var out = [];
-  d.rows.forEach(function (r) {
-    var id = String(g(r, 'ID hoa don') || '').trim(); if (!id) return;
-    out.push({
-      id: id, ngay: fmtD_(g(r, 'Ngay')), kho: g(r, 'Kho') || '',
-      ma: String(g(r, 'Ma KH') || '').trim(), khach: g(r, 'Khach') || '',
-      nhan: g(r, 'Nguoi nhan') || '', sdt: String(g(r, 'SDT nhan') || ''),
-      dc: g(r, 'Dia chi giao') || '', hang: g(r, 'Hang hoa') || '',
-      tong: num_(g(r, 'Tong tien')), thuho: num_(g(r, 'Thu ho')),
-      gc: g(r, 'Ghi chu giao') || '', tt: g(r, 'Trang thai') || 'Chờ giao',
-      ngaygiao: fmtD_(g(r, 'Ngay giao')), nguoi: g(r, 'Nguoi xac nhan') || ''
     });
   });
   return out;

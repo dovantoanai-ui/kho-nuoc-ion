@@ -108,7 +108,6 @@
       <button class="tb" data-t="dh" onclick="showTab('dh')">Đơn</button>
       <button class="tb" data-t="cn" onclick="showTab('cn')">Công nợ</button>
       <button class="tb" data-t="tn" onclick="showTab('tn')">Thu nợ</button>
-      <button class="tb" data-t="vb" onclick="showTab('vb')">Giao VIBA</button>
       <button class="tb" data-t="kk" onclick="showTab('kk')">Kiểm kê</button>
       <button class="tb" data-t="cs" onclick="showTab('cs')">CSKH</button>
     </div>
@@ -167,25 +166,6 @@
         <div id="dathuWrap" style="display:none"><label>Số tiền đã thu (đ)</label><input id="dathu" type="number" inputmode="numeric" placeholder="0" oninput="render()"></div>
         <label>Cọc bình (đ)</label><input id="coc" type="number" inputmode="numeric" placeholder="0" oninput="render()">
         <label>Ghi chú (tuỳ chọn)</label><textarea id="ghichu" rows="2" placeholder="VD: giao giờ hành chính, gọi trước khi giao..." oninput="render()" style="width:100%;font:inherit;font-size:15px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);resize:vertical"></textarea>
-      </div>
-
-      <div class="card">
-        <h2>Giao hàng</h2>
-        <div style="display:flex;align-items:center;gap:8px">
-          <input type="checkbox" id="viba" onchange="onViba()" style="width:20px;height:20px;flex:0 0 20px">
-          <label for="viba" style="margin:0;font-size:14px;color:var(--ink);font-weight:700;flex:1">Giao qua VIBA</label>
-        </div>
-        <div id="vibaWrap" style="display:none;border-left:3px solid var(--red);padding-left:10px;margin-top:8px">
-          <label>Người nhận</label><input id="vbTen" oninput="render()" placeholder="Tên người nhận hàng">
-          <label>SĐT nhận</label><input id="vbSdt" type="tel" oninput="render()" placeholder="Số điện thoại người nhận">
-          <label>Địa chỉ giao</label><input id="vbDc" oninput="render()" placeholder="Số nhà, đường, xã/phường, quận/huyện">
-          <div style="display:flex;align-items:center;gap:8px;margin-top:12px">
-            <input type="checkbox" id="vbThuHo" onchange="onVbThuHo()" style="width:20px;height:20px;flex:0 0 20px">
-            <label for="vbThuHo" style="margin:0;font-size:14px;color:var(--ink);flex:1">VIBA thu hộ tiền</label>
-          </div>
-          <div id="vbThuHoWrap" style="display:none"><label>Số tiền thu hộ (đ)</label><input id="vbTien" type="number" inputmode="numeric" placeholder="0" oninput="render()"></div>
-          <label>Ghi chú cho VIBA</label><input id="vbGc" oninput="render()" placeholder="VD: giao trước 17h, gọi trước khi đến">
-        </div>
       </div>
 
       <div class="card" id="cardPreview">
@@ -265,21 +245,6 @@
         <div class="muted" style="margin-bottom:8px">Thu tháng này: <b id="tnThang">0</b> đ · Tổng đã thu: <b id="tnTong">0</b> đ</div>
         <button class="btn bgrn" style="width:100%;margin-bottom:10px" onclick="loadData(true)">Tải lại từ Sheet</button>
         <div id="tnList"></div>
-      </div>
-    </div>
-
-    <!-- ===== TAB GIAO VIBA ===== -->
-    <div id="tab-vb" class="tab-pane" style="display:none">
-      <div class="card">
-        <h2>Giao hàng VIBA — kho <span id="vbKhoLbl">—</span></h2>
-        <div class="muted" style="margin-bottom:8px">Chờ giao: <b id="vbSoCho">0</b> đơn · Thu hộ chờ về: <b id="vbTongThuHo" style="color:var(--red)">0</b> đ</div>
-        <div class="row" style="align-items:stretch">
-          <div style="flex:1"><label>Xem</label>
-            <select id="vbLoc" onchange="renderViba()"><option value="cho">Chờ giao</option><option value="da">Đã giao</option><option value="all">Tất cả</option></select></div>
-          <div style="flex:1"><label>Người xác nhận</label><input id="vbNguoi" placeholder="Tên người bấm"></div>
-        </div>
-        <button class="btn bgrn" style="width:100%;margin:4px 0 10px" onclick="loadData(true)">Tải lại từ Sheet</button>
-        <div id="vbList"></div>
       </div>
     </div>
 
@@ -373,7 +338,6 @@ var KHOCODE='HN';
 var KH=[], HD=[], TT=[];
 var PT={ma:'',ten:'',list:[],anh:null}; /* trang thai form phieu thu cong no */
 var TAB='hd'; /* tab dang mo - de sau khi luu phieu thu quay ve dung cho */
-var VB=[];    /* don giao qua VIBA, doc tu tab GiaoVIBA */
 
 function pad(n){return String(n).padStart(2,'0')}
 function today(){var d=new Date();return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()}
@@ -407,9 +371,6 @@ function showTab(t){
   if(t==='dh')renderDonHang();
   if(t==='cn')renderCongNo();
   if(t==='tn'){document.getElementById('tnKhoLbl').textContent=KHO;renderThuNo();}
-  if(t==='vb'){document.getElementById('vbKhoLbl').textContent=KHO;
-    var vn=document.getElementById('vbNguoi');if(!vn.value)vn.value=localStorage.getItem('hd_vb_nguoi')||'';
-    renderViba();}
   if(t==='kk'){document.getElementById('kkKhoLbl').textContent=KHO;if(!KKCAT.length)loadKhoKiemKe();else renderKK();}
   if(t==='cs')renderCSKH();
   window.scrollTo(0,0);
@@ -437,10 +398,10 @@ function loadData(manual,cb){
   document.getElementById('dataInfo').textContent='Đang tải dữ liệu...';
   jsonp(GS,function(d){
     if(!d||!d.ok){document.getElementById('dataInfo').textContent='Lỗi tải dữ liệu';if(manual)alert('Không tải được dữ liệu. Kiểm tra URL backend đã deploy đúng chưa.');if(cb)cb(false);return}
-    KH=d.khach||[];HD=d.hoadon||[];TT=d.thanhtoan||[];VB=d.viba||[];
+    KH=d.khach||[];HD=d.hoadon||[];TT=d.thanhtoan||[];
     if(d.cat&&d.cat.length){CAT=d.cat;try{localStorage.setItem('hd_cat',JSON.stringify(CAT))}catch(e){}refreshRows();}
     document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn';
-    fillKhSelect();renderMaPreview();renderKhList();renderBaoCao();renderCongNo();renderThuNo();renderViba();renderCSKH();
+    fillKhSelect();renderMaPreview();renderKhList();renderBaoCao();renderCongNo();renderThuNo();renderCSKH();
     if(cb)cb(true);
   });
 }
@@ -462,42 +423,6 @@ function onKhSel(){
   box.innerHTML='SĐT: '+(k.sdt||'—')+' &nbsp;·&nbsp; '+(k.qh||'—')+' &nbsp;·&nbsp; '+k.tt+(k.tt==='Công nợ'?' ('+k.kyhan+' ngày)':'');
   document.getElementById('tt').value=(k.tt==='Công nợ')?'Chưa thanh toán':'Đã thanh toán';
   document.getElementById('ht').value='Tiền mặt';document.getElementById('htTKWrap').style.display='none';onTt();
-  if(document.getElementById('viba').checked)vbFill(true); /* doi khach -> nguoi nhan theo khach moi */
-}
-
-/* ---------- GIAO VIBA: khoi tren form hoa don ---------- */
-/* Tong tien + so da thu theo dung cong thuc cua dongBo() */
-function tongForm(){
-  var sub=0;readItems().forEach(function(x){sub+=x.tt});
-  var hasVat=document.getElementById('vat').checked;var rate=Number(document.getElementById('vatr').value)||0;
-  var vat=hasVat?Math.round(sub*rate/100):0;var coc=Number(document.getElementById('coc').value)||0;
-  var tong=sub+vat+coc;var ttv=document.getElementById('tt').value;
-  var dathu=ttv==='Đã thanh toán'?tong:(ttv==='Thanh toán 1 phần'?(Number(document.getElementById('dathu').value)||0):0);
-  return {tong:tong,dathu:dathu,con:Math.max(tong-dathu,0)};
-}
-/* force=true: ghi de theo khach dang chon; false: chi dien o con trong */
-function vbFill(force){
-  var k=selKh();if(!k)return;
-  var set=function(id,v){var el=document.getElementById(id);if(force||!el.value)el.value=v||''};
-  set('vbTen',k.ten);set('vbSdt',k.sdt);set('vbDc',k.qh);
-  render();
-}
-function onViba(){
-  var on=document.getElementById('viba').checked;
-  document.getElementById('vibaWrap').style.display=on?'block':'none';
-  if(on)vbFill(false);else render();
-}
-function onVbThuHo(){
-  var on=document.getElementById('vbThuHo').checked;
-  document.getElementById('vbThuHoWrap').style.display=on?'block':'none';
-  if(on&&!Number(document.getElementById('vbTien').value))document.getElementById('vbTien').value=tongForm().con;
-  render();
-}
-function vbForm(){
-  if(!document.getElementById('viba').checked)return null;
-  var v=function(id){return (document.getElementById(id).value||'').trim()};
-  var thuho=document.getElementById('vbThuHo').checked?(Number(document.getElementById('vbTien').value)||0):0;
-  return {ten:v('vbTen'),sdt:v('vbSdt'),dc:v('vbDc'),thuho:thuho,gc:v('vbGc')};
 }
 function selKh(){var ma=document.getElementById('khSel').value;return ma?khByMa(ma):null}
 function onHt(){document.getElementById('htTKWrap').style.display=(document.getElementById('ht').value==='Chuyển khoản')?'block':'none';render();}
@@ -621,14 +546,6 @@ function render(){
   var payLine='<div class="kv" style="margin-top:6px"><b>Thanh toán:</b> <span style="color:'+ttcol+';font-weight:800">'+ttv+'</span> &nbsp;|&nbsp; <b>Hình thức:</b> '+htv+(thu?' &nbsp;|&nbsp; <b>Người thu:</b> '+thu:'')+'</div>';
   var ghichu=(document.getElementById('ghichu').value||'').trim();
   var gcLine=ghichu?'<div class="kv" style="margin-top:4px"><b>Ghi chú:</b> '+ghichu.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>':'';
-  var vb=vbForm();
-  var vbLine=vb?('<div style="margin-top:7px;border:1px dashed #e08a00;background:#fff6e8;border-radius:6px;padding:6px 8px;font-size:12px;line-height:1.5">'
-    +'<b>Giao hàng: VIBA</b>'
-    +'<br>Người nhận: '+esc(vb.ten||'...........')+(vb.sdt?' · '+esc(vb.sdt):'')
-    +'<br>Địa chỉ: '+esc(vb.dc||'...........')
-    +(vb.thuho>0?'<br><b>VIBA thu hộ: '+fmt(vb.thuho)+' đ</b>':'')
-    +(vb.gc?'<br>Ghi chú giao: '+esc(vb.gc):'')
-    +'</div>'):'';
   var rows='';
   items.forEach(function(x,n){rows+='<tr><td class="c">'+(n+1)+'</td><td>'+x.t+'</td><td class="c">'+x.dv+'</td><td class="c">'+x.sl+'</td><td class="r">'+fmt(x.gia)+'</td><td class="r">'+fmt(x.tt)+'</td></tr>'});
   if(!items.length)rows='<tr><td class="c" colspan="6" style="color:#999;padding:14px">Chưa có sản phẩm</td></tr>';
@@ -643,7 +560,6 @@ function render(){
    +'<tbody>'+rows+totRows+'</tbody></table>'
    +payLine
    +gcLine
-   +vbLine
    +'<div class="ivf">'+note+' Cảm ơn Quý khách!<br>Đặt hàng: 090.809.88.66 &nbsp;|&nbsp; ionfuji.vietnam@gmail.com</div></div>';
   document.getElementById('inv').innerHTML=h;
 }
@@ -658,34 +574,19 @@ function dongBo(){
   var htv=htValue();
   var dathu=ttv==='Đã thanh toán'?tong:(ttv==='Thanh toán 1 phần'?(Number(document.getElementById('dathu').value)||0):0);
   var ghichu=(document.getElementById('ghichu').value||'').trim();
-  /* 23/09/2026: kiem tra thong tin giao VIBA truoc khi gui */
-  var vb=vbForm();
-  if(vb){
-    if(!vb.ten||!vb.sdt||!vb.dc){alert('Đơn giao VIBA cần đủ Người nhận, SĐT nhận và Địa chỉ giao.');return}
-    if(document.getElementById('vbThuHo').checked&&vb.thuho<=0){alert('Đã tích "VIBA thu hộ" nhưng chưa nhập số tiền thu hộ.');return}
-    if(vb.thuho>tong){alert('Số tiền thu hộ ('+fmt(vb.thuho)+' đ) lớn hơn tổng hoá đơn ('+fmt(tong)+' đ).');return}
-  }
   var id='HD'+Date.now();var ng=today();var rows=[];
   items.forEach(function(x,i){
     rows.push([id,ng,cust.ma,i===0?cust.ten:'',i===0?cust.sdt:'',KHO,x.t,x.dv,x.sl,x.gia,x.tt,
       i===0?(hasVat?rate:0):'',i===0?coc:'',i===0?tong:'',i===0?dathu:'',i===0?ttv:'',i===0?thu:'',i===0?htv:'',i===0?ghichu:'']);
   });
-  var body={loai:'hoadon',rows:rows};
-  var vbRow=null;
-  if(vb){
-    var hang=items.map(function(x){return x.t+' ×'+x.sl}).join('; ');
-    vbRow=[id,ng,KHO,cust.ma,cust.ten,vb.ten,vb.sdt,vb.dc,hang,tong,vb.thuho,vb.gc];
-    body.viba={row:vbRow};
-  }
   var b=document.getElementById('dbBtn');b.textContent='Đang đồng bộ...';
-  fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)})
+  fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({loai:'hoadon',rows:rows})})
    .then(function(){
      rows.forEach(function(r){HD.push({id:r[0],ngay:String(r[1]).slice(0,10),ma:String(r[2]),khach:r[3],sdt:String(r[4]),kho:r[5],sp:r[6],dvt:r[7],sl:Number(r[8])||0,gia:Number(r[9])||0,tien:Number(r[10])||0,vat:Number(r[11])||0,coc:Number(r[12])||0,tong:Number(r[13])||0,dathu:Number(r[14])||0,tt:r[15],thu:r[16],ht:r[17],ghichu:r[18]})});
-     if(vbRow)VB.push({id:id,ngay:ng,kho:KHO,ma:cust.ma,khach:cust.ten,nhan:vb.ten,sdt:vb.sdt,dc:vb.dc,hang:vbRow[8],tong:tong,thuho:vb.thuho,gc:vb.gc,tt:'Chờ giao',ngaygiao:'',nguoi:''});
      document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn';
      b.textContent='Đã đồng bộ ✓ (bấm để gửi tiếp)';
-     renderBaoCao();renderCongNo();renderCSKH();renderDonHang();renderViba();
-     alert('Đã lưu hoá đơn '+id+' lên Sheet.'+(vbRow?'\nĐã bắn đơn sang tab Giao VIBA (Chờ giao).':''));
+     renderBaoCao();renderCongNo();renderCSKH();renderDonHang();
+     alert('Đã lưu hoá đơn '+id+' lên Sheet.');
    })
    .catch(function(e){b.textContent='Lưu & đồng bộ hoá đơn lên Sheet';alert('Lỗi đồng bộ: '+e.message)});
 }
@@ -1052,68 +953,6 @@ function ptXacNhan(idPhieu,lan){
         btn.disabled=false;btn.textContent='Lưu phiếu thu';
         alert('Chưa thấy phiếu thu trên Sheet.\n\nCó thể mạng chậm hoặc backend chưa deploy bản mới. Vài phút nữa vào tab Thu nợ bấm "Tải lại từ Sheet" để kiểm tra.\n\nGửi lại phiếu này cũng an toàn: trùng mã phiếu sẽ bị bỏ qua, không cộng tiền hai lần.');
       }
-    });
-  },lan===1?2500:4000);
-}
-
-/* ---------- GIAO VIBA: tab theo doi ---------- */
-function renderViba(){
-  var el=document.getElementById('vbList');if(!el)return;
-  var all=VB.filter(function(x){return x.kho===KHO});
-  var cho=all.filter(function(x){return x.tt!=='Đã giao'});
-  var thuho=0;cho.forEach(function(x){thuho+=x.thuho});
-  document.getElementById('vbSoCho').textContent=cho.length;
-  document.getElementById('vbTongThuHo').textContent=fmt(thuho);
-  var loc=document.getElementById('vbLoc').value;
-  var arr=loc==='cho'?cho:(loc==='da'?all.filter(function(x){return x.tt==='Đã giao'}):all.slice());
-  /* Cho giao: don cu nhat len dau de uu tien; con lai: moi nhat len dau */
-  if(loc==='cho')arr.sort(function(a,b){return String(a.id).localeCompare(String(b.id))});
-  else arr.sort(function(a,b){return String(b.id).localeCompare(String(a.id))});
-  if(!arr.length){el.innerHTML='<div class="empty">'+(loc==='cho'?'Không có đơn nào đang chờ giao.':'Chưa có đơn nào.')+'</div>';return}
-  var h='';
-  arr.forEach(function(x){
-    var xong=x.tt==='Đã giao';
-    h+='<div class="li" style="display:block'+(xong?';opacity:.8':'')+'">'
-      +'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">'
-      +'<div class="t1">'+esc(x.ngay)+' · '+esc(x.id)+'</div>'
-      +'<span class="pill '+(xong?'p-ok':'p-warn')+'">'+esc(x.tt)+'</span></div>'
-      +'<div class="t2">'+esc(x.ma)+' · '+esc(x.khach||'—')+'</div>'
-      +'<div class="t2">Nhận: <b>'+esc(x.nhan||'—')+'</b>'+(x.sdt?' · '+esc(x.sdt):'')+'</div>'
-      +'<div class="t2">'+esc(x.dc||'—')+'</div>'
-      +(x.hang?'<div class="t2">'+esc(x.hang)+'</div>':'')
-      +'<div class="t2">Tổng: '+fmt(x.tong)+' đ'+(x.thuho>0?' · <b style="color:var(--red)">Thu hộ '+fmt(x.thuho)+' đ</b>':' · không thu hộ')+'</div>'
-      +(x.gc?'<div class="t2">Ghi chú: '+esc(x.gc)+'</div>':'')
-      +(xong?'<div class="t2" style="color:var(--grn)">Đã giao '+esc(x.ngaygiao||'')+(x.nguoi?' · xác nhận: '+esc(x.nguoi):'')+'</div>'
-            :'<button class="btn bred" style="width:100%;margin-top:8px" data-vb-id="'+esc(x.id)+'">Xác nhận đã giao</button>')
-      +'</div>';
-  });
-  el.innerHTML=h;
-  el.querySelectorAll('[data-vb-id]').forEach(function(b){
-    b.onclick=function(){vbXacNhan(b.getAttribute('data-vb-id'),b)};
-  });
-}
-function vbXacNhan(id,btn){
-  if(!GS){alert('Chưa cấu hình backend. Bấm Cài đặt để dán URL /exec.');return}
-  var nguoi=(document.getElementById('vbNguoi').value||'').trim();
-  if(!nguoi){alert('Nhập tên người xác nhận ở ô phía trên để lưu vết.');document.getElementById('vbNguoi').focus();return}
-  if(!confirm('Xác nhận VIBA đã giao đơn '+id+'?'))return;
-  try{localStorage.setItem('hd_vb_nguoi',nguoi)}catch(e){}
-  btn.disabled=true;btn.textContent='Đang lưu...';
-  fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify({loai:'vibagiao',id:id,ngaygiao:today(),nguoi:nguoi})})
-   .then(function(){vbKiemTra(id,btn,1)})
-   .catch(function(e){btn.disabled=false;btn.textContent='Xác nhận đã giao';alert('Lỗi gửi dữ liệu: '+e.message)});
-}
-/* no-cors khong doc duoc phan hoi -> tai lai Sheet xem don da chuyen 'Da giao' that chua */
-function vbKiemTra(id,btn,lan){
-  btn.textContent='Đang kiểm tra trên Sheet...';
-  setTimeout(function(){
-    loadData(false,function(){
-      var ok=false;VB.forEach(function(x){if(x.id===id&&x.tt==='Đã giao')ok=true});
-      if(ok){alert('Đã xác nhận giao đơn '+id+'.');return}
-      if(lan<2){vbKiemTra(id,btn,lan+1);return}
-      renderViba();
-      alert('Chưa thấy đơn '+id+' chuyển sang Đã giao trên Sheet.\n\nCó thể mạng chậm hoặc backend chưa deploy bản mới. Vài phút nữa bấm "Tải lại từ Sheet" để kiểm tra. Bấm xác nhận lại cũng an toàn.');
     });
   },lan===1?2500:4000);
 }
