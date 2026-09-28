@@ -35,6 +35,13 @@
   .tabs{display:flex;gap:4px;overflow:auto;padding:6px 8px 8px}
   .tb{white-space:nowrap;border:none;background:transparent;color:var(--mut);font:inherit;font-size:13px;font-weight:600;padding:7px 12px;border-radius:9px;cursor:pointer}
   .tb.active{background:#fdeceb;color:var(--red)}
+  /* 29/09: chip + thanh chon cho bao cao mo rong / bao gia */
+  .ionchips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+  .ionchips button{border:1px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-size:13px;padding:6px 11px;border-radius:18px;cursor:pointer}
+  .ionchips button.on{background:#fdeceb;border-color:var(--red);color:var(--red);font-weight:700}
+  .ionseg{display:flex;background:#eef1f4;border-radius:10px;padding:3px;margin-bottom:10px;overflow:auto}
+  .ionseg button{flex:1;border:none;background:transparent;font:inherit;font-size:13px;padding:7px 8px;border-radius:8px;color:var(--mut);white-space:nowrap;cursor:pointer}
+  .ionseg button.on{background:#fff;color:var(--red);font-weight:700}
   /* kho screen */
   .kho-screen{min-height:82vh;display:flex;align-items:center;justify-content:center;padding:20px}
   .kho-box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px 18px;width:100%;max-width:360px;text-align:center}
@@ -105,6 +112,8 @@
       <button class="tb active" data-t="hd" onclick="showTab('hd')">Hoá đơn</button>
       <button class="tb" data-t="kh" onclick="showTab('kh')">Khách</button>
       <button class="tb" data-t="bc" onclick="showTab('bc')">Báo cáo</button>
+      <button class="tb" data-t="bg" onclick="showTab('bg')">Báo giá</button>
+      <button class="tb" data-t="hs" onclick="showTab('hs')">Hồ sơ</button>
       <button class="tb" data-t="dh" onclick="showTab('dh')">Đơn</button>
       <button class="tb" data-t="cn" onclick="showTab('cn')">Công nợ</button>
       <button class="tb" data-t="tn" onclick="showTab('tn')">Thu nợ</button>
@@ -223,6 +232,9 @@
 
     <!-- ===== TAB BAO CAO ===== -->
     <div id="tab-bc" class="tab-pane" style="display:none">
+      <div class="ionseg" id="bcSeg"><button class="on" data-x="tq" onclick="bcXChon('tq')">Tổng quan</button><button data-x="sp" onclick="bcXChon('sp')">Sản phẩm</button><button data-x="vd" onclick="bcXChon('vd')">Vấn đề</button><button data-x="pt" onclick="bcXChon('pt')">Phát triển</button><button data-x="gui" onclick="bcXChon('gui')">Gửi báo cáo</button></div>
+      <div id="ionForm"></div>
+      <div id="bcX_tq">
       <div class="muted" id="bcKhoLbl" style="margin-bottom:10px;font-weight:700;color:var(--red)"></div>
       <div class="kpi" id="bcKpi"></div>
       <div class="card">
@@ -234,6 +246,36 @@
         <button class="btn bgrn" style="width:100%;margin-bottom:8px" onclick="loadData(true)">Tải lại từ Sheet</button>
         <div style="overflow-x:auto"><table class="rpt"><thead><tr><th>Ngày</th><th>Số HĐ</th><th>SL</th><th>Doanh thu</th><th>Đã thu</th><th>Còn nợ</th></tr></thead><tbody id="bcDays"></tbody></table></div>
       </div>
+        <div id="bcX_tq_them"></div>
+      </div>
+      <div id="bcX_sp" style="display:none"></div><div id="bcX_vd" style="display:none"></div><div id="bcX_pt" style="display:none"></div><div id="bcX_gui" style="display:none"></div>
+    </div>
+
+    <!-- ===== TAB BAO GIA (29/09/2026): chon bac CK + SP -> PDF tu mau goc co dau (Web App "ION FUJI - App") ===== -->
+    <div id="tab-bg" class="tab-pane" style="display:none">
+      <div class="card">
+        <h2>Làm báo giá</h2>
+        <div class="muted" id="bgInfo">Đang tải bảng giá...</div>
+        <label>Đối tượng / bậc chiết khấu</label>
+        <select id="bgBac" onchange="bgDoiBac()"></select>
+        <label>Chiết khấu (%) <span class="muted" id="bgCkGoiY"></span></label>
+        <input id="bgCk" type="number" min="0" max="60" step="1" oninput="bgVe()">
+        <label>Sản phẩm (tick để đưa vào báo giá)</label>
+        <div id="bgSp" class="ionchips"></div>
+        <label>Kính gửi (tên khách, để trống = mặc định theo bậc)</label>
+        <input id="bgKinhGui" placeholder="VD: Cửa hàng Minh Anh">
+        <label>Ghi chú thêm trên báo giá (không bắt buộc)</label>
+        <input id="bgGhiChu" placeholder="VD: Miễn phí giao nội thành cho đơn từ 10 thùng">
+      </div>
+      <div class="card"><h2>Xem trước giá <span class="muted" style="font-weight:400">(chưa VAT, giá chính xác do máy chủ tính theo bảng giá chuẩn)</span></h2><div id="bgXem"></div></div>
+      <button class="btn bred" style="width:100%;padding:13px;font-size:15px" id="bgNut" onclick="bgTao()">Tạo báo giá PDF</button>
+      <div id="bgKq" style="margin-top:12px"></div>
+    </div>
+
+    <!-- ===== TAB HO SO (29/09/2026): tab TuHoSo trong file "Báo cáo ION FUJI" ===== -->
+    <div id="tab-hs" class="tab-pane" style="display:none">
+      <input id="hsTim" placeholder="Tìm hồ sơ..." oninput="hsVe()" style="margin-bottom:10px">
+      <div id="hsDs"><div class="empty">Đang tải...</div></div>
     </div>
 
     <!-- ===== TAB DON HANG ===== -->
@@ -403,7 +445,9 @@ function showTab(t){
   document.getElementById('bar').style.display=(t==='hd')?'flex':'none';
   if(t==='hd')fillKhSelect();
   if(t==='kh'){renderMaPreview();renderKhList()}
-  if(t==='bc')renderBaoCao();
+  if(t==='bc'){renderBaoCao();bcXChon(BCX);}
+  if(t==='bg')bgInit();
+  if(t==='hs')hsInit();
   if(t==='dh')renderDonHang();
   if(t==='cn')renderCongNo();
   if(t==='tn'){document.getElementById('tnKhoLbl').textContent=KHO;renderThuNo();}
@@ -440,7 +484,7 @@ function loadData(manual,cb){
     KH=d.khach||[];HD=d.hoadon||[];TT=d.thanhtoan||[];VB=d.viba||[];
     if(d.cat&&d.cat.length){CAT=d.cat;try{localStorage.setItem('hd_cat',JSON.stringify(CAT))}catch(e){}refreshRows();}
     document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn';
-    fillKhSelect();renderMaPreview();renderKhList();renderBaoCao();renderCongNo();renderThuNo();renderViba();renderCSKH();
+    fillKhSelect();renderMaPreview();renderKhList();renderBaoCao();if(TAB==='bc')bcXChon(BCX);renderCongNo();renderThuNo();renderViba();renderCSKH();
     if(cb)cb(true);
   });
 }
@@ -1224,6 +1268,204 @@ function inPdf(){window.print()}
   document.getElementById('csN').value=Number(localStorage.getItem('hd_cskh_ngay')||10);
   if(KHO){setKho(KHO)}
 })();
+
+/* ================= 29/09/2026: BAO CAO MO RONG + BAO GIA + HO SO (anh Toan OK code) =================
+ * So bao cao tinh TAI APP tu HD (hoa don da tai) theo KHO dang chon. Ghi bao cao / ho so / bao gia qua Web App rieng
+ * "ION FUJI - App" (du-an/DA05-nuoc-ion-kiem/apps-script-ion-app), file Sheet "Báo cáo ION FUJI". Giu nguyen giao dien app. */
+var ION_API='https://script.google.com/macros/s/AKfycbwJw1XJqDLkkf7Fi0zWbdj6W3akchAJxnHg5RbnVQ1wQU7dZ2FnG3BeV8sYZstJ8GwkMg/exec';
+function ionGet(p){var q=Object.keys(p).map(function(k){return k+'='+encodeURIComponent(p[k])}).join('&');return fetch(ION_API+'?'+q,{cache:'no-store'}).then(function(r){return r.json()})}
+function ionPost(b){return fetch(ION_API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(b)}).then(function(r){return r.json()})}
+function ionEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function ionPc(a,b){return b>0?Math.round((a-b)/b*100):null}
+function ionPcTxt(d){if(d===null)return '<span class="muted">–</span>';return '<b style="color:'+(d>=0?'var(--grn)':'var(--red)')+'">'+(d>0?'+':'')+d+'%</b>'}
+function ionNgayISO(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function ionTuan(){var d=new Date();d=new Date(d.getFullYear(),d.getMonth(),d.getDate());d.setDate(d.getDate()-((d.getDay()+6)%7)+3);var t1=new Date(d.getFullYear(),0,4);return d.getFullYear()+'-W'+pad(1+Math.round(((d-t1)/86400000-3+((t1.getDay()+6)%7))/7))}
+function ionCot(ds){var mx=Math.max.apply(null,ds.map(function(x){return x.v}).concat([1]));return '<div style="display:flex;align-items:flex-end;gap:8px;height:110px">'+ds.map(function(x,i){return '<div style="flex:1;text-align:center;font-size:11px;color:var(--mut)"><div style="height:'+Math.max(3,Math.round(x.v/mx*70))+'px;background:'+(i===ds.length-1?'var(--red)':'#f3c3cb')+';border-radius:6px 6px 0 0;margin-bottom:3px"></div>'+x.lb+'<br><b style="color:var(--ink)">'+x.so+'</b></div>'}).join('')+'</div>'}
+function ionTr(n){n=Number(n)||0;var t=n/1e6;return (Math.abs(t)>=100?Math.round(t):Math.round(t*10)/10).toLocaleString('vi-VN')+'tr'}
+
+/* ---- so lieu theo kho ---- */
+function ionSo(){
+  var now=new Date(), N=now.getDate(), mNay=pad(now.getMonth()+1)+'/'+now.getFullYear();
+  var t=new Date(now.getFullYear(),now.getMonth()-1,1), mTruoc=pad(t.getMonth()+1)+'/'+t.getFullYear();
+  var dong=HD.filter(function(x){return x.kho===KHO&&x.ngay});
+  var theoThang={}, kh={}, sp={};
+  dong.forEach(function(x){
+    var m=x.ngay.slice(3), day=+x.ngay.slice(0,2);
+    theoThang[m]=(theoThang[m]||0)+x.tien;
+    var k=kh[x.ma]||(kh[x.ma]={ma:x.ma,ten:x.khach,nay:0,cky:0,truoc:0,dau:x.ngay,cuoi:x.ngay,lan:{}});
+    if(m===mNay)k.nay+=x.tien; if(m===mTruoc){k.truoc+=x.tien; if(day<=N)k.cky+=x.tien}
+    if((parseD(x.ngay)||0)<(parseD(k.dau)||0))k.dau=x.ngay; if((parseD(x.ngay)||0)>(parseD(k.cuoi)||0))k.cuoi=x.ngay; k.lan[x.id]=1;
+    var s=sp[x.sp]||(sp[x.sp]={ten:x.sp,nay:0,cky:0,sl:0,m:{}});
+    if(m===mNay){s.nay+=x.tien;s.sl+=x.sl} if(m===mTruoc&&day<=N)s.cky+=x.tien; s.m[m]=(s.m[m]||0)+x.tien;
+  });
+  var thang=[];for(var i=3;i>=0;i--){var d=new Date(now.getFullYear(),now.getMonth()-i,1);var km=pad(d.getMonth()+1)+'/'+d.getFullYear();thang.push({km:km,lb:'T'+(d.getMonth()+1),v:theoThang[km]||0})}
+  var dsKh=Object.keys(kh).map(function(k){return kh[k]});
+  return {N:N,mNay:mNay,mTruoc:mTruoc,thang:thang,kh:dsKh,sp:Object.keys(sp).map(function(k){return sp[k]}).sort(function(a,b){return b.nay-a.nay}),
+    nay:dsKh.reduce(function(a,k){return a+k.nay},0),cky:dsKh.reduce(function(a,k){return a+k.cky},0)};
+}
+var BCX='tq';
+function bcXChon(t){BCX=t;document.querySelectorAll('#bcSeg button').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-x')===t)});
+  ['tq','sp','vd','pt','gui'].forEach(function(k){var e=document.getElementById('bcX_'+k);if(e)e.style.display=(k===t?'block':'none')});
+  if(t==='tq')bcXTongQuan(); if(t==='sp')bcXSanPham(); if(t==='vd')bcXVanDe(); if(t==='pt')bcXPhatTrien(); if(t==='gui')bcXGui();}
+function bcXTongQuan(){
+  var s=ionSo(), el=document.getElementById('bcX_tq_them'); if(!el)return;
+  var top=s.kh.filter(function(k){return k.nay>0}).sort(function(a,b){return b.nay-a.nay}).slice(0,10);
+  el.innerHTML='<div class="card"><h2>Tháng này (1→'+s.N+') so tháng trước cùng kỳ</h2><div class="kpi"><div class="kbox"><div class="l">DT tháng này</div><div class="v">'+fmt(s.nay)+'</div></div><div class="kbox"><div class="l">Cùng kỳ tháng trước</div><div class="v">'+fmt(s.cky)+' '+ionPcTxt(ionPc(s.nay,s.cky))+'</div></div></div>'
+    +ionCot(s.thang.map(function(x){return {v:x.v,lb:x.lb,so:ionTr(x.v)}}))+'</div>'
+    +'<div class="card"><h2>Top 10 khách tháng này</h2>'+(top.length?top.map(function(k){return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line);font-size:13px"><span>'+ionEsc(k.ten)+' <span class="muted">'+ionEsc(k.ma)+'</span></span><span>'+fmt(k.nay)+' '+ionPcTxt(ionPc(k.nay,k.cky))+'</span></div>'}).join(''):'<div class="empty">Chưa có.</div>')+'</div>';
+}
+function ionSpChon(){try{return JSON.parse(localStorage.getItem('ion_sp_bo')||'[]')}catch(e){return []}}
+function bcXSpTick(t){var b=ionSpChon(),i=b.indexOf(t);if(i>=0)b.splice(i,1);else b.push(t);localStorage.setItem('ion_sp_bo',JSON.stringify(b));bcXSanPham()}
+function bcXSanPham(){
+  var s=ionSo(), bo=ionSpChon(), el=document.getElementById('bcX_sp');
+  var chon=s.sp.filter(function(x){return bo.indexOf(x.ten)<0}), nay=chon.reduce(function(a,x){return a+x.nay},0), cky=chon.reduce(function(a,x){return a+x.cky},0);
+  el.innerHTML='<div class="card"><h2>Tick sản phẩm để cộng doanh thu</h2><div class="ionchips">'+s.sp.map(function(x){var on=bo.indexOf(x.ten)<0;return '<button class="'+(on?'on':'')+'" onclick="bcXSpTick(\''+ionEsc(x.ten).replace(/'/g,"\\'")+'\')">'+(on?'✓ ':'')+ionEsc(x.ten)+'</button>'}).join('')+'</div>'
+    +'<div class="kpi"><div class="kbox"><div class="l">Đã chọn · tháng này</div><div class="v">'+fmt(nay)+'</div></div><div class="kbox"><div class="l">So cùng kỳ</div><div class="v">'+ionPcTxt(ionPc(nay,cky))+'</div></div></div>'
+    +ionCot(s.thang.map(function(t){var v=chon.reduce(function(a,x){return a+(x.m[t.km]||0)},0);return {v:v,lb:t.lb,so:ionTr(v)}}))+'</div>'
+    +'<div class="card"><h2>Từng sản phẩm · tháng này</h2>'+s.sp.map(function(x){return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line);font-size:13px"><span>'+ionEsc(x.ten)+' <span class="muted">'+x.sl+' SL</span></span><span>'+fmt(x.nay)+' '+ionPcTxt(ionPc(x.nay,x.cky))+'</span></div>'}).join('')+'</div>';
+}
+function ionNutGhi(loai,ten,vd){return '<button class="btn bgrn" style="padding:5px 10px;font-size:12px" onclick="ionMoForm(\''+loai+'\',\''+ionEsc(ten).replace(/'/g,"\\'")+'\',\''+ionEsc(vd).replace(/'/g,"\\'")+'\')">Ghi</button>'}
+function ionDong(t,p,phai,nut){return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:13px"><span style="min-width:0">'+ionEsc(t)+' <span class="muted">'+ionEsc(p||'')+'</span></span><span style="white-space:nowrap">'+phai+' '+(nut||'')+'</span></div>'}
+function bcXVanDe(){
+  var s=ionSo(), el=document.getElementById('bcX_vd');
+  var no=[]; invoicesInKho().forEach(function(v){var c=conNoOf(v);if(c<=0)return;var k=khByMa(v.ma);var q=daysSince(v.ngay)-(k?k.kyhan:0);if(q>0)no.push({ten:v.khach||(k?k.ten:v.ma),ma:v.ma,con:c,q:q,id:v.id})});
+  no.sort(function(a,b){return b.q-a.q});
+  var ngung=s.kh.filter(function(k){return k.truoc>0&&k.nay===0}).sort(function(a,b){return b.truoc-a.truoc});
+  var lau=s.kh.filter(function(k){return Object.keys(k.lan).length>=2&&daysSince(k.cuoi)>30&&!(k.truoc>0)}).sort(function(a,b){return daysSince(a.cuoi)-daysSince(b.cuoi)}).slice(0,30);
+  var nhom=function(td,ds,dong){return ds.length?'<details class="card"><summary style="font-weight:700;cursor:pointer">'+td+' ('+ds.length+')</summary>'+ds.map(dong).join('')+'</details>':''};
+  el.innerHTML='<div class="muted" style="margin-bottom:8px">Bấm nhóm để mở · bấm <b>Ghi</b> để báo nguyên nhân, đã làm gì, hẹn ngày.</div>'
+    +nhom('🔴 Hoá đơn nợ quá hạn',no,function(x){return ionDong(x.ten,x.id+' · quá '+x.q+' ngày',fmt(x.con),ionNutGhi('vd',x.ten,'Nợ quá hạn '+x.q+' ngày ('+fmt(x.con)+')'))})
+    +nhom('⚠️ Tháng trước có mua, tháng này chưa',ngung,function(k){return ionDong(k.ten,k.ma,'T trước '+fmt(k.truoc),ionNutGhi('vd',k.ten,'Tháng này chưa mua lại'))})
+    +nhom('⚠️ Khách quen lâu không mua (>30 ngày)',lau,function(k){return ionDong(k.ten,'mua cuối '+k.cuoi,daysSince(k.cuoi)+' ngày',ionNutGhi('vd',k.ten,'Lâu không mua'))})
+    +(!no.length&&!ngung.length&&!lau.length?'<div class="empty">Kho không có vấn đề nào ✓</div>':'')
+    +'<button class="btn bgrn" style="width:100%;margin:6px 0 12px" onclick="ionMoForm(\'vd\',\'\',\'\')">+ Ghi vấn đề khác</button><div class="card"><h2>Vấn đề đã ghi (30 ngày)</h2><div id="ionDaGhi_vd">Đang tải...</div></div>';
+  ionTaiDaGhi('vd');
+}
+function bcXPhatTrien(){
+  var s=ionSo(), el=document.getElementById('bcX_pt');
+  var moi=s.kh.filter(function(k){return k.dau.slice(3)===s.mNay}).sort(function(a,b){return b.nay-a.nay});
+  var tang=s.kh.filter(function(k){return k.cky>0&&k.nay>k.cky*1.15}).sort(function(a,b){return (b.nay-b.cky)-(a.nay-a.cky)}).slice(0,30);
+  var nhom=function(td,ds,dong){return ds.length?'<details class="card"><summary style="font-weight:700;cursor:pointer">'+td+' ('+ds.length+')</summary>'+ds.map(dong).join('')+'</details>':''};
+  el.innerHTML=nhom('🌱 Khách mới tháng này',moi,function(k){return ionDong(k.ten,'mua đầu '+k.dau,fmt(k.nay))})
+    +nhom('📈 Khách tăng mua >15%',tang,function(k){return ionDong(k.ten,k.ma,fmt(k.nay)+' '+ionPcTxt(ionPc(k.nay,k.cky)))})
+    +(!moi.length&&!tang.length?'<div class="empty">Chưa có tăng trưởng nổi bật tháng này.</div>':'')
+    +'<button class="btn bred" style="width:100%;margin:6px 0 12px" onclick="ionMoForm(\'pt\',\'\',\'\')">+ Ghi phát triển (khách mới / đại lý mới / SP mới)</button><div class="card"><h2>Phát triển đã ghi (30 ngày)</h2><div id="ionDaGhi_pt">Đang tải...</div></div>';
+  ionTaiDaGhi('pt');
+}
+function ionNguoi(){return localStorage.getItem('ion_bc_nguoi')||''}
+function ionMoForm(loai,ten,vd){
+  var h='<div class="card"><h2>'+(loai==='vd'?'Báo cáo vấn đề':'Báo cáo phát triển')+'</h2><label>Người ghi</label><input id="ifNguoi" value="'+ionEsc(ionNguoi())+'" placeholder="Tên anh/chị">'
+    +(loai==='pt'?'<label>Loại</label><select id="ifLoai"><option>Khách mới đang tiếp cận</option><option>Đại lý mới đã chốt</option><option>SP mới chào được</option><option>Khác</option></select>':'')
+    +'<label>Khách'+(loai==='pt'?' / SP':'')+'</label><input id="ifKhach" value="'+ionEsc(ten)+'">'
+    +(loai==='vd'?'<label>Vấn đề</label><input id="ifVanDe" value="'+ionEsc(vd)+'"><label>Nguyên nhân</label><input id="ifNN"><label>Đã làm gì</label><input id="ifDaLam"><label>Hẹn ngày</label><input id="ifHen" type="date"><label>Trạng thái</label><select id="ifTT"><option>Đang xử lý</option><option>Đã xong</option><option>Cần hỗ trợ</option></select>'
+      :'<label>Nội dung</label><input id="ifND"><label>Kết quả</label><input id="ifKQ"><label>Hẹn ngày</label><input id="ifHen" type="date">')
+    +'<div style="display:flex;gap:8px;margin-top:10px"><button class="btn bgrn" style="flex:1" onclick="document.getElementById(\'ionForm\').innerHTML=\'\'">Huỷ</button><button class="btn bred" style="flex:2" onclick="ionLuuForm(\''+loai+'\')">Lưu</button></div></div>';
+  var f=document.getElementById('ionForm'); f.innerHTML=h; f.scrollIntoView({behavior:'smooth'});
+}
+function ionV(id){var e=document.getElementById(id);return e?e.value.trim():''}
+function ionLuuForm(loai){
+  var nguoi=ionV('ifNguoi'); if(!nguoi){alert('Ghi tên người ghi');return} localStorage.setItem('ion_bc_nguoi',nguoi);
+  var b={ngay:ionNgayISO(),kho:KHO,nguoi:nguoi,khach:ionV('ifKhach')};
+  if(loai==='vd'){if(!b.khach||!ionV('ifNN')){alert('Ghi khách và nguyên nhân');return} b.loai='bao_cao_van_de';b.van_de=ionV('ifVanDe');b.nguyen_nhan=ionV('ifNN');b.da_lam=ionV('ifDaLam');b.hen_ngay=ionV('ifHen');b.trang_thai=ionV('ifTT')}
+  else{if(!b.khach||!ionV('ifND')){alert('Ghi khách/SP và nội dung');return} b.loai='bao_cao_phat_trien';b.loai_pt=ionV('ifLoai');b.noi_dung=ionV('ifND');b.ket_qua=ionV('ifKQ');b.hen_ngay=ionV('ifHen')}
+  ionPost(b).then(function(r){if(!r.ok){alert('Lỗi: '+(r.msg||''));return} document.getElementById('ionForm').innerHTML='';ionTaiDaGhi(loai)}).catch(function(){alert('Lỗi kết nối')});
+}
+function ionTaiDaGhi(loai){
+  var el=document.getElementById('ionDaGhi_'+loai); if(!el)return;
+  ionGet({loai:loai==='vd'?'bao_cao_van_de':'bao_cao_phat_trien',kho:KHO}).then(function(r){var rows=(r&&r.rows)||[];
+    el.innerHTML=rows.length?rows.map(function(x){return '<div style="padding:7px 0;border-top:1px solid var(--line);font-size:13px"><b>'+ionEsc(x.khach)+'</b> <span class="muted">· '+ionEsc(x.nguoi)+' · '+ionEsc(x.ngay)+'</span><br>'
+      +(loai==='vd'?ionEsc(x.van_de)+' — <i>'+ionEsc(x.nguyen_nhan)+'</i>'+(x.da_lam?' · đã làm: '+ionEsc(x.da_lam):'')+' · <b>'+ionEsc(x.trang_thai)+'</b>':ionEsc(x.loai_pt)+': '+ionEsc(x.noi_dung)+(x.ket_qua?' → '+ionEsc(x.ket_qua):''))+(x.hen_ngay?' · hẹn '+ionEsc(x.hen_ngay):'')+'</div>'}).join(''):'<div class="muted">Chưa có.</div>'}).catch(function(){el.innerHTML='<div class="muted">Không tải được.</div>'});
+}
+/* ---- gui bao cao ngay / tuan / thang (theo kho) ---- */
+var BCK='ngay';
+function bcXGui(){
+  var s=ionSo(), el=document.getElementById('bcX_gui'), tstr=today();
+  var hdNay={},dtNay=0,thuNay=0; invoicesInKho().forEach(function(v){if(v.ngay===tstr){hdNay[v.id]=1;thuNay+=v.dathu}}); HD.forEach(function(x){if(x.kho===KHO&&x.ngay===tstr)dtNay+=x.tien});
+  var dtTuan=0,dtTuanTruoc=0; HD.forEach(function(x){if(x.kho!==KHO)return;var d=daysSince(x.ngay);if(d<7)dtTuan+=x.tien;else if(d<14)dtTuanTruoc+=x.tien});
+  var no=0; invoicesInKho().forEach(function(v){no+=conNoOf(v)});
+  var moi=s.kh.filter(function(k){return k.dau.slice(3)===s.mNay}).length;
+  var seg='<div class="ionseg">'+[['ngay','Ngày'],['tuan','Tuần'],['thang','Tháng']].map(function(a){return '<button class="'+(BCK===a[0]?'on':'')+'" onclick="BCK=\''+a[0]+'\';bcXGui()">'+a[1]+'</button>'}).join('')+'</div>';
+  var tu, o, ky;
+  if(BCK==='ngay'){ky=ionNgayISO();tu='Tự động hôm nay: '+Object.keys(hdNay).length+' HĐ · doanh thu '+fmt(dtNay)+' · đã thu '+fmt(thuNay);
+    o=[['viec_lam','Việc đã làm',3],['van_de','Vấn đề trong ngày',2],['ke_hoach','Kế hoạch mai / cần hỗ trợ',2]];ionBCTam={so_hd:Object.keys(hdNay).length,doanh_thu:dtNay,da_thu:thuNay};}
+  else if(BCK==='tuan'){ky=ionTuan();tu='Tự động: 7 ngày qua '+fmt(dtTuan)+' · 7 ngày trước đó '+fmt(dtTuanTruoc)+' '+ionPcTxt(ionPc(dtTuan,dtTuanTruoc));
+    o=[['ket_qua','Kết quả tuần',3],['chua_xong','Việc chưa xong / vướng mắc',2],['muc_tieu','Mục tiêu tuần sau',2],['ke_hoach','Kế hoạch tuần sau',2]];ionBCTam={dt_tuan:dtTuan,dt_tuan_truoc:dtTuanTruoc};}
+  else{ky=ionNgayISO().slice(0,7);tu='Tự động: tháng này '+fmt(s.nay)+' · cùng kỳ '+fmt(s.cky)+' '+ionPcTxt(ionPc(s.nay,s.cky))+' · khách mới '+moi+' · công nợ '+fmt(no);
+    o=[['danh_gia','Đánh giá tháng',3],['nguyen_nhan','Nguyên nhân',2],['ke_hoach','Kế hoạch tháng sau',3],['de_xuat','Đề xuất với công ty',2]];ionBCTam={dt:s.nay,dt_truoc:s.cky,khach_moi:moi,cong_no:no};}
+  var nhap={};try{nhap=JSON.parse(localStorage.getItem('ion_bc_nhap_'+KHO+'_'+ky)||'{}')}catch(e){}
+  el.innerHTML=seg+'<div class="card"><h2>Báo cáo '+({ngay:'ngày',tuan:'tuần',thang:'tháng'})[BCK]+' · '+ionEsc(KHO)+' <span class="muted">'+ky+'</span></h2><div class="muted" style="background:#fdf2f3;padding:8px;border-radius:10px;margin-bottom:6px">'+tu+'</div>'
+    +'<label>Người gửi</label><input id="ibNguoi" value="'+ionEsc(ionNguoi())+'">'
+    +o.map(function(f){return '<label>'+f[1]+'</label><textarea id="ib_'+f[0]+'" rows="'+f[2]+'" oninput="ionLuuNhap(\''+ky+'\')" style="width:100%;font:inherit;font-size:14px;padding:10px;border:1px solid var(--line);border-radius:10px">'+ionEsc(nhap[f[0]]||'')+'</textarea>'}).join('')
+    +'<button class="btn bred" style="width:100%;margin-top:10px;padding:12px" onclick="ionGuiBC(\''+ky+'\')">Gửi báo cáo</button><div class="muted" id="ibMsg" style="text-align:center;margin-top:6px"></div></div>'
+    +'<div class="card"><h2>Đã gửi · kho '+ionEsc(KHO)+'</h2><div id="ibDs">Đang tải...</div></div>';
+  ionTaiBC();
+}
+var ionBCTam={};
+function ionLuuNhap(ky){var o={};document.querySelectorAll('[id^="ib_"]').forEach(function(t){o[t.id.slice(3)]=t.value});localStorage.setItem('ion_bc_nhap_'+KHO+'_'+ky,JSON.stringify(o))}
+function ionGuiBC(ky){
+  var nguoi=ionV('ibNguoi'); if(!nguoi){alert('Ghi tên người gửi');return} localStorage.setItem('ion_bc_nguoi',nguoi);
+  var b={loai:'bao_cao_'+BCK,ngay:ionNgayISO(),kho:KHO,nguoi:nguoi,ky:ky}; for(var k in ionBCTam)b[k]=ionBCTam[k];
+  var rong=true; document.querySelectorAll('[id^="ib_"]').forEach(function(t){b[t.id.slice(3)]=t.value.trim(); if(t.value.trim())rong=false});
+  if(rong){alert('Ghi nội dung báo cáo trước khi gửi');return}
+  document.getElementById('ibMsg').textContent='Đang gửi...';
+  ionPost(b).then(function(r){document.getElementById('ibMsg').textContent=r.ok?((r.sua?'Đã cập nhật':'Đã gửi')+' lúc '+new Date().toTimeString().slice(0,5)+'. Gửi lại để sửa.'):'Lỗi: '+(r.msg||'');ionTaiBC()}).catch(function(){document.getElementById('ibMsg').textContent='Lỗi kết nối'});
+}
+function ionTaiBC(){
+  var el=document.getElementById('ibDs'); if(!el)return;
+  ionGet({loai:'bao_cao_'+BCK,kho:KHO}).then(function(r){var rows=(r&&r.rows)||[];
+    el.innerHTML=rows.length?rows.slice(0,15).map(function(x){var nd=Object.keys(x).filter(function(k){return ['gui_luc','ngay','kho','nguoi','ky'].indexOf(k)<0&&x[k]&&isNaN(Number(x[k]))}).map(function(k){return ionEsc(x[k])}).join(' · ');
+      return '<div style="padding:7px 0;border-top:1px solid var(--line);font-size:13px"><b>'+ionEsc(x.ky)+'</b> <span class="muted">· '+ionEsc(x.nguoi)+' · gửi '+ionEsc(String(x.gui_luc).slice(5))+'</span><br>'+nd+'</div>'}).join(''):'<div class="muted">Chưa có báo cáo nào.</div>'}).catch(function(){el.innerHTML='<div class="muted">Không tải được.</div>'});
+}
+
+/* ---- BAO GIA ---- */
+var BG=null;
+function bgInit(){
+  if(BG){bgVe();return}
+  ionGet({loai:'gia_sp'}).then(function(r){
+    if(!r||!r.ok){document.getElementById('bgInfo').textContent='Không tải được bảng giá'+(r&&r.msg?': '+r.msg:'');return}
+    BG=r; var sel=document.getElementById('bgBac');
+    sel.innerHTML=r.bac.map(function(b){return '<option value="'+b.ma+'">'+ionEsc(b.ten)+' · CK '+b.ck+'%</option>'}).join('')+'<option value="3bac">Bảng chính sách 3 bậc (siêu thị)</option>';
+    sel.value=localStorage.getItem('ion_bg_bac')||'dl1'; if(!sel.value)sel.selectedIndex=0;
+    document.getElementById('bgSp').innerHTML=r.san_pham.map(function(s){return '<label style="display:inline-flex;align-items:center;gap:6px;margin:4px 8px 4px 0;font-size:13px;color:var(--ink)"><input type="checkbox" value="'+s.ma+'" style="width:auto"'+(s.dong==='kiem'?' checked':'')+' onchange="bgVe()"> '+ionEsc(s.ten)+'</label>'}).join('');
+    var thieu=[];if(!r.mau.dai_ly)thieu.push('đại lý');if(!r.mau.npp)thieu.push('NPP');if(!r.mau['3bac'])thieu.push('3 bậc');
+    document.getElementById('bgInfo').textContent=thieu.length?'⚠️ Chưa có mẫu gốc: '+thieu.join(', ')+'.':'Báo giá xuất từ mẫu gốc có dấu + chữ ký giám đốc.';
+    bgDoiBac();
+  }).catch(function(){document.getElementById('bgInfo').textContent='Không tải được bảng giá. Kiểm tra mạng.'});
+}
+function bgDoiBac(){var v=document.getElementById('bgBac').value;localStorage.setItem('ion_bg_bac',v);var b=(BG.bac.filter(function(x){return x.ma===v})[0]);
+  var ck=document.getElementById('bgCk');if(v==='3bac'){ck.value='';ck.disabled=true;document.getElementById('bgCkGoiY').textContent='(3 mức theo bậc)'}else{ck.disabled=false;ck.value=b.ck;document.getElementById('bgCkGoiY').textContent='chuẩn '+b.ck+'%'+(b.dieu_kien?' · '+b.dieu_kien:'')}bgVe()}
+function bgChon(){return [].slice.call(document.querySelectorAll('#bgSp input:checked')).map(function(c){return c.value})}
+function bgVe(){
+  if(!BG)return; var v=document.getElementById('bgBac').value, ck=Number(document.getElementById('bgCk').value)||0, ma=bgChon();
+  var sp=BG.san_pham.filter(function(s){return ma.indexOf(s.ma)>=0});
+  document.getElementById('bgXem').innerHTML=sp.length?'<table class="rpt" style="width:100%"><thead><tr><th>Sản phẩm</th><th>Giá KN</th><th>'+(v==='3bac'?'3 bậc':'Giá CK '+ck+'%')+'</th></tr></thead><tbody>'
+    +sp.map(function(s){return '<tr><td>'+ionEsc(s.ten)+'</td><td>'+fmt(s.gia_kn)+'</td><td>'+(v==='3bac'?'—':'<b>'+fmt(Math.round(s.gia_kn*(1-ck/100)))+'</b>')+'</td></tr>'}).join('')+'</tbody></table>':'<div class="empty">Chưa chọn sản phẩm.</div>';
+}
+function bgTao(){
+  var v=document.getElementById('bgBac').value, ma=bgChon(); if(!ma.length){alert('Chọn ít nhất 1 sản phẩm');return}
+  var nut=document.getElementById('bgNut'); nut.disabled=true; nut.textContent='Đang tạo PDF (khoảng 20–40 giây)...';
+  ionPost({loai:'bao_gia',bac:v,ck:v==='3bac'?'':document.getElementById('bgCk').value,dong:ma,kinh_gui:ionV('bgKinhGui'),ghi_chu:ionV('bgGhiChu'),kho:KHO,nguoi:ionNguoi()})
+    .then(function(r){nut.disabled=false;nut.textContent='Tạo báo giá PDF';
+      if(!r.ok){document.getElementById('bgKq').innerHTML='<div class="card" style="color:var(--red)">Lỗi: '+ionEsc(r.msg||'')+'</div>';return}
+      window._bgUrl=r.pdfUrl;
+      document.getElementById('bgKq').innerHTML='<div class="card"><h2>✓ '+ionEsc(r.moTa||r.ten)+'</h2><div class="muted" style="margin-bottom:8px">'+ionEsc(r.ten)+'</div><div style="display:flex;gap:8px"><button class="btn bred" style="flex:1" onclick="window.open(window._bgUrl,\'_blank\')">Mở PDF</button><button class="btn bgrn" style="flex:1" onclick="ionChep(window._bgUrl)">Copy link</button><button class="btn bgrn" style="flex:1" onclick="ionGuiLink(\'Báo giá ION FUJI\',window._bgUrl)">Gửi Zalo</button></div></div>';
+    }).catch(function(){nut.disabled=false;nut.textContent='Tạo báo giá PDF';alert('Lỗi kết nối')});
+}
+function ionChep(t){(navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t):Promise.resolve(prompt('Copy link:',t))).then(function(){alert('Đã copy link')})}
+function ionGuiLink(ten,url){if(navigator.share){navigator.share({title:ten,text:'ION FUJI gửi anh/chị: '+ten,url:url}).catch(function(){});return} ionChep(url)}
+
+/* ---- HO SO ---- */
+var HS=null;
+function hsInit(){try{HS=HS||JSON.parse(localStorage.getItem('ion_ho_so')||'null')}catch(e){} if(HS)hsVe();
+  ionGet({loai:'ho_so_list'}).then(function(r){if(r&&r.ok){HS=r.rows||[];localStorage.setItem('ion_ho_so',JSON.stringify(HS));hsVe()}else if(!HS)document.getElementById('hsDs').innerHTML='<div class="empty">Không tải được tủ hồ sơ.</div>'}).catch(function(){if(!HS)document.getElementById('hsDs').innerHTML='<div class="empty">Không tải được. Kiểm tra mạng.</div>'})}
+function hsVe(){
+  var q=(document.getElementById('hsTim').value||'').toLowerCase(), ds=(HS||[]).filter(function(x){return !q||(x.ten+' '+x.nhom).toLowerCase().indexOf(q)>=0}), el=document.getElementById('hsDs');
+  if(!ds.length){el.innerHTML='<div class="empty">'+((HS||[]).length?'Không có hồ sơ khớp.':'Tủ hồ sơ đang trống.')+'</div>';return}
+  var nhom=[];ds.forEach(function(x){if(nhom.indexOf(x.nhom)<0)nhom.push(x.nhom)});
+  el.innerHTML=nhom.map(function(n){return '<h2 style="margin:12px 4px 6px;color:var(--red)">'+ionEsc(n)+'</h2>'+ds.filter(function(x){return x.nhom===n}).map(function(x){var i=HS.indexOf(x);
+    return '<div class="card"><div style="font-weight:700">'+ionEsc(x.ten)+'</div><div class="muted">'+ionEsc(x.loai)+(x.ghi_chu?' · '+ionEsc(x.ghi_chu):'')+'</div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn bred" style="flex:1" onclick="window.open(HS['+i+'].link,\'_blank\')">Mở</button><button class="btn bgrn" style="flex:1" onclick="ionChep(HS['+i+'].link)">Copy link</button><button class="btn bgrn" style="flex:1" onclick="ionGuiLink(HS['+i+'].ten,HS['+i+'].link)">Gửi Zalo</button></div></div>'}).join('')}).join('');
+}
+/* ================= HET PHAN 29/09 ================= */
 </script>
 </body>
 </html>
