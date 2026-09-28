@@ -42,6 +42,7 @@
   .ionseg{display:flex;background:#eef1f4;border-radius:10px;padding:3px;margin-bottom:10px;overflow:auto}
   .ionseg button{flex:1;border:none;background:transparent;font:inherit;font-size:13px;padding:7px 8px;border-radius:8px;color:var(--mut);white-space:nowrap;cursor:pointer}
   .ionseg button.on{background:#fff;color:var(--red);font-weight:700}
+  #bgSp input[type=checkbox]{-webkit-appearance:checkbox;appearance:auto;accent-color:var(--red);padding:0;border:none;cursor:pointer}
   /* kho screen */
   .kho-screen{min-height:82vh;display:flex;align-items:center;justify-content:center;padding:20px}
   .kho-box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px 18px;width:100%;max-width:360px;text-align:center}
@@ -251,23 +252,21 @@
       <div id="bcX_sp" style="display:none"></div><div id="bcX_vd" style="display:none"></div><div id="bcX_pt" style="display:none"></div><div id="bcX_gui" style="display:none"></div>
     </div>
 
-    <!-- ===== TAB BAO GIA (29/09/2026): chon bac CK + SP -> PDF tu mau goc co dau (Web App "ION FUJI - App") ===== -->
+    <!-- ===== TAB BAO GIA (v2 29/09: gon 4 muc theo anh Toan - ten khach, doi tuong, muc CK, san pham) ===== -->
     <div id="tab-bg" class="tab-pane" style="display:none">
       <div class="card">
         <h2>Làm báo giá</h2>
         <div class="muted" id="bgInfo">Đang tải bảng giá...</div>
-        <label>Đối tượng / bậc chiết khấu</label>
-        <select id="bgBac" onchange="bgDoiBac()"></select>
-        <label>Chiết khấu (%) <span class="muted" id="bgCkGoiY"></span></label>
-        <input id="bgCk" type="number" min="0" max="60" step="1" oninput="bgVe()">
-        <label>Sản phẩm (tick để đưa vào báo giá)</label>
-        <div id="bgSp" class="ionchips"></div>
-        <label>Kính gửi (tên khách, để trống = mặc định theo bậc)</label>
-        <input id="bgKinhGui" placeholder="VD: Cửa hàng Minh Anh">
-        <label>Ghi chú thêm trên báo giá (không bắt buộc)</label>
-        <input id="bgGhiChu" placeholder="VD: Miễn phí giao nội thành cho đơn từ 10 thùng">
+        <label>Tên khách hàng</label>
+        <input id="bgKhach" list="bgKhList" placeholder="VD: Cửa hàng Minh Anh (để trống = Quý khách)"><datalist id="bgKhList"></datalist>
+        <label>Đối tượng báo giá</label>
+        <div id="bgDoiTuong" class="ionchips"></div>
+        <label>Mức chiết khấu</label>
+        <div id="bgCkChips" class="ionchips"></div>
+        <input id="bgCk" type="number" min="0" max="60" step="1" placeholder="Gõ % chiết khấu" style="display:none" oninput="bgVe()">
+        <label>Sản phẩm <span class="muted">· bán cái nào chọn cái đó</span></label>
+        <div id="bgSp"></div>
       </div>
-      <div class="card"><h2>Xem trước giá <span class="muted" style="font-weight:400">(chưa VAT, giá chính xác do máy chủ tính theo bảng giá chuẩn)</span></h2><div id="bgXem"></div></div>
       <button class="btn bred" style="width:100%;padding:13px;font-size:15px" id="bgNut" onclick="bgTao()">Tạo báo giá PDF</button>
       <div id="bgKq" style="margin-top:12px"></div>
     </div>
@@ -1417,39 +1416,50 @@ function ionTaiBC(){
       return '<div style="padding:7px 0;border-top:1px solid var(--line);font-size:13px"><b>'+ionEsc(x.ky)+'</b> <span class="muted">· '+ionEsc(x.nguoi)+' · gửi '+ionEsc(String(x.gui_luc).slice(5))+'</span><br>'+nd+'</div>'}).join(''):'<div class="muted">Chưa có báo cáo nào.</div>'}).catch(function(){el.innerHTML='<div class="muted">Không tải được.</div>'});
 }
 
-/* ---- BAO GIA ---- */
-var BG=null;
+/* ---- BAO GIA (v2 29/09: ten khach · doi tuong · muc CK · san pham) ---- */
+var BG=null, BGDT='dai_ly';
+var BG_DT=[['dai_ly','Đại lý',[20,27,32],32],['khach','Khách hàng',[0,5,10,15],0],['npp','Nhà phân phối',[42],42],['ctv','Cộng tác viên',[20],20],['sieu_thi','Siêu thị (3 bậc)',[],null]];
+function bgDt(){return BG_DT.filter(function(x){return x[0]===BGDT})[0]}
 function bgInit(){
+  var dl=document.getElementById('bgKhList');if(dl)dl.innerHTML=khInKho().map(function(k){return '<option value="'+ionEsc(k.ten)+'">'}).join('');
   if(BG){bgVe();return}
   ionGet({loai:'gia_sp'}).then(function(r){
     if(!r||!r.ok){document.getElementById('bgInfo').textContent='Không tải được bảng giá'+(r&&r.msg?': '+r.msg:'');return}
-    BG=r; var sel=document.getElementById('bgBac');
-    sel.innerHTML=r.bac.map(function(b){return '<option value="'+b.ma+'">'+ionEsc(b.ten)+' · CK '+b.ck+'%</option>'}).join('')+'<option value="3bac">Bảng chính sách 3 bậc (siêu thị)</option>';
-    sel.value=localStorage.getItem('ion_bg_bac')||'dl1'; if(!sel.value)sel.selectedIndex=0;
-    document.getElementById('bgSp').innerHTML=r.san_pham.map(function(s){return '<label style="display:inline-flex;align-items:center;gap:6px;margin:4px 8px 4px 0;font-size:13px;color:var(--ink)"><input type="checkbox" value="'+s.ma+'" style="width:auto"'+(s.dong==='kiem'?' checked':'')+' onchange="bgVe()"> '+ionEsc(s.ten)+'</label>'}).join('');
-    var thieu=[];if(!r.mau.dai_ly)thieu.push('đại lý');if(!r.mau.npp)thieu.push('NPP');if(!r.mau['3bac'])thieu.push('3 bậc');
-    document.getElementById('bgInfo').textContent=thieu.length?'⚠️ Chưa có mẫu gốc: '+thieu.join(', ')+'.':'Báo giá xuất từ mẫu gốc có dấu + chữ ký giám đốc.';
-    bgDoiBac();
+    BG=r; document.getElementById('bgInfo').textContent='';
+    document.getElementById('bgSp').innerHTML=r.san_pham.map(function(s){return '<label style="display:flex;align-items:center;gap:10px;padding:9px 2px;border-top:1px solid var(--line);margin:0;font-size:14px;color:var(--ink)"><input type="checkbox" value="'+s.ma+'" style="width:20px;height:20px;flex:0 0 20px" onchange="bgVe()"><span style="flex:1">'+ionEsc(s.ten)+'<br><span class="muted" style="font-size:12px">'+ionEsc(s.quy_cach||'')+'</span></span><span id="bgGia_'+s.ma+'" style="text-align:right;font-size:13px;white-space:nowrap"></span></label>'}).join('');
+    bgChonDt(BGDT);
   }).catch(function(){document.getElementById('bgInfo').textContent='Không tải được bảng giá. Kiểm tra mạng.'});
 }
-function bgDoiBac(){var v=document.getElementById('bgBac').value;localStorage.setItem('ion_bg_bac',v);var b=(BG.bac.filter(function(x){return x.ma===v})[0]);
-  var ck=document.getElementById('bgCk');if(v==='3bac'){ck.value='';ck.disabled=true;document.getElementById('bgCkGoiY').textContent='(3 mức theo bậc)'}else{ck.disabled=false;ck.value=b.ck;document.getElementById('bgCkGoiY').textContent='chuẩn '+b.ck+'%'+(b.dieu_kien?' · '+b.dieu_kien:'')}bgVe()}
+function bgChonDt(dt){
+  BGDT=dt; var d=bgDt();
+  document.getElementById('bgDoiTuong').innerHTML=BG_DT.map(function(x){return '<button class="'+(x[0]===dt?'on':'')+'" onclick="bgChonDt(\''+x[0]+'\')">'+x[1]+'</button>'}).join('');
+  var ck=document.getElementById('bgCk'); ck.value=d[3]===null?'':d[3]; ck.style.display='none'; bgVeCk(); bgVe();
+}
+function bgVeCk(){
+  var d=bgDt(), o=document.getElementById('bgCk'), cur=o.value, el=document.getElementById('bgCkChips');
+  if(d[3]===null){el.innerHTML='<span class="muted">Bảng chính sách 3 mức: 20% · 27% · 32%</span>';return}
+  var laKhac=o.style.display!=='none'||d[2].indexOf(Number(cur))<0;
+  el.innerHTML=d[2].map(function(c){return '<button class="'+(!laKhac&&Number(cur)===c?'on':'')+'" onclick="bgChonCk('+c+')">'+c+'%</button>'}).join('')+'<button class="'+(laKhac?'on':'')+'" onclick="bgChonCk(null)">Khác</button>';
+}
+function bgChonCk(c){var o=document.getElementById('bgCk');if(c===null){o.style.display='block';o.focus()}else{o.value=c;o.style.display='none'}bgVeCk();bgVe()}
 function bgChon(){return [].slice.call(document.querySelectorAll('#bgSp input:checked')).map(function(c){return c.value})}
 function bgVe(){
-  if(!BG)return; var v=document.getElementById('bgBac').value, ck=Number(document.getElementById('bgCk').value)||0, ma=bgChon();
-  var sp=BG.san_pham.filter(function(s){return ma.indexOf(s.ma)>=0});
-  document.getElementById('bgXem').innerHTML=sp.length?'<table class="rpt" style="width:100%"><thead><tr><th>Sản phẩm</th><th>Giá KN</th><th>'+(v==='3bac'?'3 bậc':'Giá CK '+ck+'%')+'</th></tr></thead><tbody>'
-    +sp.map(function(s){return '<tr><td>'+ionEsc(s.ten)+'</td><td>'+fmt(s.gia_kn)+'</td><td>'+(v==='3bac'?'—':'<b>'+fmt(Math.round(s.gia_kn*(1-ck/100)))+'</b>')+'</td></tr>'}).join('')+'</tbody></table>':'<div class="empty">Chưa chọn sản phẩm.</div>';
+  if(!BG)return; var d=bgDt(), ck=Number(document.getElementById('bgCk').value)||0;
+  BG.san_pham.forEach(function(s){var e=document.getElementById('bgGia_'+s.ma);if(!e)return;
+    e.innerHTML=d[3]===null?'<span class="muted">'+fmt(s.gia_kn)+'</span>':(ck>0?'<span class="muted" style="text-decoration:line-through">'+fmt(s.gia_kn)+'</span><br><b>'+fmt(Math.round(s.gia_kn*(1-ck/100)))+'</b>':'<b>'+fmt(s.gia_kn)+'</b>')});
+  var n=bgChon().length; document.getElementById('bgNut').textContent=n?'Tạo báo giá PDF · '+n+' sản phẩm':'Tạo báo giá PDF';
 }
 function bgTao(){
-  var v=document.getElementById('bgBac').value, ma=bgChon(); if(!ma.length){alert('Chọn ít nhất 1 sản phẩm');return}
-  var nut=document.getElementById('bgNut'); nut.disabled=true; nut.textContent='Đang tạo PDF (khoảng 20–40 giây)...';
-  ionPost({loai:'bao_gia',bac:v,ck:v==='3bac'?'':document.getElementById('bgCk').value,dong:ma,kinh_gui:ionV('bgKinhGui'),ghi_chu:ionV('bgGhiChu'),kho:KHO,nguoi:ionNguoi()})
-    .then(function(r){nut.disabled=false;nut.textContent='Tạo báo giá PDF';
+  var ma=bgChon(), d=bgDt(); if(!ma.length){alert('Chọn sản phẩm cần báo giá');return}
+  var ck=document.getElementById('bgCk').value; if(d[3]!==null&&(ck===''||isNaN(Number(ck)))){alert('Chọn mức chiết khấu');return}
+  var nut=document.getElementById('bgNut'); nut.disabled=true; nut.textContent='Đang tạo PDF (khoảng 20 giây)...';
+  ionPost({loai:'bao_gia',doi_tuong:BGDT,ck:d[3]===null?'':ck,dong:ma,kinh_gui:ionV('bgKhach'),kho:KHO,nguoi:ionNguoi()})
+    .then(function(r){nut.disabled=false;bgVe();
       if(!r.ok){document.getElementById('bgKq').innerHTML='<div class="card" style="color:var(--red)">Lỗi: '+ionEsc(r.msg||'')+'</div>';return}
       window._bgUrl=r.pdfUrl;
-      document.getElementById('bgKq').innerHTML='<div class="card"><h2>✓ '+ionEsc(r.moTa||r.ten)+'</h2><div class="muted" style="margin-bottom:8px">'+ionEsc(r.ten)+'</div><div style="display:flex;gap:8px"><button class="btn bred" style="flex:1" onclick="window.open(window._bgUrl,\'_blank\')">Mở PDF</button><button class="btn bgrn" style="flex:1" onclick="ionChep(window._bgUrl)">Copy link</button><button class="btn bgrn" style="flex:1" onclick="ionGuiLink(\'Báo giá ION FUJI\',window._bgUrl)">Gửi Zalo</button></div></div>';
-    }).catch(function(){nut.disabled=false;nut.textContent='Tạo báo giá PDF';alert('Lỗi kết nối')});
+      document.getElementById('bgKq').innerHTML='<div class="card"><h2>✓ Đã tạo báo giá'+(ionV('bgKhach')?' cho '+ionEsc(ionV('bgKhach')):'')+'</h2><div class="muted" style="margin-bottom:8px">'+ionEsc(r.moTa||r.ten)+'</div><div style="display:flex;gap:8px"><button class="btn bred" style="flex:1" onclick="window.open(window._bgUrl,\'_blank\')">Mở PDF</button><button class="btn bgrn" style="flex:1" onclick="ionChep(window._bgUrl)">Copy link</button><button class="btn bgrn" style="flex:1" onclick="ionGuiLink(\'Báo giá ION FUJI\',window._bgUrl)">Gửi Zalo</button></div></div>';
+      document.getElementById('bgKq').scrollIntoView({behavior:'smooth'});
+    }).catch(function(){nut.disabled=false;bgVe();alert('Lỗi kết nối')});
 }
 function ionChep(t){(navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t):Promise.resolve(prompt('Copy link:',t))).then(function(){alert('Đã copy link')})}
 function ionGuiLink(ten,url){if(navigator.share){navigator.share({title:ten,text:'ION FUJI gửi anh/chị: '+ten,url:url}).catch(function(){});return} ionChep(url)}
