@@ -528,6 +528,7 @@ function ghiViba_(ss, r) {
   row.push(thang_(r[1]));                                            // 17 Thang
   row.push('');                                                      // 18 Ly do hoan
   row.push('');                                                      // 19 Ngay hoan
+  while (row.length < VB_HEAD.length) row.push('');                  // 01/10/2026: cot 20-26 (thong tin phieu VIBA) de trong -> du so cot
 
   // Ep text cac cot de mat so 0 dau SDT / bi doi kieu ngay TRUOC khi ghi
   var dong = sh.getLastRow() + 1;

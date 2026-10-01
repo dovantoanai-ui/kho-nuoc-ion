@@ -1943,7 +1943,15 @@ function vbYmd(s){var p=String(s||'').slice(0,10).split('/');return p.length===3
 function vbDmy(y){var p=String(y||'').split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:''}
 function vbHomNay(){return vbYmd(today())}
 /* Dong hoa don cua 1 don VIBA: dang cho -> tab HoaDonCho; da giao -> tab HoaDon */
-function vbLinesOf(id){var a=CHO.filter(function(r){return r.id===id});if(!a.length)a=HD.filter(function(r){return r.id===id});return a}
+function vbLinesOf(id){var a=CHO.filter(function(r){return r.id===id});if(!a.length)a=HD.filter(function(r){return r.id===id});
+  /* 01/10/2026: diem giao tach tu 1 hoa don gop (ID 'HDxxx~n', vd 3 Hao 5 cua hang): hang lay tu cot 'Hang hoa' cua dong GiaoVIBA,
+     don gia lay tu hoa don goc -> moi phieu VIBA tinh cong rieng, doanh thu khong dem 2 lan (hoa don goc khong co dong GiaoVIBA) */
+  if(!a.length){var m=String(id).match(/^(.+)~\d+$/),x=null;VB.forEach(function(v){if(v.id===id)x=v});
+    if(m&&x&&x.hang){var goc=HD.filter(function(r){return r.id===m[1]});
+      a=String(x.hang).split('; ').map(function(s){var mm=s.match(/^(.*) ×(\d+(?:[.,]\d+)?)$/);if(!mm)return null;
+        var sl=Number(mm[2].replace(',','.'))||0,g=null;goc.forEach(function(r){if(r.sp===mm[1])g=r});var gia=g?g.gia:0;
+        return {id:id,sp:mm[1],dvt:g?g.dvt:'',sl:sl,gia:gia,tien:Math.round(sl*gia),coc:0}}).filter(Boolean)}}
+  return a}
 function vbDem(lines){
   var d={q:{},sosp:0,binh19:0,tien:0,coc:0,ngoaiMau:[]};
   VB_GIA_MA.concat(['SP02']).forEach(function(m){d.q[m]=0});
