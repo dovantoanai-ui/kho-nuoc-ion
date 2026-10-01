@@ -2787,26 +2787,6 @@ function vbSheetTabs(){
   don.forEach(function(o){var x=o.x;r.push([x.ngaygiao,x.sophieu||'(thiếu)',x.ma||'',x.khach||'',x.hang||'',o.d.sosp,o.d.tien])});
   r.push([]);r.push(['Tiền hàng chưa VAT, không gồm cọc vỏ.']);
   tabs.push({ten:'Doanh số',rows:r,dam:dam,rong:[12,14,10,30,50,10,16]});
-  /* 6. Moi NV giao 1 tab: tien nhan + so don, SP, duoi min, len tang, ngoai thanh (01/10 ban 8) */
-  var nvs=[];don.forEach(function(o){var m=o.x.nv||'';if(nvs.indexOf(m)<0)nvs.push(m)});nvs.sort();
-  nvs.forEach(function(m){
-    var ten=m?m+' '+vbNvTen(m,c):'Chưa ghi NV',ds=don.filter(function(o){return (o.x.nv||'')===m});
-    ten=ten.replace(/[\[\]\*\?:\/\\]/g,' ').slice(0,90);
-    r=[[ten+' — TIỀN GIAO HÀNG VIBA'],['Cập nhật: '+luc],[],
-      ['Tháng','Số đơn','Số SP','Đơn dưới '+c.min+' SP','Lên tầng','Ngoại thành (xa)','Công theo SP','Cố định dưới '+c.min+' SP','Phụ phí lên tầng','Phụ phí ngoại thành','Tiền nhận']];dam=[3];
-    var T=[0,0,0,0,0,0,0,0,0,0];
-    thang.forEach(function(t){var a=ds.filter(function(o){return o.ng.slice(0,7)===t});if(!a.length)return;var v=[a.length,0,0,0,0,0,0,0,0,0];
-      a.forEach(function(o){v[1]+=o.d.sosp;if(o.k.duoiMin){v[2]++;v[6]+=o.k.coban}else v[5]+=o.k.coban;
-        if(o.x.tang){v[3]++;v[7]+=o.k.tang}if(o.x.ngoai&&o.d.sosp){v[4]++;v[8]+=o.k.ngoaiThem}v[9]+=o.k.tong});
-      v.forEach(function(n,i){T[i]+=n});r.push([thTxt(t)].concat(v))});
-    r.push(['Tổng'].concat(T));dam.push(r.length-1);
-    r.push([]);r.push(['CHI TIẾT ĐƠN']);dam.push(r.length-1);
-    r.push(['Ngày giao','Số phiếu','Khách','Địa chỉ','Hàng','Số SP','Ghi chú','Tiền']);dam.push(r.length-1);
-    ds.forEach(function(o){var x=o.x,g=[];if(o.k.duoiMin)g.push('dưới '+c.min+' SP');if(x.tang)g.push('lên tầng');if(x.ngoai)g.push('ngoại thành');
-      r.push([x.ngaygiao,x.sophieu||'(thiếu)',x.khach||'',x.dc||'',x.hang||'',o.d.sosp,g.join(', '),o.k.tong])});
-    r.push([]);r.push(['Đơn giá theo bảng giá VIBA; dưới '+c.min+' SP tính cố định '+c.phiMin+' đ/đơn; lên tầng +'+c.tang+' đ/đơn; ngoại thành tính theo đơn giá ngoại thành.']);
-    tabs.push({ten:ten,rows:r,dam:dam,rong:[12,12,24,26,40,10,22,16,16,18,14]});
-  });
   return tabs;
 }
 var VBSHEET_DANG=false;
