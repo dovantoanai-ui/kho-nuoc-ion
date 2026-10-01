@@ -118,7 +118,6 @@
 
     <!-- ===== TAB HOA DON ===== -->
     <div id="tab-hd" class="tab-pane">
-      <div id="ttBanner" class="card" style="display:none;background:#fff6e8;border-color:#e08a00"></div>
       <div class="card">
         <h2>Khách hàng</h2>
         <label>Chọn khách (bắt buộc có mã)</label>
@@ -184,7 +183,7 @@
             <input type="checkbox" id="vbThuHo" onchange="onVbThuHo()" style="width:20px;height:20px;flex:0 0 20px">
             <label for="vbThuHo" style="margin:0;font-size:14px;color:var(--ink);flex:1">VIBA thu hộ tiền</label>
           </div>
-          <div id="vbThuHoWrap" style="display:none"><label>Số tiền thu hộ (đ)</label><input id="vbTien" type="number" inputmode="numeric" placeholder="0" oninput="this.setAttribute('data-tay','1');render()"></div>
+          <div id="vbThuHoWrap" style="display:none"><label>Số tiền thu hộ (đ)</label><input id="vbTien" type="number" inputmode="numeric" placeholder="0" oninput="render()"></div>
           <label>Ghi chú cho VIBA</label><input id="vbGc" oninput="render()" placeholder="VD: giao trước 17h, gọi trước khi đến">
         </div>
       </div>
@@ -273,11 +272,10 @@
     <div id="tab-vb" class="tab-pane" style="display:none">
       <div class="card">
         <h2>Giao hàng VIBA — kho <span id="vbKhoLbl">—</span></h2>
-        <div class="muted" style="margin-bottom:6px">Chờ giao: <b id="vbSoCho">0</b> đơn · Thu hộ chờ về: <b id="vbTongThuHo" style="color:var(--red)">0</b> đ</div>
-        <div id="vbDangGiao" class="muted" style="margin-bottom:8px;background:#fff6e8;border:1px dashed var(--amb);border-radius:9px;padding:7px 9px;display:none"></div>
+        <div class="muted" style="margin-bottom:8px">Chờ giao: <b id="vbSoCho">0</b> đơn · Thu hộ chờ về: <b id="vbTongThuHo" style="color:var(--red)">0</b> đ</div>
         <div class="row" style="align-items:stretch">
           <div style="flex:1"><label>Xem</label>
-            <select id="vbLoc" onchange="renderViba()"><option value="cho">Chờ giao</option><option value="da">Đã giao</option><option value="hoan">Hoàn hàng</option><option value="all">Tất cả</option></select></div>
+            <select id="vbLoc" onchange="renderViba()"><option value="cho">Chờ giao</option><option value="da">Đã giao</option><option value="all">Tất cả</option></select></div>
           <div style="flex:1"><label>Người xác nhận</label><input id="vbNguoi" placeholder="Tên người bấm"></div>
         </div>
         <button class="btn bgrn" style="width:100%;margin:4px 0 10px" onclick="loadData(true)">Tải lại từ Sheet</button>
@@ -352,20 +350,6 @@
   </div>
 </div>
 
-<!-- ===== FORM HUY PHIEU (01/10/2026) ===== -->
-<div id="huyOvl" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:120;overflow:auto;padding:12px">
-  <div class="card" style="max-width:520px;margin:8px auto 40px">
-    <h2>Huỷ phiếu nhập sai</h2>
-    <div id="huyInfo" class="li" style="display:block;border:none;background:#fdeceb;border-radius:10px;padding:9px 12px;margin-bottom:6px"></div>
-    <label>Người huỷ</label><input id="huyNguoi" placeholder="Tên người huỷ">
-    <label>Lý do huỷ</label><input id="huyLyDo" placeholder="VD: nhập sai số lượng, sai khách, nhập trùng">
-    <div class="muted" style="margin-top:8px">Phiếu bị huỷ chuyển sang tab HoaDonHuy để lưu vết. Doanh thu, tồn kho, công nợ tự bỏ phiếu này ra.</div>
-    <button class="btn bred" style="width:100%;margin-top:12px" id="huyBtnTT" onclick="huyThayThe()">Huỷ &amp; lập phiếu thay thế</button>
-    <button class="btn" style="width:100%;margin-top:8px;background:#eef1f4;color:var(--ink)" id="huyBtnChi" onclick="huyChi()">Chỉ huỷ (phiếu nhập trùng)</button>
-    <button class="btn" style="width:100%;margin-top:8px;background:#fff;color:var(--mut);border:1px solid var(--line)" onclick="document.getElementById('huyOvl').style.display='none'">Đóng</button>
-  </div>
-</div>
-
 <div class="btns" id="bar">
   <button class="b1" onclick="luuAnh()">Lưu ảnh</button>
   <button class="b1" onclick="inPdf()">In / PDF</button>
@@ -390,9 +374,6 @@ var KH=[], HD=[], TT=[];
 var PT={ma:'',ten:'',list:[],anh:null}; /* trang thai form phieu thu cong no */
 var TAB='hd'; /* tab dang mo - de sau khi luu phieu thu quay ve dung cho */
 var VB=[];    /* don giao qua VIBA, doc tu tab GiaoVIBA */
-var CHO=[];   /* dong hoa don VIBA dang cho giao (tab HoaDonCho) - CHUA vao HoaDon */
-var HUY=[];   /* dong hoa don da huy (tab HoaDonHuy) - de gan nhan 'Da huy' o tab Don */
-var THAYTHE=null; /* dang lap phieu thay the: {id, ngay, lydo, nguoi} */
 
 function pad(n){return String(n).padStart(2,'0')}
 function today(){var d=new Date();return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()}
@@ -456,7 +437,7 @@ function loadData(manual,cb){
   document.getElementById('dataInfo').textContent='Đang tải dữ liệu...';
   jsonp(GS,function(d){
     if(!d||!d.ok){document.getElementById('dataInfo').textContent='Lỗi tải dữ liệu';if(manual)alert('Không tải được dữ liệu. Kiểm tra URL backend đã deploy đúng chưa.');if(cb)cb(false);return}
-    KH=d.khach||[];HD=d.hoadon||[];TT=d.thanhtoan||[];VB=d.viba||[];CHO=d.cho||[];HUY=d.huy||[];
+    KH=d.khach||[];HD=d.hoadon||[];TT=d.thanhtoan||[];VB=d.viba||[];
     if(d.cat&&d.cat.length){CAT=d.cat;try{localStorage.setItem('hd_cat',JSON.stringify(CAT))}catch(e){}refreshRows();}
     document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn';
     fillKhSelect();renderMaPreview();renderKhList();renderBaoCao();renderCongNo();renderThuNo();renderViba();renderCSKH();
@@ -481,7 +462,6 @@ function onKhSel(){
   box.innerHTML='SĐT: '+(k.sdt||'—')+' &nbsp;·&nbsp; '+(k.qh||'—')+' &nbsp;·&nbsp; '+k.tt+(k.tt==='Công nợ'?' ('+k.kyhan+' ngày)':'');
   document.getElementById('tt').value=(k.tt==='Công nợ')?'Chưa thanh toán':'Đã thanh toán';
   document.getElementById('ht').value='Tiền mặt';document.getElementById('htTKWrap').style.display='none';onTt();
-  document.getElementById('vbTien').removeAttribute('data-tay'); /* khach moi -> thu ho lai tu theo tong */
   if(document.getElementById('viba').checked)vbFill(true); /* doi khach -> nguoi nhan theo khach moi */
 }
 
@@ -510,16 +490,8 @@ function onViba(){
 function onVbThuHo(){
   var on=document.getElementById('vbThuHo').checked;
   document.getElementById('vbThuHoWrap').style.display=on?'block':'none';
-  document.getElementById('vbTien').removeAttribute('data-tay'); /* bat lai -> tu theo tong */
+  if(on&&!Number(document.getElementById('vbTien').value))document.getElementById('vbTien').value=tongForm().con;
   render();
-}
-/* O thu ho tu theo "con phai thu" moi khi doi hang/SL/VAT/trang thai TT, tru khi da go tay.
-   Tranh truong hop tang SL ma so thu ho van la so cu -> VIBA thu thieu. */
-function vbDongBoThuHo(){
-  var el=document.getElementById('vbTien');
-  if(!document.getElementById('viba').checked||!document.getElementById('vbThuHo').checked)return;
-  if(el.getAttribute('data-tay')==='1')return;
-  el.value=tongForm().con;
 }
 function vbForm(){
   if(!document.getElementById('viba').checked)return null;
@@ -649,7 +621,6 @@ function render(){
   var payLine='<div class="kv" style="margin-top:6px"><b>Thanh toán:</b> <span style="color:'+ttcol+';font-weight:800">'+ttv+'</span> &nbsp;|&nbsp; <b>Hình thức:</b> '+htv+(thu?' &nbsp;|&nbsp; <b>Người thu:</b> '+thu:'')+'</div>';
   var ghichu=(document.getElementById('ghichu').value||'').trim();
   var gcLine=ghichu?'<div class="kv" style="margin-top:4px"><b>Ghi chú:</b> '+ghichu.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>':'';
-  vbDongBoThuHo();
   var vb=vbForm();
   var vbLine=vb?('<div style="margin-top:7px;border:1px dashed #e08a00;background:#fff6e8;border-radius:6px;padding:6px 8px;font-size:12px;line-height:1.5">'
     +'<b>Giao hàng: VIBA</b>'
@@ -665,7 +636,7 @@ function render(){
    +'<div class="ivh"><div class="n">ION FUJI</div>'
    +'<div class="s">CT TNHH ION FUJI VIỆT NAM &nbsp;|&nbsp; Hotline: 090.809.88.66<br>Kho '+KHO+'</div></div>'
    +'<div class="ivb"><div class="ivt">HOÁ ĐƠN BÁN HÀNG</div>'
-   +'<div class="kv"><b>Ngày:</b> '+(THAYTHE?THAYTHE.ngay:today())+' &nbsp;|&nbsp; <b>Kho:</b> '+KHO+'</div>'
+   +'<div class="kv"><b>Ngày:</b> '+today()+' &nbsp;|&nbsp; <b>Kho:</b> '+KHO+'</div>'
    +'<div class="kv"><b>Khách hàng:</b> '+(kh||'.................')+(k?' ('+k.ma+')':'')+'</div>'
    +'<div class="kv"><b>Điện thoại:</b> '+(sdt||'.................')+(qh?' &nbsp;|&nbsp; '+qh:'')+'</div>'
    +'<table><thead><tr><th>TT</th><th>Tên hàng</th><th>ĐVT</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>'
@@ -694,38 +665,27 @@ function dongBo(){
     if(document.getElementById('vbThuHo').checked&&vb.thuho<=0){alert('Đã tích "VIBA thu hộ" nhưng chưa nhập số tiền thu hộ.');return}
     if(vb.thuho>tong){alert('Số tiền thu hộ ('+fmt(vb.thuho)+' đ) lớn hơn tổng hoá đơn ('+fmt(tong)+' đ).');return}
   }
-  if(THAYTHE&&vb){alert('Phiếu thay thế không đi kèm giao VIBA. Bỏ tích "Giao qua VIBA" rồi lưu lại.');return}
-  var id='HD'+Date.now();var ng=THAYTHE?THAYTHE.ngay:today();var rows=[];
+  var id='HD'+Date.now();var ng=today();var rows=[];
   items.forEach(function(x,i){
     rows.push([id,ng,cust.ma,i===0?cust.ten:'',i===0?cust.sdt:'',KHO,x.t,x.dv,x.sl,x.gia,x.tt,
       i===0?(hasVat?rate:0):'',i===0?coc:'',i===0?tong:'',i===0?dathu:'',i===0?ttv:'',i===0?thu:'',i===0?htv:'',i===0?ghichu:'']);
   });
-  /* Don thuong -> ghi thang HoaDon. Don VIBA -> 'vibamoi': giu tam o HoaDonCho,
-     chi vao HoaDon (doanh thu, tru kho, cong no) khi bam Da giao o tab Giao VIBA */
-  if(THAYTHE){luuThayThe(rows,id);return}
   var body={loai:'hoadon',rows:rows};
   var vbRow=null;
   if(vb){
     var hang=items.map(function(x){return x.t+' ×'+x.sl}).join('; ');
     vbRow=[id,ng,KHO,cust.ma,cust.ten,vb.ten,vb.sdt,vb.dc,hang,tong,vb.thuho,vb.gc];
-    body={loai:'vibamoi',rows:rows,viba:{row:vbRow}};
+    body.viba={row:vbRow};
   }
   var b=document.getElementById('dbBtn');b.textContent='Đang đồng bộ...';
   fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)})
    .then(function(){
-     var toObj=function(r){return {id:r[0],ngay:String(r[1]).slice(0,10),ma:String(r[2]),khach:r[3],sdt:String(r[4]),kho:r[5],sp:r[6],dvt:r[7],sl:Number(r[8])||0,gia:Number(r[9])||0,tien:Number(r[10])||0,vat:Number(r[11])||0,coc:Number(r[12])||0,tong:Number(r[13])||0,dathu:Number(r[14])||0,tt:r[15],thu:r[16],ht:r[17],ghichu:r[18]}};
-     if(vbRow){
-       rows.forEach(function(r){CHO.push(toObj(r))});
-       VB.push({id:id,ngay:ng,kho:KHO,ma:cust.ma,khach:cust.ten,nhan:vb.ten,sdt:vb.sdt,dc:vb.dc,hang:vbRow[8],tong:tong,thuho:vb.thuho,gc:vb.gc,tt:'Chờ giao',ngaygiao:'',nguoi:'',lydo:'',ngayhoan:''});
-     }else{
-       rows.forEach(function(r){HD.push(toObj(r))});
-     }
+     rows.forEach(function(r){HD.push({id:r[0],ngay:String(r[1]).slice(0,10),ma:String(r[2]),khach:r[3],sdt:String(r[4]),kho:r[5],sp:r[6],dvt:r[7],sl:Number(r[8])||0,gia:Number(r[9])||0,tien:Number(r[10])||0,vat:Number(r[11])||0,coc:Number(r[12])||0,tong:Number(r[13])||0,dathu:Number(r[14])||0,tt:r[15],thu:r[16],ht:r[17],ghichu:r[18]})});
+     if(vbRow)VB.push({id:id,ngay:ng,kho:KHO,ma:cust.ma,khach:cust.ten,nhan:vb.ten,sdt:vb.sdt,dc:vb.dc,hang:vbRow[8],tong:tong,thuho:vb.thuho,gc:vb.gc,tt:'Chờ giao',ngaygiao:'',nguoi:''});
      document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn';
      b.textContent='Đã đồng bộ ✓ (bấm để gửi tiếp)';
-     document.getElementById('vbTien').removeAttribute('data-tay');
      renderBaoCao();renderCongNo();renderCSKH();renderDonHang();renderViba();
-     if(vbRow)alert('Đã bắn đơn '+id+' sang VIBA (Chờ giao).\n\nDoanh thu, trừ kho và công nợ CHƯA ghi — chỉ ghi khi bấm "Xác nhận đã giao" ở tab Giao VIBA.');
-     else alert('Đã lưu hoá đơn '+id+' lên Sheet.');
+     alert('Đã lưu hoá đơn '+id+' lên Sheet.'+(vbRow?'\nĐã bắn đơn sang tab Giao VIBA (Chờ giao).':''));
    })
    .catch(function(e){b.textContent='Lưu & đồng bộ hoá đơn lên Sheet';alert('Lỗi đồng bộ: '+e.message)});
 }
@@ -786,8 +746,7 @@ function renderBaoCao(){
 function invoiceList(){
   var m={};
   HD.forEach(function(x){ if(x.kho!==KHO)return;
-    var g=m[x.id]||(m[x.id]={id:x.id,ngay:x.ngay,ma:x.ma,khach:x.khach,lines:[],tong:0,dathu:0,tt:'',ht:'',thu:'',link:'',ngayck:''});
-    if(x.link)g.link=x.link; if(x.ngayck)g.ngayck=x.ngayck;
+    var g=m[x.id]||(m[x.id]={id:x.id,ngay:x.ngay,ma:x.ma,khach:x.khach,lines:[],tong:0,dathu:0,tt:'',ht:'',thu:''});
     g.lines.push({sp:x.sp,sl:x.sl,gia:x.gia,tien:x.tien});
     if(x.tong>g.tong)g.tong=x.tong; if(x.dathu>g.dathu)g.dathu=x.dathu;
     if(x.tt)g.tt=x.tt; if(x.ht)g.ht=x.ht; if(x.thu)g.thu=x.thu;
@@ -811,152 +770,9 @@ function renderDonHang(){
       +'<div class="muted" style="margin:2px 0">'+(v.ma?v.ma+' · ':'')+(v.khach||'—')+'</div>'
       +'<div style="font-size:12px;margin:2px 0"><span style="color:'+ttcol+';font-weight:700">'+v.tt+'</span>'+(v.ht?' · '+v.ht:'')+(v.thu?' · thu: '+v.thu:'')+(conno>0?' · <span style="color:#c8102e">còn nợ '+fmt(conno)+'</span>':'')+'</div>'
       +'<div style="font-size:12.5px;margin-top:4px;color:#333;line-height:1.5">'+lines+'</div>'
-      +linkBill(v)
-      +'<div style="text-align:right;margin-top:6px"><button class="btn" style="padding:5px 12px;font-size:12px;background:#fff;color:var(--red);border:1px solid #f3c5cc" data-huy-id="'+esc(v.id)+'">Huỷ phiếu</button></div>'
-      +'</div>';
-  });
-  /* Phieu da huy: van hien de tra lai, gan nhan ro */
-  huyList().forEach(function(v){
-    h+='<div class="card" style="padding:11px 12px;margin-bottom:8px;opacity:.7;border-style:dashed">'
-      +'<div style="display:flex;justify-content:space-between;align-items:baseline"><b>'+esc(v.ngay)+' · '+esc(v.id)+'</b><span class="pill p-bad">Đã huỷ</span></div>'
-      +'<div class="muted" style="margin:2px 0">'+(v.ma?esc(v.ma)+' · ':'')+esc(v.khach||'—')+' · '+fmt(v.tong)+' đ</div>'
-      +'<div style="font-size:12px;color:var(--red)">'+(v.thaythe?'→ thay bằng <b>'+esc(v.thaythe)+'</b> · ':'')+'lý do: '+esc(v.lydo||'—')+(v.nguoihuy?' · '+esc(v.nguoihuy):'')+(v.ngayhuy?' · '+esc(v.ngayhuy):'')+'</div>'
       +'</div>';
   });
   el.innerHTML=h;
-  el.querySelectorAll('[data-huy-id]').forEach(function(b){
-    b.onclick=function(){moHuy(b.getAttribute('data-huy-id'))};
-  });
-}
-function linkBill(v){
-  if(!v.link)return '';
-  var ls=String(v.link).split('|').map(function(x){return x.trim()}).filter(function(x){return x.indexOf('http')===0});
-  if(!ls.length)return '';
-  return '<div style="font-size:12px;margin-top:4px">'+(v.ngayck?'Ngày CK '+esc(v.ngayck)+' · ':'')
-    +ls.map(function(u,i){return '<a href="'+esc(u)+'" target="_blank" rel="noopener">Ảnh bill '+(i+1)+'</a>'}).join(' · ')+'</div>';
-}
-function huyList(){
-  var m={};
-  HUY.forEach(function(x){ if(x.kho!==KHO)return;
-    var g=m[x.id]||(m[x.id]={id:x.id,ngay:x.ngay,ma:x.ma,khach:x.khach,tong:0,lydo:'',nguoihuy:'',ngayhuy:'',thaythe:''});
-    if(x.tong>g.tong)g.tong=x.tong; if(x.khach&&!g.khach)g.khach=x.khach;
-    if(x.lydo)g.lydo=x.lydo; if(x.nguoihuy)g.nguoihuy=x.nguoihuy; if(x.ngayhuy)g.ngayhuy=x.ngayhuy; if(x.thaythe)g.thaythe=x.thaythe;
-  });
-  var arr=[];for(var k in m)arr.push(m[k]);
-  arr.sort(function(a,b){return String(b.id).localeCompare(String(a.id))});
-  return arr;
-}
-
-/* ---------- HUY PHIEU + PHIEU THAY THE (01/10/2026) ---------- */
-var HUYID='';
-function moHuy(id){
-  var v=null;invoiceList().forEach(function(x){if(x.id===id)v=x});
-  if(!v){alert('Không tìm thấy phiếu '+id+'. Bấm Làm mới rồi thử lại.');return}
-  HUYID=id;
-  document.getElementById('huyInfo').innerHTML='<div class="t1" style="color:var(--red)">'+esc(v.ngay)+' · '+esc(v.id)+'</div>'
-    +'<div class="t2">'+esc(v.ma)+' · '+esc(v.khach||'—')+' · '+fmt(v.tong)+' đ · '+esc(v.tt)+'</div>';
-  var n=document.getElementById('huyNguoi');if(!n.value)n.value=localStorage.getItem('hd_huy_nguoi')||'';
-  document.getElementById('huyLyDo').value='';
-  ['huyBtnTT','huyBtnChi'].forEach(function(b){document.getElementById(b).disabled=false});
-  document.getElementById('huyBtnTT').textContent='Huỷ & lập phiếu thay thế';
-  document.getElementById('huyBtnChi').textContent='Chỉ huỷ (phiếu nhập trùng)';
-  document.getElementById('huyOvl').style.display='block';window.scrollTo(0,0);
-}
-function huyDocForm(){
-  var nguoi=(document.getElementById('huyNguoi').value||'').trim();
-  var lydo=(document.getElementById('huyLyDo').value||'').trim();
-  if(!nguoi||!lydo){alert('Cần ghi tên người huỷ và lý do để lưu vết.');return null}
-  try{localStorage.setItem('hd_huy_nguoi',nguoi)}catch(e){}
-  return {nguoi:nguoi,lydo:lydo};
-}
-/* Lap lai so lieu phieu cu tu cac dong HD (giu nguyen gia, SL, VAT, coc, trang thai) */
-function phieuCu(id){
-  var ls=HD.filter(function(x){return x.id===id});if(!ls.length)return null;
-  var d=ls[0];
-  return {id:id,ngay:d.ngay,ma:d.ma,lines:ls,vat:d.vat,coc:d.coc,tong:d.tong,dathu:d.dathu,tt:d.tt,thu:d.thu,ht:d.ht,ghichu:d.ghichu};
-}
-function catIdx(ten){
-  var k=String(ten||'').trim().toLowerCase();
-  for(var i=0;i<CAT.length;i++)if(String(CAT[i].t).trim().toLowerCase()===k)return i;
-  return -1;
-}
-function huyThayThe(){
-  if(!GS){alert('Chưa cấu hình backend. Bấm Cài đặt để dán URL /exec.');return}
-  var f=huyDocForm();if(!f)return;
-  var p=phieuCu(HUYID);if(!p){alert('Không đọc được phiếu '+HUYID);return}
-  var khong=p.lines.filter(function(l){return catIdx(l.sp)<0}).map(function(l){return l.sp});
-  if(khong.length){alert('Không tìm thấy trong danh mục: '+khong.join(', ')+'.\nKhông lập phiếu thay thế tự động được — anh dùng "Chỉ huỷ" rồi tạo phiếu mới bằng tay.');return}
-  if(!khByMa(p.ma)){alert('Khách '+p.ma+' không còn trong danh sách khách. Bấm Làm mới rồi thử lại.');return}
-  document.getElementById('huyOvl').style.display='none';
-  showTab('hd');
-  var $=function(id){return document.getElementById(id)};
-  $('khSel').value=p.ma;onKhSel();
-  $('ck').value='0';$('ckCustomWrap').style.display='none';
-  $('rows').innerHTML='';
-  p.lines.forEach(function(l){
-    addRow();var r=$('rows').lastChild;
-    r.querySelector('select').value=String(catIdx(l.sp));
-    r.querySelector('.q input').value=l.sl;
-    r.querySelector('.g input').value=l.gia; /* giu gia cu, khong tinh lai theo chiet khau */
-  });
-  $('vat').checked=p.vat>0;if(p.vat>0)$('vatr').value=p.vat;
-  $('coc').value=p.coc||'';
-  $('tt').value=p.tt||'Chưa thanh toán';onTt();
-  $('dathu').value=(p.tt==='Thanh toán 1 phần')?p.dathu:'';
-  var tk=[].map.call($('htTK').options,function(o){return o.value});
-  if(tk.indexOf(p.ht)>=0){$('ht').value='Chuyển khoản';$('htTK').value=p.ht}else{$('ht').value='Tiền mặt'}
-  onHt();
-  $('thu').value=p.thu||'';$('ghichu').value=p.ghichu||'';
-  $('viba').checked=false;onViba();
-  THAYTHE={id:p.id,ngay:p.ngay,lydo:f.lydo,nguoi:f.nguoi};
-  hienThayThe();render();
-  alert('Đã nạp phiếu '+p.id+' vào form. Sửa chỗ nhập sai rồi bấm "Lưu phiếu thay thế".\nPhiếu cũ chỉ bị huỷ khi lưu phiếu mới thành công.');
-}
-function hienThayThe(){
-  var b=document.getElementById('ttBanner'),btn=document.getElementById('dbBtn');
-  if(!THAYTHE){b.style.display='none';btn.textContent='Lưu & đồng bộ hoá đơn lên Sheet';return}
-  b.style.display='block';
-  b.innerHTML='<div style="font-weight:700;color:#a5670a">Đang lập phiếu thay thế cho '+esc(THAYTHE.id)+'</div>'
-    +'<div class="muted">Giữ ngày phiếu gốc '+esc(THAYTHE.ngay)+' · lý do huỷ: '+esc(THAYTHE.lydo)+' · '+esc(THAYTHE.nguoi)+'</div>'
-    +'<button class="btn" style="margin-top:8px;padding:6px 12px;font-size:12px;background:#fff;color:var(--ink);border:1px solid var(--line)" id="ttBo">Bỏ, không thay thế nữa</button>';
-  document.getElementById('ttBo').onclick=function(){THAYTHE=null;hienThayThe();render()};
-  btn.textContent='Lưu phiếu thay thế cho '+THAYTHE.id;
-}
-function guiHuy(body,btn,nhan,ok,thongBao){
-  btn.disabled=true;btn.textContent='Đang lưu...';
-  fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)})
-   .then(function(){huyKiemTra(btn,nhan,ok,thongBao,1)})
-   .catch(function(e){btn.disabled=false;btn.textContent=nhan;alert('Lỗi gửi dữ liệu: '+e.message)});
-}
-/* no-cors khong doc duoc phan hoi -> tai lai Sheet, dung ham ok() de xac nhan that */
-function huyKiemTra(btn,nhan,ok,thongBao,lan){
-  btn.textContent='Đang kiểm tra trên Sheet...';
-  setTimeout(function(){
-    loadData(false,function(){
-      if(ok()){btn.disabled=false;btn.textContent=nhan;thongBao();return}
-      if(lan<2){huyKiemTra(btn,nhan,ok,thongBao,lan+1);return}
-      btn.disabled=false;btn.textContent=nhan;
-      alert('Chưa thấy thay đổi trên Sheet.\n\nCó thể mạng chậm hoặc backend chưa deploy bản mới. Vài phút nữa bấm Làm mới để kiểm tra. Bấm lại cũng an toàn — backend không huỷ một phiếu hai lần.');
-    });
-  },lan===1?2500:4000);
-}
-function coTrongHD(id){return HD.some(function(x){return x.id===id})}
-function huyChi(){
-  if(!GS){alert('Chưa cấu hình backend. Bấm Cài đặt để dán URL /exec.');return}
-  var f=huyDocForm();if(!f)return;
-  var id=HUYID;
-  if(!confirm('Huỷ hẳn phiếu '+id+' (không lập phiếu thay thế)?'))return;
-  guiHuy({loai:'huyhd',id:id,lydo:f.lydo,nguoi:f.nguoi,ngay:today()},document.getElementById('huyBtnChi'),'Chỉ huỷ (phiếu nhập trùng)',
-    function(){return !coTrongHD(id)},
-    function(){document.getElementById('huyOvl').style.display='none';renderDonHang();alert('Đã huỷ phiếu '+id+'.')});
-}
-function luuThayThe(rows,idMoi){
-  var t=THAYTHE;
-  if(!confirm('Lưu phiếu thay thế '+idMoi+' (ngày '+t.ngay+') và huỷ phiếu '+t.id+'?'))return;
-  guiHuy({loai:'huyhd',id:t.id,lydo:t.lydo,nguoi:t.nguoi,ngay:today(),thaythe:rows},document.getElementById('dbBtn'),'Lưu phiếu thay thế cho '+t.id,
-    function(){return coTrongHD(idMoi)&&!coTrongHD(t.id)},
-    function(){THAYTHE=null;hienThayThe();renderDonHang();renderCongNo();renderBaoCao();
-      alert('Đã lưu phiếu thay thế '+idMoi+' và huỷ phiếu '+t.id+'.')});
 }
 /* ---------- CONG NO ---------- */
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
@@ -1241,107 +1057,63 @@ function ptXacNhan(idPhieu,lan){
 }
 
 /* ---------- GIAO VIBA: tab theo doi ---------- */
-function vbChoCua(id){return CHO.filter(function(r){return r.id===id})}
 function renderViba(){
   var el=document.getElementById('vbList');if(!el)return;
   var all=VB.filter(function(x){return x.kho===KHO});
-  var cho=all.filter(function(x){return x.tt!=='Đã giao'&&x.tt!=='Hoàn hàng'});
+  var cho=all.filter(function(x){return x.tt!=='Đã giao'});
   var thuho=0;cho.forEach(function(x){thuho+=x.thuho});
   document.getElementById('vbSoCho').textContent=cho.length;
   document.getElementById('vbTongThuHo').textContent=fmt(thuho);
-  /* Hang dang di giao: tru kho CHUA tinh phan nay -> ton thuc = ton tren app kho - so nay */
-  var idCho={};cho.forEach(function(x){idCho[x.id]=1});
-  var dg={},dgOrder=[];
-  CHO.forEach(function(r){if(!idCho[r.id]||r.kho!==KHO||!r.sp)return;
-    if(!(r.sp in dg)){dg[r.sp]=0;dgOrder.push(r.sp)} dg[r.sp]+=Number(r.sl)||0});
-  var dgEl=document.getElementById('vbDangGiao');
-  if(dgOrder.length){
-    dgEl.style.display='block';
-    dgEl.innerHTML='<b style="color:var(--amb)">Hàng đang đi giao</b> (app kho chưa trừ): '
-      +dgOrder.map(function(s){return esc(s)+' ×'+dg[s]}).join(' · ');
-  }else dgEl.style.display='none';
   var loc=document.getElementById('vbLoc').value;
-  var arr=loc==='cho'?cho:(loc==='da'?all.filter(function(x){return x.tt==='Đã giao'})
-    :(loc==='hoan'?all.filter(function(x){return x.tt==='Hoàn hàng'}):all.slice()));
+  var arr=loc==='cho'?cho:(loc==='da'?all.filter(function(x){return x.tt==='Đã giao'}):all.slice());
   /* Cho giao: don cu nhat len dau de uu tien; con lai: moi nhat len dau */
   if(loc==='cho')arr.sort(function(a,b){return String(a.id).localeCompare(String(b.id))});
   else arr.sort(function(a,b){return String(b.id).localeCompare(String(a.id))});
   if(!arr.length){el.innerHTML='<div class="empty">'+(loc==='cho'?'Không có đơn nào đang chờ giao.':'Chưa có đơn nào.')+'</div>';return}
   var h='';
   arr.forEach(function(x){
-    var xong=x.tt==='Đã giao',hoan=x.tt==='Hoàn hàng';
-    var cuoi;
-    if(xong)cuoi='<div class="t2" style="color:var(--grn)">Đã giao '+esc(x.ngaygiao||'')+(x.nguoi?' · xác nhận: '+esc(x.nguoi):'')+' · đã ghi vào HoaDon</div>';
-    else if(hoan)cuoi='<div class="t2" style="color:var(--red)">Hoàn hàng '+esc(x.ngayhoan||'')+(x.lydo?' · lý do: '+esc(x.lydo):'')+(x.nguoi?' · '+esc(x.nguoi):'')+'</div>';
-    else cuoi='<div style="display:flex;gap:8px;margin-top:8px">'
-      +'<button class="btn" style="flex:1;background:#eef1f4;color:var(--ink)" data-vb-huy="'+esc(x.id)+'">Giao không thành công</button>'
-      +'<button class="btn bred" style="flex:1.3" data-vb-id="'+esc(x.id)+'">Xác nhận đã giao</button></div>';
-    h+='<div class="li" style="display:block'+((xong||hoan)?';opacity:.8':'')+'">'
+    var xong=x.tt==='Đã giao';
+    h+='<div class="li" style="display:block'+(xong?';opacity:.8':'')+'">'
       +'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">'
       +'<div class="t1">'+esc(x.ngay)+' · '+esc(x.id)+'</div>'
-      +'<span class="pill '+(xong?'p-ok':(hoan?'p-bad':'p-warn'))+'">'+esc(x.tt)+'</span></div>'
+      +'<span class="pill '+(xong?'p-ok':'p-warn')+'">'+esc(x.tt)+'</span></div>'
       +'<div class="t2">'+esc(x.ma)+' · '+esc(x.khach||'—')+'</div>'
       +'<div class="t2">Nhận: <b>'+esc(x.nhan||'—')+'</b>'+(x.sdt?' · '+esc(x.sdt):'')+'</div>'
       +'<div class="t2">'+esc(x.dc||'—')+'</div>'
       +(x.hang?'<div class="t2">'+esc(x.hang)+'</div>':'')
       +'<div class="t2">Tổng: '+fmt(x.tong)+' đ'+(x.thuho>0?' · <b style="color:var(--red)">Thu hộ '+fmt(x.thuho)+' đ</b>':' · không thu hộ')+'</div>'
       +(x.gc?'<div class="t2">Ghi chú: '+esc(x.gc)+'</div>':'')
-      +cuoi+'</div>';
+      +(xong?'<div class="t2" style="color:var(--grn)">Đã giao '+esc(x.ngaygiao||'')+(x.nguoi?' · xác nhận: '+esc(x.nguoi):'')+'</div>'
+            :'<button class="btn bred" style="width:100%;margin-top:8px" data-vb-id="'+esc(x.id)+'">Xác nhận đã giao</button>')
+      +'</div>';
   });
   el.innerHTML=h;
   el.querySelectorAll('[data-vb-id]').forEach(function(b){
     b.onclick=function(){vbXacNhan(b.getAttribute('data-vb-id'),b)};
   });
-  el.querySelectorAll('[data-vb-huy]').forEach(function(b){
-    b.onclick=function(){vbHuy(b.getAttribute('data-vb-huy'),b)};
-  });
-}
-function vbNguoiXacNhan(){
-  var nguoi=(document.getElementById('vbNguoi').value||'').trim();
-  if(!nguoi){alert('Nhập tên người xác nhận ở ô phía trên để lưu vết.');document.getElementById('vbNguoi').focus();return ''}
-  try{localStorage.setItem('hd_vb_nguoi',nguoi)}catch(e){}
-  return nguoi;
-}
-function vbGui(body,id,btn,ttMongDoi,nhanNut,thongBao){
-  btn.disabled=true;btn.textContent='Đang lưu...';
-  fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)})
-   .then(function(){vbKiemTra(id,btn,1,ttMongDoi,nhanNut,thongBao)})
-   .catch(function(e){btn.disabled=false;btn.textContent=nhanNut;alert('Lỗi gửi dữ liệu: '+e.message)});
 }
 function vbXacNhan(id,btn){
   if(!GS){alert('Chưa cấu hình backend. Bấm Cài đặt để dán URL /exec.');return}
-  var nguoi=vbNguoiXacNhan();if(!nguoi)return;
-  if(!confirm('Xác nhận VIBA đã giao đơn '+id+'?\n\nĐơn sẽ được ghi vào HoaDon với ngày hôm nay ('+today()+'): tính doanh thu, trừ tồn kho, và hiện công nợ nếu khách chưa trả.'))return;
-  vbGui({loai:'vibagiao',id:id,ngaygiao:today(),nguoi:nguoi},id,btn,'Đã giao','Xác nhận đã giao',
-    'Đã xác nhận giao đơn '+id+'. Đơn đã vào HoaDon.');
+  var nguoi=(document.getElementById('vbNguoi').value||'').trim();
+  if(!nguoi){alert('Nhập tên người xác nhận ở ô phía trên để lưu vết.');document.getElementById('vbNguoi').focus();return}
+  if(!confirm('Xác nhận VIBA đã giao đơn '+id+'?'))return;
+  try{localStorage.setItem('hd_vb_nguoi',nguoi)}catch(e){}
+  btn.disabled=true;btn.textContent='Đang lưu...';
+  fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({loai:'vibagiao',id:id,ngaygiao:today(),nguoi:nguoi})})
+   .then(function(){vbKiemTra(id,btn,1)})
+   .catch(function(e){btn.disabled=false;btn.textContent='Xác nhận đã giao';alert('Lỗi gửi dữ liệu: '+e.message)});
 }
-function vbHuy(id,btn){
-  if(!GS){alert('Chưa cấu hình backend. Bấm Cài đặt để dán URL /exec.');return}
-  var dong=vbChoCua(id);
-  if(!dong.length){
-    alert('Đơn '+id+' được tạo theo cách cũ nên đã nằm sẵn trong tab HoaDon.\n\nApp không tự xoá được — anh xoá tay các dòng của đơn này ở tab HoaDon, rồi sửa cột Trang thai ở tab GiaoVIBA thành "Hoàn hàng".');
-    return;
-  }
-  var nguoi=vbNguoiXacNhan();if(!nguoi)return;
-  var lydo=prompt('Lý do giao không thành công (VD: khách không nghe máy, khách từ chối nhận):','');
-  if(lydo===null)return;lydo=lydo.trim();
-  if(!lydo){alert('Cần ghi lý do để lưu vết.');return}
-  var dathu=0;dong.forEach(function(r){if(r.dathu>dathu)dathu=r.dathu});
-  var canhBao=dathu>0?('\n\nLƯU Ý: hoá đơn ghi khách ĐÃ TRẢ '+fmt(dathu)+' đ — nhớ hoàn tiền cho khách.'):'';
-  if(!confirm('Đơn '+id+' giao không thành công, hàng quay về kho?\n\nĐơn sẽ chuyển sang tab HoaDonHuy. Doanh thu, tồn kho và công nợ không bị ảnh hưởng.'+canhBao))return;
-  vbGui({loai:'vibahuy',id:id,lydo:lydo,ngay:today(),nguoi:nguoi},id,btn,'Hoàn hàng','Giao không thành công',
-    'Đã ghi nhận đơn '+id+' hoàn hàng.'+(dathu>0?' Nhớ hoàn '+fmt(dathu)+' đ cho khách.':''));
-}
-/* no-cors khong doc duoc phan hoi -> tai lai Sheet xem don da doi trang thai that chua */
-function vbKiemTra(id,btn,lan,ttMongDoi,nhanNut,thongBao){
+/* no-cors khong doc duoc phan hoi -> tai lai Sheet xem don da chuyen 'Da giao' that chua */
+function vbKiemTra(id,btn,lan){
   btn.textContent='Đang kiểm tra trên Sheet...';
   setTimeout(function(){
     loadData(false,function(){
-      var ok=false;VB.forEach(function(x){if(x.id===id&&x.tt===ttMongDoi)ok=true});
-      if(ok){alert(thongBao);return}
-      if(lan<2){vbKiemTra(id,btn,lan+1,ttMongDoi,nhanNut,thongBao);return}
+      var ok=false;VB.forEach(function(x){if(x.id===id&&x.tt==='Đã giao')ok=true});
+      if(ok){alert('Đã xác nhận giao đơn '+id+'.');return}
+      if(lan<2){vbKiemTra(id,btn,lan+1);return}
       renderViba();
-      alert('Chưa thấy đơn '+id+' chuyển sang "'+ttMongDoi+'" trên Sheet.\n\nCó thể mạng chậm hoặc backend chưa deploy bản mới. Vài phút nữa bấm "Tải lại từ Sheet" để kiểm tra. Bấm lại cũng an toàn — backend không xử lý một đơn hai lần.');
+      alert('Chưa thấy đơn '+id+' chuyển sang Đã giao trên Sheet.\n\nCó thể mạng chậm hoặc backend chưa deploy bản mới. Vài phút nữa bấm "Tải lại từ Sheet" để kiểm tra. Bấm xác nhận lại cũng an toàn.');
     });
   },lan===1?2500:4000);
 }

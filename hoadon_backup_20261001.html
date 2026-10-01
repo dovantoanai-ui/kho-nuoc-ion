@@ -118,7 +118,6 @@
 
     <!-- ===== TAB HOA DON ===== -->
     <div id="tab-hd" class="tab-pane">
-      <div id="ttBanner" class="card" style="display:none;background:#fff6e8;border-color:#e08a00"></div>
       <div class="card">
         <h2>Khách hàng</h2>
         <label>Chọn khách (bắt buộc có mã)</label>
@@ -352,20 +351,6 @@
   </div>
 </div>
 
-<!-- ===== FORM HUY PHIEU (01/10/2026) ===== -->
-<div id="huyOvl" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:120;overflow:auto;padding:12px">
-  <div class="card" style="max-width:520px;margin:8px auto 40px">
-    <h2>Huỷ phiếu nhập sai</h2>
-    <div id="huyInfo" class="li" style="display:block;border:none;background:#fdeceb;border-radius:10px;padding:9px 12px;margin-bottom:6px"></div>
-    <label>Người huỷ</label><input id="huyNguoi" placeholder="Tên người huỷ">
-    <label>Lý do huỷ</label><input id="huyLyDo" placeholder="VD: nhập sai số lượng, sai khách, nhập trùng">
-    <div class="muted" style="margin-top:8px">Phiếu bị huỷ chuyển sang tab HoaDonHuy để lưu vết. Doanh thu, tồn kho, công nợ tự bỏ phiếu này ra.</div>
-    <button class="btn bred" style="width:100%;margin-top:12px" id="huyBtnTT" onclick="huyThayThe()">Huỷ &amp; lập phiếu thay thế</button>
-    <button class="btn" style="width:100%;margin-top:8px;background:#eef1f4;color:var(--ink)" id="huyBtnChi" onclick="huyChi()">Chỉ huỷ (phiếu nhập trùng)</button>
-    <button class="btn" style="width:100%;margin-top:8px;background:#fff;color:var(--mut);border:1px solid var(--line)" onclick="document.getElementById('huyOvl').style.display='none'">Đóng</button>
-  </div>
-</div>
-
 <div class="btns" id="bar">
   <button class="b1" onclick="luuAnh()">Lưu ảnh</button>
   <button class="b1" onclick="inPdf()">In / PDF</button>
@@ -391,8 +376,6 @@ var PT={ma:'',ten:'',list:[],anh:null}; /* trang thai form phieu thu cong no */
 var TAB='hd'; /* tab dang mo - de sau khi luu phieu thu quay ve dung cho */
 var VB=[];    /* don giao qua VIBA, doc tu tab GiaoVIBA */
 var CHO=[];   /* dong hoa don VIBA dang cho giao (tab HoaDonCho) - CHUA vao HoaDon */
-var HUY=[];   /* dong hoa don da huy (tab HoaDonHuy) - de gan nhan 'Da huy' o tab Don */
-var THAYTHE=null; /* dang lap phieu thay the: {id, ngay, lydo, nguoi} */
 
 function pad(n){return String(n).padStart(2,'0')}
 function today(){var d=new Date();return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()}
@@ -456,7 +439,7 @@ function loadData(manual,cb){
   document.getElementById('dataInfo').textContent='Đang tải dữ liệu...';
   jsonp(GS,function(d){
     if(!d||!d.ok){document.getElementById('dataInfo').textContent='Lỗi tải dữ liệu';if(manual)alert('Không tải được dữ liệu. Kiểm tra URL backend đã deploy đúng chưa.');if(cb)cb(false);return}
-    KH=d.khach||[];HD=d.hoadon||[];TT=d.thanhtoan||[];VB=d.viba||[];CHO=d.cho||[];HUY=d.huy||[];
+    KH=d.khach||[];HD=d.hoadon||[];TT=d.thanhtoan||[];VB=d.viba||[];CHO=d.cho||[];
     if(d.cat&&d.cat.length){CAT=d.cat;try{localStorage.setItem('hd_cat',JSON.stringify(CAT))}catch(e){}refreshRows();}
     document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn';
     fillKhSelect();renderMaPreview();renderKhList();renderBaoCao();renderCongNo();renderThuNo();renderViba();renderCSKH();
@@ -665,7 +648,7 @@ function render(){
    +'<div class="ivh"><div class="n">ION FUJI</div>'
    +'<div class="s">CT TNHH ION FUJI VIỆT NAM &nbsp;|&nbsp; Hotline: 090.809.88.66<br>Kho '+KHO+'</div></div>'
    +'<div class="ivb"><div class="ivt">HOÁ ĐƠN BÁN HÀNG</div>'
-   +'<div class="kv"><b>Ngày:</b> '+(THAYTHE?THAYTHE.ngay:today())+' &nbsp;|&nbsp; <b>Kho:</b> '+KHO+'</div>'
+   +'<div class="kv"><b>Ngày:</b> '+today()+' &nbsp;|&nbsp; <b>Kho:</b> '+KHO+'</div>'
    +'<div class="kv"><b>Khách hàng:</b> '+(kh||'.................')+(k?' ('+k.ma+')':'')+'</div>'
    +'<div class="kv"><b>Điện thoại:</b> '+(sdt||'.................')+(qh?' &nbsp;|&nbsp; '+qh:'')+'</div>'
    +'<table><thead><tr><th>TT</th><th>Tên hàng</th><th>ĐVT</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>'
@@ -694,15 +677,13 @@ function dongBo(){
     if(document.getElementById('vbThuHo').checked&&vb.thuho<=0){alert('Đã tích "VIBA thu hộ" nhưng chưa nhập số tiền thu hộ.');return}
     if(vb.thuho>tong){alert('Số tiền thu hộ ('+fmt(vb.thuho)+' đ) lớn hơn tổng hoá đơn ('+fmt(tong)+' đ).');return}
   }
-  if(THAYTHE&&vb){alert('Phiếu thay thế không đi kèm giao VIBA. Bỏ tích "Giao qua VIBA" rồi lưu lại.');return}
-  var id='HD'+Date.now();var ng=THAYTHE?THAYTHE.ngay:today();var rows=[];
+  var id='HD'+Date.now();var ng=today();var rows=[];
   items.forEach(function(x,i){
     rows.push([id,ng,cust.ma,i===0?cust.ten:'',i===0?cust.sdt:'',KHO,x.t,x.dv,x.sl,x.gia,x.tt,
       i===0?(hasVat?rate:0):'',i===0?coc:'',i===0?tong:'',i===0?dathu:'',i===0?ttv:'',i===0?thu:'',i===0?htv:'',i===0?ghichu:'']);
   });
   /* Don thuong -> ghi thang HoaDon. Don VIBA -> 'vibamoi': giu tam o HoaDonCho,
      chi vao HoaDon (doanh thu, tru kho, cong no) khi bam Da giao o tab Giao VIBA */
-  if(THAYTHE){luuThayThe(rows,id);return}
   var body={loai:'hoadon',rows:rows};
   var vbRow=null;
   if(vb){
@@ -786,8 +767,7 @@ function renderBaoCao(){
 function invoiceList(){
   var m={};
   HD.forEach(function(x){ if(x.kho!==KHO)return;
-    var g=m[x.id]||(m[x.id]={id:x.id,ngay:x.ngay,ma:x.ma,khach:x.khach,lines:[],tong:0,dathu:0,tt:'',ht:'',thu:'',link:'',ngayck:''});
-    if(x.link)g.link=x.link; if(x.ngayck)g.ngayck=x.ngayck;
+    var g=m[x.id]||(m[x.id]={id:x.id,ngay:x.ngay,ma:x.ma,khach:x.khach,lines:[],tong:0,dathu:0,tt:'',ht:'',thu:''});
     g.lines.push({sp:x.sp,sl:x.sl,gia:x.gia,tien:x.tien});
     if(x.tong>g.tong)g.tong=x.tong; if(x.dathu>g.dathu)g.dathu=x.dathu;
     if(x.tt)g.tt=x.tt; if(x.ht)g.ht=x.ht; if(x.thu)g.thu=x.thu;
@@ -811,152 +791,9 @@ function renderDonHang(){
       +'<div class="muted" style="margin:2px 0">'+(v.ma?v.ma+' · ':'')+(v.khach||'—')+'</div>'
       +'<div style="font-size:12px;margin:2px 0"><span style="color:'+ttcol+';font-weight:700">'+v.tt+'</span>'+(v.ht?' · '+v.ht:'')+(v.thu?' · thu: '+v.thu:'')+(conno>0?' · <span style="color:#c8102e">còn nợ '+fmt(conno)+'</span>':'')+'</div>'
       +'<div style="font-size:12.5px;margin-top:4px;color:#333;line-height:1.5">'+lines+'</div>'
-      +linkBill(v)
-      +'<div style="text-align:right;margin-top:6px"><button class="btn" style="padding:5px 12px;font-size:12px;background:#fff;color:var(--red);border:1px solid #f3c5cc" data-huy-id="'+esc(v.id)+'">Huỷ phiếu</button></div>'
-      +'</div>';
-  });
-  /* Phieu da huy: van hien de tra lai, gan nhan ro */
-  huyList().forEach(function(v){
-    h+='<div class="card" style="padding:11px 12px;margin-bottom:8px;opacity:.7;border-style:dashed">'
-      +'<div style="display:flex;justify-content:space-between;align-items:baseline"><b>'+esc(v.ngay)+' · '+esc(v.id)+'</b><span class="pill p-bad">Đã huỷ</span></div>'
-      +'<div class="muted" style="margin:2px 0">'+(v.ma?esc(v.ma)+' · ':'')+esc(v.khach||'—')+' · '+fmt(v.tong)+' đ</div>'
-      +'<div style="font-size:12px;color:var(--red)">'+(v.thaythe?'→ thay bằng <b>'+esc(v.thaythe)+'</b> · ':'')+'lý do: '+esc(v.lydo||'—')+(v.nguoihuy?' · '+esc(v.nguoihuy):'')+(v.ngayhuy?' · '+esc(v.ngayhuy):'')+'</div>'
       +'</div>';
   });
   el.innerHTML=h;
-  el.querySelectorAll('[data-huy-id]').forEach(function(b){
-    b.onclick=function(){moHuy(b.getAttribute('data-huy-id'))};
-  });
-}
-function linkBill(v){
-  if(!v.link)return '';
-  var ls=String(v.link).split('|').map(function(x){return x.trim()}).filter(function(x){return x.indexOf('http')===0});
-  if(!ls.length)return '';
-  return '<div style="font-size:12px;margin-top:4px">'+(v.ngayck?'Ngày CK '+esc(v.ngayck)+' · ':'')
-    +ls.map(function(u,i){return '<a href="'+esc(u)+'" target="_blank" rel="noopener">Ảnh bill '+(i+1)+'</a>'}).join(' · ')+'</div>';
-}
-function huyList(){
-  var m={};
-  HUY.forEach(function(x){ if(x.kho!==KHO)return;
-    var g=m[x.id]||(m[x.id]={id:x.id,ngay:x.ngay,ma:x.ma,khach:x.khach,tong:0,lydo:'',nguoihuy:'',ngayhuy:'',thaythe:''});
-    if(x.tong>g.tong)g.tong=x.tong; if(x.khach&&!g.khach)g.khach=x.khach;
-    if(x.lydo)g.lydo=x.lydo; if(x.nguoihuy)g.nguoihuy=x.nguoihuy; if(x.ngayhuy)g.ngayhuy=x.ngayhuy; if(x.thaythe)g.thaythe=x.thaythe;
-  });
-  var arr=[];for(var k in m)arr.push(m[k]);
-  arr.sort(function(a,b){return String(b.id).localeCompare(String(a.id))});
-  return arr;
-}
-
-/* ---------- HUY PHIEU + PHIEU THAY THE (01/10/2026) ---------- */
-var HUYID='';
-function moHuy(id){
-  var v=null;invoiceList().forEach(function(x){if(x.id===id)v=x});
-  if(!v){alert('Không tìm thấy phiếu '+id+'. Bấm Làm mới rồi thử lại.');return}
-  HUYID=id;
-  document.getElementById('huyInfo').innerHTML='<div class="t1" style="color:var(--red)">'+esc(v.ngay)+' · '+esc(v.id)+'</div>'
-    +'<div class="t2">'+esc(v.ma)+' · '+esc(v.khach||'—')+' · '+fmt(v.tong)+' đ · '+esc(v.tt)+'</div>';
-  var n=document.getElementById('huyNguoi');if(!n.value)n.value=localStorage.getItem('hd_huy_nguoi')||'';
-  document.getElementById('huyLyDo').value='';
-  ['huyBtnTT','huyBtnChi'].forEach(function(b){document.getElementById(b).disabled=false});
-  document.getElementById('huyBtnTT').textContent='Huỷ & lập phiếu thay thế';
-  document.getElementById('huyBtnChi').textContent='Chỉ huỷ (phiếu nhập trùng)';
-  document.getElementById('huyOvl').style.display='block';window.scrollTo(0,0);
-}
-function huyDocForm(){
-  var nguoi=(document.getElementById('huyNguoi').value||'').trim();
-  var lydo=(document.getElementById('huyLyDo').value||'').trim();
-  if(!nguoi||!lydo){alert('Cần ghi tên người huỷ và lý do để lưu vết.');return null}
-  try{localStorage.setItem('hd_huy_nguoi',nguoi)}catch(e){}
-  return {nguoi:nguoi,lydo:lydo};
-}
-/* Lap lai so lieu phieu cu tu cac dong HD (giu nguyen gia, SL, VAT, coc, trang thai) */
-function phieuCu(id){
-  var ls=HD.filter(function(x){return x.id===id});if(!ls.length)return null;
-  var d=ls[0];
-  return {id:id,ngay:d.ngay,ma:d.ma,lines:ls,vat:d.vat,coc:d.coc,tong:d.tong,dathu:d.dathu,tt:d.tt,thu:d.thu,ht:d.ht,ghichu:d.ghichu};
-}
-function catIdx(ten){
-  var k=String(ten||'').trim().toLowerCase();
-  for(var i=0;i<CAT.length;i++)if(String(CAT[i].t).trim().toLowerCase()===k)return i;
-  return -1;
-}
-function huyThayThe(){
-  if(!GS){alert('Chưa cấu hình backend. Bấm Cài đặt để dán URL /exec.');return}
-  var f=huyDocForm();if(!f)return;
-  var p=phieuCu(HUYID);if(!p){alert('Không đọc được phiếu '+HUYID);return}
-  var khong=p.lines.filter(function(l){return catIdx(l.sp)<0}).map(function(l){return l.sp});
-  if(khong.length){alert('Không tìm thấy trong danh mục: '+khong.join(', ')+'.\nKhông lập phiếu thay thế tự động được — anh dùng "Chỉ huỷ" rồi tạo phiếu mới bằng tay.');return}
-  if(!khByMa(p.ma)){alert('Khách '+p.ma+' không còn trong danh sách khách. Bấm Làm mới rồi thử lại.');return}
-  document.getElementById('huyOvl').style.display='none';
-  showTab('hd');
-  var $=function(id){return document.getElementById(id)};
-  $('khSel').value=p.ma;onKhSel();
-  $('ck').value='0';$('ckCustomWrap').style.display='none';
-  $('rows').innerHTML='';
-  p.lines.forEach(function(l){
-    addRow();var r=$('rows').lastChild;
-    r.querySelector('select').value=String(catIdx(l.sp));
-    r.querySelector('.q input').value=l.sl;
-    r.querySelector('.g input').value=l.gia; /* giu gia cu, khong tinh lai theo chiet khau */
-  });
-  $('vat').checked=p.vat>0;if(p.vat>0)$('vatr').value=p.vat;
-  $('coc').value=p.coc||'';
-  $('tt').value=p.tt||'Chưa thanh toán';onTt();
-  $('dathu').value=(p.tt==='Thanh toán 1 phần')?p.dathu:'';
-  var tk=[].map.call($('htTK').options,function(o){return o.value});
-  if(tk.indexOf(p.ht)>=0){$('ht').value='Chuyển khoản';$('htTK').value=p.ht}else{$('ht').value='Tiền mặt'}
-  onHt();
-  $('thu').value=p.thu||'';$('ghichu').value=p.ghichu||'';
-  $('viba').checked=false;onViba();
-  THAYTHE={id:p.id,ngay:p.ngay,lydo:f.lydo,nguoi:f.nguoi};
-  hienThayThe();render();
-  alert('Đã nạp phiếu '+p.id+' vào form. Sửa chỗ nhập sai rồi bấm "Lưu phiếu thay thế".\nPhiếu cũ chỉ bị huỷ khi lưu phiếu mới thành công.');
-}
-function hienThayThe(){
-  var b=document.getElementById('ttBanner'),btn=document.getElementById('dbBtn');
-  if(!THAYTHE){b.style.display='none';btn.textContent='Lưu & đồng bộ hoá đơn lên Sheet';return}
-  b.style.display='block';
-  b.innerHTML='<div style="font-weight:700;color:#a5670a">Đang lập phiếu thay thế cho '+esc(THAYTHE.id)+'</div>'
-    +'<div class="muted">Giữ ngày phiếu gốc '+esc(THAYTHE.ngay)+' · lý do huỷ: '+esc(THAYTHE.lydo)+' · '+esc(THAYTHE.nguoi)+'</div>'
-    +'<button class="btn" style="margin-top:8px;padding:6px 12px;font-size:12px;background:#fff;color:var(--ink);border:1px solid var(--line)" id="ttBo">Bỏ, không thay thế nữa</button>';
-  document.getElementById('ttBo').onclick=function(){THAYTHE=null;hienThayThe();render()};
-  btn.textContent='Lưu phiếu thay thế cho '+THAYTHE.id;
-}
-function guiHuy(body,btn,nhan,ok,thongBao){
-  btn.disabled=true;btn.textContent='Đang lưu...';
-  fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)})
-   .then(function(){huyKiemTra(btn,nhan,ok,thongBao,1)})
-   .catch(function(e){btn.disabled=false;btn.textContent=nhan;alert('Lỗi gửi dữ liệu: '+e.message)});
-}
-/* no-cors khong doc duoc phan hoi -> tai lai Sheet, dung ham ok() de xac nhan that */
-function huyKiemTra(btn,nhan,ok,thongBao,lan){
-  btn.textContent='Đang kiểm tra trên Sheet...';
-  setTimeout(function(){
-    loadData(false,function(){
-      if(ok()){btn.disabled=false;btn.textContent=nhan;thongBao();return}
-      if(lan<2){huyKiemTra(btn,nhan,ok,thongBao,lan+1);return}
-      btn.disabled=false;btn.textContent=nhan;
-      alert('Chưa thấy thay đổi trên Sheet.\n\nCó thể mạng chậm hoặc backend chưa deploy bản mới. Vài phút nữa bấm Làm mới để kiểm tra. Bấm lại cũng an toàn — backend không huỷ một phiếu hai lần.');
-    });
-  },lan===1?2500:4000);
-}
-function coTrongHD(id){return HD.some(function(x){return x.id===id})}
-function huyChi(){
-  if(!GS){alert('Chưa cấu hình backend. Bấm Cài đặt để dán URL /exec.');return}
-  var f=huyDocForm();if(!f)return;
-  var id=HUYID;
-  if(!confirm('Huỷ hẳn phiếu '+id+' (không lập phiếu thay thế)?'))return;
-  guiHuy({loai:'huyhd',id:id,lydo:f.lydo,nguoi:f.nguoi,ngay:today()},document.getElementById('huyBtnChi'),'Chỉ huỷ (phiếu nhập trùng)',
-    function(){return !coTrongHD(id)},
-    function(){document.getElementById('huyOvl').style.display='none';renderDonHang();alert('Đã huỷ phiếu '+id+'.')});
-}
-function luuThayThe(rows,idMoi){
-  var t=THAYTHE;
-  if(!confirm('Lưu phiếu thay thế '+idMoi+' (ngày '+t.ngay+') và huỷ phiếu '+t.id+'?'))return;
-  guiHuy({loai:'huyhd',id:t.id,lydo:t.lydo,nguoi:t.nguoi,ngay:today(),thaythe:rows},document.getElementById('dbBtn'),'Lưu phiếu thay thế cho '+t.id,
-    function(){return coTrongHD(idMoi)&&!coTrongHD(t.id)},
-    function(){THAYTHE=null;hienThayThe();renderDonHang();renderCongNo();renderBaoCao();
-      alert('Đã lưu phiếu thay thế '+idMoi+' và huỷ phiếu '+t.id+'.')});
 }
 /* ---------- CONG NO ---------- */
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
