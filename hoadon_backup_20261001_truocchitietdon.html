@@ -432,10 +432,7 @@
         <div class="card"><h2>Công giao hàng theo nhân viên</h2><div style="overflow:auto" id="vrCong"></div></div>
         <div class="card"><h2>Tiền phải trả VIBA</h2><div id="vrTra"></div></div>
         <div class="card"><h2>Kiểm kho trong tháng</h2><div id="vrKk"></div></div>
-        <div class="card"><h2>Chi tiết đơn đã giao</h2>
-          <div class="row"><div style="flex:1"><label>Nhân viên</label><select id="vrDonNv" onchange="vrDonVe()"><option value="">Tất cả NV</option></select></div>
-            <div style="flex:1"><label>Sắp xếp</label><select id="vrDonSx" onchange="vrDonVe()"><option value="ngay">Theo ngày giao</option><option value="nv">Theo NV</option></select></div></div>
-          <div id="vrDon"></div></div>
+        <div class="card"><h2>Chi tiết đơn đã giao</h2><div id="vrDon"></div></div>
         <button class="btn bred" style="width:100%;margin-bottom:12px" id="vrXuatBtn" onclick="vrXuatExcel()">Xuất Excel theo mẫu VIBA</button>
       </div>
 
@@ -2256,57 +2253,14 @@ function vrRender(){
     +'<tr style="font-weight:700"><td>Tổng phải trả VIBA</td><td style="color:var(--red)">'+fmt(R.tong)+'</td></tr></table>'
     +(R.tienHang?'<div class="muted" style="margin-top:6px">= '+(Math.round(R.tong/R.tienHang*1000)/10).toLocaleString('vi-VN')+'% tiền hàng VIBA giao trong tháng.</div>':'');
   document.getElementById('vrKk').innerHTML=kkvHtml(R.kk,'Tháng này chưa có biên bản kiểm kho VIBA.');
-  VR_R=R;vrDonVe();
+  document.getElementById('vrDon').innerHTML=!R.don.length?'<div class="empty">Chưa có đơn.</div>':R.don.map(function(o){var x=o.x;
+    return '<div class="li" style="display:block"><div style="display:flex;justify-content:space-between;gap:8px"><div class="t1">'+esc(x.ngaygiao)+' · '+esc(x.id)+'</div><b>'+fmt(o.k.tong)+' đ</b></div>'
+      +'<div class="t2">'+esc(x.ma)+' · '+esc(x.khach||'')+'</div>'
+      +'<div class="t2">'+(o.thieu?'<b style="color:var(--red)">Thiếu thông tin VIBA</b>':'Phiếu '+esc(x.sophieu)+' · '+esc(x.nv)+' '+esc(vbNvTen(x.nv,c))+' · vỏ thu '+x.vothu)+'</div>'
+      +'<div class="t2">'+o.d.sosp+' SP'+(o.k.duoiMin?' (dưới '+c.min+')':'')+(x.tang?' · lên tầng':'')+(x.ngoai?' · ngoại thành':'')+' · tiền hàng '+fmt(o.d.tien)+' đ</div></div>'}).join('');
 }
 
 /* ---------- XUAT EXCEL (ExcelJS, tai khi bam) ---------- */
-/* 01/10/2026 ban 6: chi tiet cong giao TUNG DON — tung dong hang x don gia cong, phu phi tach dong.
-   Cung quy tac voi vbCong (tong don = o.k.tong). */
-var VR_R=null;
-function vrDongDon(o,c){
-  var x=o.x,k=o.k,rows=[];
-  vbLinesOf(x.id).forEach(function(l){
-    var sl=Number(l.sl)||0,m=vbSkuCua(l.sp);if(!sl)return;
-    if(!m||m==='SP02'){rows.push({ten:l.sp,sl:sl,gia:null,cong:null,ghi:'không tính công'});return}
-    if(k.duoiMin){rows.push({ten:l.sp,sl:sl,gia:null,cong:null,ghi:'dưới '+c.min+' SP'});return}
-    var g=c.gia[m]||{nt:0};rows.push({ten:l.sp,sl:sl,gia:g.nt,cong:sl*g.nt,ghi:''});
-  });
-  if(k.duoiMin)rows.push({ten:'Công cố định (dưới '+c.min+' SP)',sl:null,gia:null,cong:k.coban,ghi:'',pp:1});
-  if(k.ngoaiThem)rows.push({ten:'Phụ phí ngoại thành',sl:null,gia:null,cong:k.ngoaiThem,ghi:'',pp:1});
-  if(k.tang)rows.push({ten:'Phụ phí lên tầng',sl:null,gia:null,cong:k.tang,ghi:'',pp:1});
-  if(x.cotTt&&(x.vothu||x.vothu===0)&&o.d.binh19)rows.push({ten:'Vỏ 19L thu về',sl:Number(x.vothu)||0,gia:null,cong:null,ghi:'',vo:1});
-  return rows;
-}
-function vrDonLoc(R){
-  var nv=document.getElementById('vrDonNv').value,sx=document.getElementById('vrDonSx').value;
-  var ds=R.don.filter(function(o){return !nv||(o.x.nv||'')===(nv==='_'?'':nv)});
-  if(sx==='nv')ds=ds.slice().sort(function(a,b){var x=a.x.nv||'~',y=b.x.nv||'~';return x<y?-1:(x>y?1:(a.ng<b.ng?-1:(a.ng>b.ng?1:0)))});
-  return ds;
-}
-function vrDonVe(){
-  var R=VR_R,el=document.getElementById('vrDon');if(!R||!el)return;var c=R.c;
-  var sel=document.getElementById('vrDonNv'),cur=sel.value,co={};R.don.forEach(function(o){co[o.x.nv||'_']=1});
-  sel.innerHTML='<option value="">Tất cả NV</option>'+Object.keys(co).sort().map(function(m){return '<option value="'+esc(m)+'">'+(m==='_'?'(chưa ghi NV)':esc(m)+' '+esc(vbNvTen(m,c)))+'</option>'}).join('');
-  if(co[cur])sel.value=cur;
-  var ds=vrDonLoc(R);
-  if(!ds.length){el.innerHTML='<div class="empty">Chưa có đơn.</div>';return}
-  var tong=0,h='';
-  ds.forEach(function(o){var x=o.x,rows=vrDongDon(o,c);tong+=o.k.tong;
-    var tag=[x.ngoai?'ngoại thành':'nội thành'];if(x.tang)tag.push('lên tầng');
-    h+='<div class="li" style="display:block">'
-      +'<div style="display:flex;justify-content:space-between;gap:8px"><div class="t1">'+esc(x.ngaygiao)+' · '+(o.thieu?'<b style="color:var(--red)">thiếu số phiếu</b>':'Phiếu '+esc(x.sophieu))+'</div><b>'+fmt(o.k.tong)+' đ</b></div>'
-      +'<div class="t2">'+esc(x.khach||'')+' · '+esc(x.ma)+'</div>'
-      +'<div class="t2">'+(x.dc?'Địa chỉ: '+esc(x.dc)+' · ':'')+(x.nv?esc(x.nv)+' '+esc(vbNvTen(x.nv,c)):'<b style="color:var(--red)">chưa ghi NV</b>')+' · '+tag.join(' · ')+'</div>'
-      +'<table class="rpt" style="margin-top:6px"><tr><th>Hàng</th><th>SL</th><th>Đơn giá</th><th>Công</th></tr>'
-      +rows.map(function(r){
-        if(r.pp)return '<tr><td colspan="3" style="white-space:normal">'+esc(r.ten)+'</td><td>'+fmt(r.cong)+'</td></tr>';
-        if(r.vo)return '<tr class="muted"><td>'+esc(r.ten)+'</td><td>'+fmt(r.sl)+'</td><td></td><td>—</td></tr>';
-        return '<tr><td style="white-space:normal">'+esc(r.ten)+'</td><td>'+fmt(r.sl)+'</td>'+(r.gia===null?'<td colspan="2" style="color:var(--amb)">'+esc(r.ghi)+'</td>':'<td>'+fmt(r.gia)+'</td><td>'+fmt(r.cong)+'</td>')+'</tr>'}).join('')
-      +'<tr style="font-weight:700"><td colspan="3">Cộng đơn</td><td>'+fmt(o.k.tong)+'</td></tr></table>'
-      +'<div class="t2">Tiền hàng '+fmt(o.d.tien)+' đ'+(x.thuho>0?' · thu hộ '+fmt(x.thuho)+' đ':'')+(o.thieuVo>0?' · <b style="color:var(--red)">khách giữ '+o.thieuVo+' vỏ, chưa cọc</b>':'')+'</div></div>';
-  });
-  el.innerHTML=h+'<div style="background:#eef1f4;border-radius:9px;padding:8px 10px;margin-top:8px;font-weight:700">Tổng '+ds.length+' đơn · '+fmt(tong)+' đ công giao</div>';
-}
 function vrNapExcelJS(cb){
   if(window.ExcelJS){cb(true);return}
   var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
@@ -2398,7 +2352,7 @@ function vrTaoExcel(xong){
   [6,34,60,16].forEach(function(w,i){s3.getColumn(i+1).width=w});
 
   /* Sheet 4: Chi tiet don */
-  var s4=wb.addWorksheet('Tổng hợp đơn');
+  var s4=wb.addWorksheet('Chi tiết đơn');
   tieuDe(s4,'A1:Q1','CHI TIẾT ĐƠN VIBA ĐÃ GIAO — KHO '+kho+' ('+R.nhanUp+')');
   var h4=['Ngày giao','ID hoá đơn','Số phiếu VIBA','Mã KH','Khách','Địa chỉ giao','NV giao','Bình 19L','Can 5L','Thùng 350 xanh','Thùng 500 xanh','Thùng 350 hồng','Thùng 500 hồng','Tổng SP','Vỏ thu','Phụ phí','Công giao'];
   h4.push('Tiền hàng chưa VAT');
@@ -2409,22 +2363,6 @@ function vrTaoExcel(xong){
     v.forEach(function(val,j){o(s4,COL[j]+r,val===0?null:val,false,j>=7&&j!==15?NUM:null)})});
   [11,16,12,8,26,30,20,8,8,9,9,9,9,8,7,18,12,14].forEach(function(w,i){s4.getColumn(i+1).width=w});
   s4.getRow(3).height=32;
-
-  /* Sheet 4b: Chi tiet tung don (moi don 1 khoi) */
-  var s6=wb.addWorksheet('Chi tiết từng đơn');
-  tieuDe(s6,'A1:K1','CHI TIẾT CÔNG GIAO TỪNG ĐƠN VIBA — KHO '+kho+' ('+R.nhanUp+')');
-  ['Ngày giao','Số phiếu VIBA','Mã KH','Khách','Địa chỉ giao','NV giao','Mặt hàng / khoản','SL','Đơn giá công','Thành tiền công','Ghi chú'].forEach(function(t,i){o(s6,COL[i]+'3',t,true,null,true).fill=NEN});
-  var r6=4,tong6=0,NEN2={type:'pattern',pattern:'solid',fgColor:{argb:'FFF2F4F7'}};
-  R.don.forEach(function(d){var x=d.x,rows=vrDongDon(d,c);tong6+=d.k.tong;
-    var tag=[x.ngoai?'ngoại thành':'nội thành'];if(x.tang)tag.push('lên tầng');tag.push('tiền hàng '+fmt(d.d.tien)+' đ');if(x.thuho>0)tag.push('thu hộ '+fmt(x.thuho)+' đ');
-    [x.ngaygiao,x.sophieu||'(thiếu)',x.ma,x.khach,x.dc,x.nv?x.nv+' '+vbNvTen(x.nv,c):'(thiếu)','','','','',tag.join(', ')].forEach(function(v,j){var cl=o(s6,COL[j]+r6,v,true);cl.fill=NEN2});r6++;
-    rows.forEach(function(rw){
-      ['','','','','','',rw.ten,rw.sl,rw.gia,rw.cong,rw.ghi||''].forEach(function(v,j){o(s6,COL[j]+r6,v===null?null:v,false,j>=7&&j<=9?NUM:null)});r6++});
-    ['','','','','','','Cộng đơn','','',d.k.tong,''].forEach(function(v,j){o(s6,COL[j]+r6,v===''?null:v,true,j===9?NUM:null)});r6++;
-  });
-  ['','','','','','','TỔNG CỘNG '+R.don.length+' ĐƠN','','',tong6,''].forEach(function(v,j){var cl=o(s6,COL[j]+r6,v===''?null:v,true,j===9?NUM:null);cl.fill=NEN});
-  [11,13,9,26,28,20,28,7,11,13,30].forEach(function(w,i){s6.getColumn(i+1).width=w});s6.getRow(3).height=30;
-  s6.views=[{state:'frozen',ySplit:3}];
 
   /* Sheet 5: Kiem kho (bien ban trong thang) */
   if(R.kk.length){
