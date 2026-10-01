@@ -459,8 +459,6 @@
             <div style="flex:1.4"><label>Mặt bằng (đ/tháng, chưa VAT)</label><input id="vcMb" type="number" inputmode="numeric"></div>
             <div style="flex:1"><label>VAT mặt bằng (%)</label><input id="vcMbVat" type="number" inputmode="decimal"></div>
           </div>
-          <label>Mặt bằng riêng theo tháng (nếu khác mức trên)</label><input id="vcMbRieng" placeholder="09/2026=3000000">
-          <div class="muted" style="margin-top:4px">Mỗi tháng 1 cặp, cách nhau dấu chấm phẩy. VD: 09/2026=3000000; 10/2026=4000000</div>
           <label>Bốc xếp (đ/tấn)</label><input id="vcBx" type="number" inputmode="numeric">
           <div class="muted" style="margin-top:4px">VIBA báo 400.000 đ/2 tấn = 200.000 đ/tấn.</div>
         </div>
@@ -1901,7 +1899,6 @@ function vcfg(){
   ['tuNgay','min','phiMin','tang','hh','matbang','vatMb','bocxep'].forEach(function(k){if(s[k]!==undefined&&s[k]!==null&&s[k]!=='')c[k]=s[k]});
   if(s.gia)VB_GIA_MA.forEach(function(m){if(s.gia[m])['nt','ngt','kg'].forEach(function(f){var v=s.gia[m][f];if(v!==undefined&&v!==null&&v!=='')c.gia[m][f]=Number(v)||0})});
   if(s.nv&&s.nv.length)c.nv=s.nv;
-  c.mbRieng={};if(s.mbRieng&&typeof s.mbRieng==='object')Object.keys(s.mbRieng).forEach(function(k){c.mbRieng[k]=Number(s.mbRieng[k])||0});
   ['min','phiMin','tang','hh','matbang','vatMb','bocxep'].forEach(function(k){c[k]=Number(c[k])||0});
   return c;
 }
@@ -2220,11 +2217,9 @@ function vrTinh(){
     var g=c.gia[r.ma];var w=g?Number(g.kg)||0:0;if(!w&&r.ma!=='SP02'&&thieuKg.indexOf(r.ma)<0)thieuKg.push(r.ma);kg+=w*(Number(r.sl)||0)});
   var bocxep=Math.round(kg/1000*c.bocxep);
   var hh=Math.round(tienHang*c.hh/100);
-  /* chua dung kho VIBA thi chua tinh mat bang; thang co muc rieng (mbRieng 'yyyy-mm') thi dung muc rieng */
-  function mbThang(t){return t<String(c.tuNgay).slice(0,7)?0:(c.mbRieng[t]!==undefined?c.mbRieng[t]:c.matbang)}
-  var mb=mbThang(th),soThang=mb?1:0;
-  if(all){mb=0;soThang=0;var ta=String(c.tuNgay).slice(0,7),tb=den.slice(0,7),y=+ta.slice(0,4),m=+ta.slice(5,7);
-    while(ta<=tb){mb+=mbThang(ta);soThang++;m++;if(m>12){m=1;y++}ta=y+'-'+String(m).padStart(2,'0')}}
+  var mb=th>=String(c.tuNgay).slice(0,7)?c.matbang:0; /* chua dung kho VIBA thi chua tinh mat bang */
+  var soThang=mb?1:0;
+  if(all){var ta=String(c.tuNgay).slice(0,7),tb=den.slice(0,7);soThang=tb<ta?0:((+tb.slice(0,4)-+ta.slice(0,4))*12+(+tb.slice(5,7)-+ta.slice(5,7))+1);mb=soThang*c.matbang}
   var mbVat=Math.round(mb*c.vatMb/100);
   return {c:c,th:th,tu:tu,den:den,all:all,soThang:soThang,
     nhan:all?'Tất cả thời gian (đến '+vbDmy(den)+')':'Tháng '+th.slice(5,7)+'/'+th.slice(0,4),
@@ -2471,8 +2466,7 @@ function vcRender(){
   document.getElementById('vcMin').value=c.min;document.getElementById('vcPhiMin').value=c.phiMin;
   document.getElementById('vcTang').value=c.tang;document.getElementById('vcHh').value=c.hh;
   document.getElementById('vcMb').value=c.matbang;document.getElementById('vcMbVat').value=c.vatMb;
-  document.getElementById('vcBx').value=c.bocxep;
-  document.getElementById('vcMbRieng').value=Object.keys(c.mbRieng).sort().map(function(k){return k.slice(5,7)+'/'+k.slice(0,4)+'='+c.mbRieng[k]}).join('; ');document.getElementById('vcTuNgay').value=c.tuNgay;
+  document.getElementById('vcBx').value=c.bocxep;document.getElementById('vcTuNgay').value=c.tuNgay;
   document.getElementById('vcNv').value=c.nv.map(function(n){return n[0]+' | '+n[1]}).join('\n');
   var vn=document.getElementById('vcNguoi');if(!vn.value)vn.value=localStorage.getItem('hd_vb_nguoi')||'';
 }
@@ -2487,11 +2481,7 @@ function vcLuu(){
   if(loi){alert(loi);return}
   if(!nv.length){alert('Cần ít nhất 1 nhân viên giao.');return}
   var tuNgay=document.getElementById('vcTuNgay').value;if(!tuNgay){alert('Chọn ngày bắt đầu dùng kho VIBA.');return}
-  var mbRieng={};(document.getElementById('vcMbRieng').value||'').split(/[;\n]/).forEach(function(l){l=l.trim();if(!l)return;
-    var m=l.match(/^(\d{1,2})\/(\d{4})\s*=\s*([\d.,]+)$/);if(!m){loi='Mặt bằng riêng "'+l+'" sai dạng. Viết: 09/2026=3000000';return}
-    mbRieng[m[2]+'-'+String(m[1]).padStart(2,'0')]=Number(m[3].replace(/[.,]/g,''))||0});
-  if(loi){alert(loi);return}
-  var cfg={tuNgay:tuNgay,min:n('vcMin'),phiMin:n('vcPhiMin'),tang:n('vcTang'),hh:n('vcHh'),matbang:n('vcMb'),vatMb:n('vcMbVat'),bocxep:n('vcBx'),mbRieng:mbRieng,gia:gia,nv:nv,luc:Date.now(),nguoi:nguoi};
+  var cfg={tuNgay:tuNgay,min:n('vcMin'),phiMin:n('vcPhiMin'),tang:n('vcTang'),hh:n('vcHh'),matbang:n('vcMb'),vatMb:n('vcMbVat'),bocxep:n('vcBx'),gia:gia,nv:nv,luc:Date.now(),nguoi:nguoi};
   if(cfg.min<1){alert('Đơn tối thiểu phải từ 1 SP.');return}
   if(tuNgay!==vcfg().tuNgay&&!confirm('Đổi ngày bắt đầu dùng kho VIBA từ '+vbDmy(vcfg().tuNgay)+' sang '+vbDmy(tuNgay)+'?\n\nTồn kho HN sẽ tính lại: đơn VIBA giao từ ngày mới mới không trừ kho HN.'))return;
   try{localStorage.setItem('hd_vb_nguoi',nguoi)}catch(e){}
