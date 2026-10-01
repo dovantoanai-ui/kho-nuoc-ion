@@ -19,7 +19,7 @@ App hoá đơn → tab **Giao VIBA** có 4 tab con: **Đơn giao · Kho VIBA · 
 - Tab **Giao VIBA → Nhập đơn**: form giống hoá đơn thường (khách, chiết khấu, sản phẩm, VAT, thanh toán, cọc, ghi chú) + khối **Phiếu giao VIBA**: số phiếu, ngày giao, NV giao, địa chỉ, vỏ thu về, lên tầng / ngoại thành, người nhập.
 - Bấm **Lưu đơn VIBA đã giao** → ghi thẳng HoaDon (ngày = ngày giao): doanh thu, công nợ, trừ kho VIBA. Xong bấm **Chia sẻ / Lưu ảnh** gửi hoá đơn cho khách.
 - App tự tính công giao và báo đỏ nếu khách giữ vỏ mà chưa thu cọc.
-- Tab Hoá đơn **không còn** tích "Giao qua VIBA". Đơn cũ còn "Chờ giao": vào **Đã giao** → Xem "Chờ giao (đơn cũ)" → Xác nhận đã giao.
+- Tab Hoá đơn **không còn** tích "Giao qua VIBA". **Không còn trạng thái "Chờ giao"**: đơn VIBA chỉ nhập khi đã giao thành công. Kho VIBA trừ hàng từ ngày có phiếu kho VIBA đầu tiên (18/09/2026).
 - Đơn đã giao thiếu thông tin: **Đã giao** → Xem "Đã giao, thiếu thông tin VIBA" → **Bổ sung thông tin VIBA**.
 
 ## Kiểm kho VIBA (biên bản đối chiếu)

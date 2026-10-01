@@ -353,11 +353,12 @@
       <div id="vbV-don" style="display:none">
       <div class="card">
         <h2>Đơn VIBA — kho <span id="vbKhoLbl">—</span></h2>
-        <div class="muted" style="margin-bottom:6px">Đơn VIBA chỉ nhập khi đã giao thành công (tab "Nhập đơn").</div>
+        <div class="muted" style="margin-bottom:6px">Đơn cũ còn chờ giao: <b id="vbSoCho">0</b> · Thu hộ chờ về: <b id="vbTongThuHo" style="color:var(--red)">0</b> đ</div>
+        <div id="vbDangGiao" class="muted" style="margin-bottom:8px;background:#fff6e8;border:1px dashed var(--amb);border-radius:9px;padding:7px 9px;display:none"></div>
         <div id="vbThieuTt" class="muted" style="margin-bottom:8px;background:#fdeceb;border:1px dashed var(--red);border-radius:9px;padding:7px 9px;display:none"></div>
         <div class="row" style="align-items:stretch">
           <div style="flex:1"><label>Xem</label>
-            <select id="vbLoc" onchange="renderViba()"><option value="da">Đã giao</option><option value="thieu">Đã giao, thiếu thông tin VIBA</option><option value="hoan">Hoàn hàng</option><option value="all">Tất cả</option></select></div>
+            <select id="vbLoc" onchange="renderViba()"><option value="da">Đã giao</option><option value="cho">Chờ giao (đơn cũ)</option><option value="thieu">Đã giao, thiếu thông tin VIBA</option><option value="hoan">Hoàn hàng</option><option value="all">Tất cả</option></select></div>
           <div style="flex:1"><label>Người xác nhận</label><input id="vbNguoi" placeholder="Tên người bấm"></div>
         </div>
         <button class="btn bgrn" style="width:100%;margin:4px 0 10px" onclick="loadData(true)">Tải lại từ Sheet</button>
@@ -1456,17 +1457,32 @@ function ptXacNhan(idPhieu,lan){
 function vbChoCua(id){return CHO.filter(function(r){return r.id===id})}
 function renderViba(){
   var el=document.getElementById('vbList');if(!el)return;
-  /* 01/10/2026 ban 4: bo han trang thai "Chờ giao" — don VIBA chi nhap khi da giao.
-     Dong cu con trang thai khac (Chờ giao...) tren GiaoVIBA bi an, khong tinh vao dau. */
-  var all=VB.filter(function(x){return x.kho===KHO&&(x.tt==='Đã giao'||x.tt==='Hoàn hàng')});
+  var all=VB.filter(function(x){return x.kho===KHO});
+  var cho=all.filter(function(x){return x.tt!=='Đã giao'&&x.tt!=='Hoàn hàng'});
+  var thuho=0;cho.forEach(function(x){thuho+=x.thuho});
+  document.getElementById('vbSoCho').textContent=cho.length;
+  document.getElementById('vbTongThuHo').textContent=fmt(thuho);
+  /* Hang dang di giao: tru kho CHUA tinh phan nay -> ton thuc = ton tren app kho - so nay */
+  var idCho={};cho.forEach(function(x){idCho[x.id]=1});
+  var dg={},dgOrder=[];
+  CHO.forEach(function(r){if(!idCho[r.id]||r.kho!==KHO||!r.sp)return;
+    if(!(r.sp in dg)){dg[r.sp]=0;dgOrder.push(r.sp)} dg[r.sp]+=Number(r.sl)||0});
+  var dgEl=document.getElementById('vbDangGiao');
+  if(dgOrder.length){
+    dgEl.style.display='block';
+    dgEl.innerHTML='<b style="color:var(--amb)">Hàng đang đi giao</b> (app kho chưa trừ): '
+      +dgOrder.map(function(s){return esc(s)+' ×'+dg[s]}).join(' · ');
+  }else dgEl.style.display='none';
   /* 01/10/2026: don da giao chua co thong tin phieu VIBA */
   var thieuTt=all.filter(function(x){return x.tt==='Đã giao'&&!x.cotTt}).length,tEl=document.getElementById('vbThieuTt');
   if(thieuTt){tEl.style.display='block';tEl.innerHTML='<b style="color:var(--red)">'+thieuTt+' đơn đã giao chưa có thông tin VIBA</b> (số phiếu, NV, vỏ) → chọn Xem: "Đã giao, thiếu thông tin VIBA" để bổ sung.'}else tEl.style.display='none';
   var loc=document.getElementById('vbLoc').value;
-  var arr=loc==='thieu'?all.filter(function(x){return x.tt==='Đã giao'&&!x.cotTt}):(loc==='da'?all.filter(function(x){return x.tt==='Đã giao'})
+  var arr=loc==='thieu'?all.filter(function(x){return x.tt==='Đã giao'&&!x.cotTt}):loc==='cho'?cho:(loc==='da'?all.filter(function(x){return x.tt==='Đã giao'})
     :(loc==='hoan'?all.filter(function(x){return x.tt==='Hoàn hàng'}):all.slice()));
-  arr.sort(function(a,b){return String(b.id).localeCompare(String(a.id))});
-  if(!arr.length){el.innerHTML='<div class="empty">'+'Chưa có đơn nào.'+'</div>';return}
+  /* Cho giao: don cu nhat len dau de uu tien; con lai: moi nhat len dau */
+  if(loc==='cho')arr.sort(function(a,b){return String(a.id).localeCompare(String(b.id))});
+  else arr.sort(function(a,b){return String(b.id).localeCompare(String(a.id))});
+  if(!arr.length){el.innerHTML='<div class="empty">'+(loc==='cho'?'Không có đơn nào đang chờ giao.':'Chưa có đơn nào.')+'</div>';return}
   var h='';
   arr.forEach(function(x){
     var xong=x.tt==='Đã giao',hoan=x.tt==='Hoàn hàng';
@@ -1475,6 +1491,9 @@ function renderViba(){
       +(x.cotTt?'<div class="t2">Phiếu VIBA <b>'+esc(x.sophieu)+'</b> · '+esc(x.nv)+' '+esc(vbNvTen(x.nv))+(x.vothu||x.vothu===0?' · vỏ thu '+x.vothu:'')+(x.tang?' · lên tầng':'')+(x.ngoai?' · ngoại thành':'')+'</div>':'')
       +'<button class="btn" style="width:100%;margin-top:8px;'+(x.cotTt?'background:#eef1f4;color:var(--ink)':'background:#fdeceb;color:var(--red)')+'" data-vb-bs="'+esc(x.id)+'">'+(x.cotTt?'Sửa thông tin VIBA':'Bổ sung thông tin VIBA (số phiếu, NV, vỏ)')+'</button>';
     else if(hoan)cuoi='<div class="t2" style="color:var(--red)">Hoàn hàng '+esc(x.ngayhoan||'')+(x.lydo?' · lý do: '+esc(x.lydo):'')+(x.nguoi?' · '+esc(x.nguoi):'')+'</div>';
+    else cuoi='<div style="display:flex;gap:8px;margin-top:8px">'
+      +'<button class="btn" style="flex:1;background:#eef1f4;color:var(--ink)" data-vb-huy="'+esc(x.id)+'">Giao không thành công</button>'
+      +'<button class="btn bred" style="flex:1.3" data-vb-id="'+esc(x.id)+'">Xác nhận đã giao</button></div>';
     h+='<div class="li" style="display:block'+((xong||hoan)?';opacity:.8':'')+'">'
       +'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">'
       +'<div class="t1">'+esc(x.ngay)+' · '+esc(x.id)+'</div>'
@@ -1488,6 +1507,12 @@ function renderViba(){
       +cuoi+'</div>';
   });
   el.innerHTML=h;
+  el.querySelectorAll('[data-vb-id]').forEach(function(b){
+    b.onclick=function(){vbXacNhan(b.getAttribute('data-vb-id'),b)};
+  });
+  el.querySelectorAll('[data-vb-huy]').forEach(function(b){
+    b.onclick=function(){vbHuy(b.getAttribute('data-vb-huy'),b)};
+  });
   el.querySelectorAll('[data-vb-bs]').forEach(function(b){
     b.onclick=function(){vgMo(b.getAttribute('data-vb-bs'),'bosung')};
   });
@@ -2082,7 +2107,7 @@ function vbNxt(tu,den){
   });
   VB.forEach(function(x){
     if(x.kho!==KHO||x.tt!=='Đã giao')return;
-    var ng=vbYmd(x.ngaygiao);if(!ng||ng<vbBatDau())return;
+    var ng=vbYmd(x.ngaygiao);if(!ng||ng<c.tuNgay)return;
     var d=vbDem(vbLinesOf(x.id));
     VB_SKU.forEach(function(s){if(s[0]!=='SP02')cong(s[0],ng,d.q[s[0]]||0,'x','')});
     if(x.vothu)cong('SP02',ng,x.vothu,'n','vỏ thu về');
@@ -2090,22 +2115,23 @@ function vbNxt(tu,den){
   VB_SKU.forEach(function(s){var a=o[s[0]];a.cuoi=a.dau+a.nhap-a.xuat});
   return o;
 }
-/* 01/10/2026 ban 4: ngay bat dau tru kho VIBA = som hon giua cfg.tuNgay va phieu kho VIBA dau tien.
-   Hang da vao kho VIBA tu 18/09 -> don giao tu do phai tru kho VIBA, nhung KHONG doi tuNgay (kho HN giu nguyen). */
-function vbBatDau(){var t=vcfg().tuNgay;KV.forEach(function(r){if(r.kho&&r.kho!==KHO)return;var n=vbYmd(r.ngay);if(n&&n<t)t=n});return t}
 function vbGcTxt(gc){return Object.keys(gc).map(function(k){return k+' '+fmt(gc[k])}).join('; ')}
 
 /* ---------- KHO VIBA: ton + lap phieu ---------- */
 function kvRender(){
   var c=vcfg(),hn=vbHomNay();
   var nx=vbNxt('0000-00-00',hn);
-  var h='<table class="rpt"><tr><th>Mã hàng</th><th>Tồn</th></tr>';
-  VB_SKU.forEach(function(s){var a=nx[s[0]];
-    h+='<tr><td>'+esc(VB_NGAN[s[0]])+'</td><td'+(a.cuoi<0?' style="color:var(--red);font-weight:700"':'')+'>'+fmt(a.cuoi)+'</td></tr>'});
+  /* hang dang cho giao (da lap hoa don VIBA, chua giao) */
+  var cho={};VB_SKU.forEach(function(s){cho[s[0]]=0});
+  VB.forEach(function(x){if(x.kho!==KHO||x.tt==='Đã giao'||x.tt==='Hoàn hàng')return;
+    var d=vbDem(vbLinesOf(x.id));VB_SKU.forEach(function(s){if(s[0]!=='SP02')cho[s[0]]+=d.q[s[0]]||0})});
+  var h='<table class="rpt"><tr><th>Mã hàng</th><th>Tồn</th><th>Chờ giao</th><th>Còn lại</th></tr>';
+  VB_SKU.forEach(function(s){var a=nx[s[0]],con=a.cuoi-cho[s[0]];
+    h+='<tr><td>'+esc(VB_NGAN[s[0]])+'</td><td'+(a.cuoi<0?' style="color:var(--red);font-weight:700"':'')+'>'+fmt(a.cuoi)+'</td><td>'+(cho[s[0]]?fmt(cho[s[0]]):'')+'</td><td'+(con<0?' style="color:var(--red);font-weight:700"':'')+'>'+fmt(con)+'</td></tr>'});
   h+='</table>';
   document.getElementById('kvTon').innerHTML=h;
   var am=VB_SKU.filter(function(s){return nx[s[0]].cuoi<0}).length;
-  document.getElementById('kvTonInfo').innerHTML='Kho '+esc(KHO)+' · tính đến hôm nay · trừ đơn giao từ '+vbDmy(vbBatDau())
+  document.getElementById('kvTonInfo').innerHTML='Kho '+esc(KHO)+' · tính đến hôm nay · bắt đầu dùng kho VIBA từ '+vbDmy(c.tuNgay)
     +(KV.filter(function(r){return r.loai==='Tồn đầu kỳ'}).length?'':' · <b style="color:var(--amb)">chưa nhập Tồn đầu kỳ</b>')
     +(am?' · <b style="color:var(--red)">'+am+' mã tồn âm → thiếu phiếu nhập</b>':'');
   if(!document.getElementById('kvNgay').value)document.getElementById('kvNgay').value=hn;
@@ -2214,7 +2240,7 @@ function vrRender(){
   if(thieu.length)canh.push('<b>'+thieu.length+' đơn chưa có thông tin VIBA</b> (số phiếu, NV, vỏ, lên tầng) → công đang tạm tính nội thành, không lên tầng. Vào "Đơn giao" → lọc "Đã giao, thiếu thông tin VIBA" để bổ sung.');
   if(vo.length)canh.push('<b>'+vo.length+' đơn khách giữ vỏ mà hoá đơn chưa thu cọc:</b> '+vo.map(function(o){return esc(o.x.id)+' ('+o.thieuVo+' vỏ)'}).join(', '));
   if(R.thieuKg.length)canh.push('Chưa nhập trọng lượng cho '+R.thieuKg.join(', ')+' → phí bốc xếp đang thiếu. Vào Cài đặt để nhập kg.');
-  if(R.tu<vbBatDau())canh.push('Kho VIBA bắt đầu từ '+vbDmy(vbBatDau())+': đơn giao trước ngày đó không trừ kho VIBA.');
+  if(R.tu<c.tuNgay)canh.push('Kho VIBA bắt đầu từ '+vbDmy(c.tuNgay)+': đơn giao trước ngày đó không trừ kho VIBA (đã trừ kho HN).');
   document.getElementById('vrCanh').innerHTML=canh.map(function(t){return '<div style="background:#fff3df;border-radius:9px;padding:7px 9px;font-size:13px;margin-bottom:6px">'+t+'</div>'}).join('');
   var h='<table class="rpt"><tr><th>Mã hàng</th><th>Đầu</th><th>Nhập</th><th>Xuất</th><th>Cuối</th></tr>',t=[0,0,0,0],gcs=[];
   VB_SKU.forEach(function(s){var a=R.nxt[s[0]];t[0]+=a.dau;t[1]+=a.nhap;t[2]+=a.xuat;t[3]+=a.cuoi;
