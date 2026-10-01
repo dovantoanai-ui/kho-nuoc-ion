@@ -116,8 +116,6 @@ function doPost(e) {
       out = ghiKiemKhoViba_(ss, p.rows, p.anh);
     } else if (p.loai === 'vibadagiao' && p.rows && p.rows.length && p.viba && p.viba.row) {
       out = vibaDaGiao_(ss, p);
-    } else if (p.loai === 'vibasheet' && p.tabs && p.tabs.length) {
-      out = ghiSheetViba_(p);
     } else if (p.loai === 'vibacfg' && p.cfg) {
       out = ghiCfgViba_(ss, p.cfg, p.nguoi);
     } else if (p.loai === 'huyhd' && p.id) {
@@ -243,8 +241,6 @@ function doGet(e) {
     out.khoviba = readKhoViba_(ss); // 01/10/2026
     out.kiemkhoviba = readKiemKhoViba_(ss);
     out.vbcfg = readCfgViba_(ss);
-    var vbid = PropertiesService.getScriptProperties().getProperty(VBSHEET_KEY);
-    if (vbid) out.vbSheet = 'https://docs.google.com/spreadsheets/d/' + vbid + '/edit';
   } catch (err) {
     out = { ok: false, error: err.message };
   }
@@ -737,51 +733,6 @@ function vibaDaGiao_(ss, p) {
   ]]);
   if (p.tt) ghiTtViba_(sh, dong, p.tt);
   return { ok: true, added: hd.added, skipped: hd.skipped, viba: kq };
-}
-
-// 01/10/2026 ban 7: SHEET RIENG CHO NHAN VIEN VIBA (chi xem).
-// App tinh so (cung cong thuc bao cao) roi gui {loai:'vibasheet', tabs:[{ten, rows, dam, rong}]}.
-// Lan dau tu tao file (dat canh sheet goc), luu ID vao Script Properties. Moi lan ghi de toan bo tab.
-var VBSHEET_KEY = 'VIBA_SHEET_ID';
-var VBSHEET_TEN = 'VIBA - Kho ION FUJI Ha Noi';
-function sheetViba_() {
-  var pr = PropertiesService.getScriptProperties(), id = pr.getProperty(VBSHEET_KEY);
-  if (id) { try { return SpreadsheetApp.openById(id); } catch (e) {} }
-  var s = SpreadsheetApp.create(VBSHEET_TEN);
-  try {
-    var cha = DriveApp.getFileById(SHEET_ID).getParents();
-    if (cha.hasNext()) DriveApp.getFileById(s.getId()).moveTo(cha.next());
-  } catch (e) {}
-  pr.setProperty(VBSHEET_KEY, s.getId());
-  return s;
-}
-function ghiSheetViba_(p) {
-  var s = sheetViba_(), ten = [];
-  p.tabs.forEach(function (t, i) {
-    var name = String(t.ten || ('Tab ' + (i + 1))).slice(0, 90); ten.push(name);
-    var sh = s.getSheetByName(name) || s.insertSheet(name, i);
-    sh.clear();
-    var rows = t.rows || []; if (!rows.length) return;
-    var w = 1; rows.forEach(function (r) { if (r.length > w) w = r.length; });
-    var data = rows.map(function (r) {
-      var o = [];
-      for (var j = 0; j < w; j++) {
-        var v = r[j]; if (v === null || v === undefined) v = '';
-        // chuoi bat dau bang so (so phieu 0007208, ngay 11/09/2026) -> giu nguyen dang chu
-        if (typeof v === 'string' && /^[0-9+\-]/.test(v)) v = "'" + v;
-        o.push(v);
-      }
-      return o;
-    });
-    if (sh.getMaxColumns() < w) sh.insertColumnsAfter(sh.getMaxColumns(), w - sh.getMaxColumns());
-    var rg = sh.getRange(1, 1, data.length, w);
-    rg.setValues(data).setNumberFormat('#,##0').setFontFamily('Arial').setFontSize(10);
-    sh.getRange(1, 1).setFontSize(13).setFontWeight('bold');
-    (t.dam || []).forEach(function (r) { if (r < data.length) sh.getRange(r + 1, 1, 1, w).setFontWeight('bold').setBackground('#FBEAEA'); });
-    (t.rong || []).forEach(function (px, j) { try { sh.setColumnWidth(j + 1, Math.round(px * 7.5)); } catch (e) {} });
-  });
-  s.getSheets().forEach(function (sh) { if (ten.indexOf(sh.getName()) < 0 && s.getSheets().length > 1) s.deleteSheet(sh); });
-  return { ok: true, id: s.getId(), url: s.getUrl() };
 }
 
 function readCfgViba_(ss) {

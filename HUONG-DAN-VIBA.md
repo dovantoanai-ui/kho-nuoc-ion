@@ -47,3 +47,9 @@ App hiện tồn sổ sách tính đến hết ngày kiểm + chênh lệch. Lư
 - Mã thiếu: liệt kê hoá đơn kho cùng mặt hàng KHÔNG có phiếu VIBA trong kỳ (chỉ là gợi ý), đánh dấu đơn/ngày trùng đúng số lệch.
 - Nút **Xuất Excel đối chiếu**.
 - Báo cáo VIBA: ô **Kỳ báo cáo** có thêm "Tất cả thời gian" (mặt bằng tính theo số tháng từ ngày bắt đầu).
+
+## Sheet riêng cho nhân viên VIBA (01/10/2026)
+- File "VIBA - Kho ION FUJI Ha Noi" (backend tự tạo lần đầu, nằm cạnh sheet DA05). Link ở Giao VIBA → Cài đặt → "Sheet cho nhân viên VIBA".
+- 5 tab: Tổng quan · Nhập xuất tồn · Kiểm kho · Tiền giao hàng · Doanh số. Không có hoa hồng %, mặt bằng, bốc xếp.
+- Tự cập nhật sau mỗi lần lưu đơn VIBA / phiếu kho / kiểm kho / cài đặt. Nút "Cập nhật sheet VIBA ngay" để bấm tay.
+- Sheet bị ghi đè mỗi lần cập nhật → KHÔNG sửa tay trong sheet VIBA. Share quyền Người xem.
