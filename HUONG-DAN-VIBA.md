@@ -9,19 +9,21 @@ App hoá đơn → tab **Giao VIBA** có 4 tab con: **Đơn giao · Kho VIBA · 
    Đẩy app SAU khi đã deploy backend — nếu không, thông tin phiếu VIBA lúc xác nhận giao sẽ không được lưu.
 
 ## Bắt đầu dùng
+0. Ảnh lưu Drive: nếu báo `LOI ANH` thì chạy tay hàm `capQuyen` trong Apps Script hoá đơn 1 lần.
 1. **Cài đặt**: kiểm tra đơn giá (mặc định theo bảng VIBA đề xuất), nhập **kg/đơn vị** từng mã (để tính bốc xếp), VAT mặt bằng nếu có, ngày bắt đầu dùng kho VIBA (mặc định 01/10/2026) → Lưu.
 2. **Kho VIBA** → phiếu **Tồn đầu kỳ**: số hàng + vỏ đang nằm ở kho VIBA tại ngày bắt đầu.
-3. Kho VIBA **độc lập**: phiếu **Nhập kho** chỉ cộng kho VIBA (hàng từ HN, Hưng Yên hay Hạ Long đều được). Hàng rời kho nào thì lập phiếu xuất ở app kho đó như thường. VIBA trả hàng/vỏ: phiếu **Trả về ION**. Sửa tồn sau kiểm kho: phiếu **Điều chỉnh tồn**.
+3. Mọi phiếu kho VIBA đều **bắt buộc kèm ảnh** (lưu Drive, folder `Anh kho VIBA ION FUJI`). Kho VIBA **độc lập**: phiếu **Nhập kho** chỉ cộng kho VIBA (hàng từ HN, Hưng Yên hay Hạ Long đều được). Hàng rời kho nào thì lập phiếu xuất ở app kho đó như thường. VIBA trả hàng/vỏ: phiếu **Trả về ION**. Sửa tồn sau kiểm kho: phiếu **Điều chỉnh tồn**.
    Đơn VIBA giao từ ngày bắt đầu KHÔNG trừ kho HN nữa (xuất từ kho VIBA).
 
-## Hằng ngày
-- Lập hoá đơn, tích "Giao qua VIBA" như cũ.
-- Khi phiếu giao nhận VIBA về: **Đơn giao → Xác nhận đã giao** → nhập số phiếu VIBA, NV giao, vỏ thu về, lên tầng / ngoại thành.
-  App tự tính công và báo đỏ nếu khách giữ vỏ mà hoá đơn chưa thu cọc.
-- Đơn đã giao từ trước: chọn Xem "Đã giao, thiếu thông tin VIBA" → **Bổ sung thông tin VIBA**.
+## Hằng ngày — nhập đơn VIBA (SAU KHI VIBA đã giao xong)
+- Tab **Giao VIBA → Nhập đơn**: form giống hoá đơn thường (khách, chiết khấu, sản phẩm, VAT, thanh toán, cọc, ghi chú) + khối **Phiếu giao VIBA**: số phiếu, ngày giao, NV giao, địa chỉ, vỏ thu về, lên tầng / ngoại thành, người nhập.
+- Bấm **Lưu đơn VIBA đã giao** → ghi thẳng HoaDon (ngày = ngày giao): doanh thu, công nợ, trừ kho VIBA. Xong bấm **Chia sẻ / Lưu ảnh** gửi hoá đơn cho khách.
+- App tự tính công giao và báo đỏ nếu khách giữ vỏ mà chưa thu cọc.
+- Tab Hoá đơn **không còn** tích "Giao qua VIBA". Đơn cũ còn "Chờ giao": vào **Đã giao** → Xem "Chờ giao (đơn cũ)" → Xác nhận đã giao.
+- Đơn đã giao thiếu thông tin: **Đã giao** → Xem "Đã giao, thiếu thông tin VIBA" → **Bổ sung thông tin VIBA**.
 
 ## Kiểm kho VIBA (biên bản đối chiếu)
-Kho VIBA → **Kiểm kho VIBA**: chọn ngày, người kiểm, người chứng kiến bên VIBA, nhập số đếm thực tế từng mã (để trống = không kiểm).
+Kho VIBA → **Kiểm kho VIBA**: chọn ngày, người kiểm, người chứng kiến bên VIBA, nhập số đếm thực tế từng mã (để trống = không kiểm), **chụp ảnh biên bản (bắt buộc)**.
 App hiện tồn sổ sách tính đến hết ngày kiểm + chênh lệch. Lưu = biên bản (tab `KiemKhoVIBA`), **không sửa tồn**. Muốn sửa thì lập phiếu "Điều chỉnh tồn".
 
 ## Cuối tháng

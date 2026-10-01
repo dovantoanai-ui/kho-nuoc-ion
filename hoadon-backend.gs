@@ -68,9 +68,10 @@ var VB_COT_TEXT = [2, 7, 14, 17, 19, 20]; // + So phieu VIBA (giu so 0 dau: 0007
 // Phieu kho VIBA chi cong/tru kho VIBA; hang roi kho HN/HY thi lap phieu xuat o app kho do.
 // 01/10/2026: KIEM KHO VIBA = bien ban doi chieu so dem vs so sach (app tinh), KHONG sua ton.
 var KKV_HEAD = ['ID dong', 'ID phieu', 'Ngay', 'Kho', 'Ma VIBA', 'Ten hang', 'Ton so sach', 'So dem',
-                'Chenh lech', 'Nguoi kiem', 'Nguoi VIBA', 'Ghi chu', 'Ghi luc', 'Thang'];
+                'Chenh lech', 'Nguoi kiem', 'Nguoi VIBA', 'Ghi chu', 'Ghi luc', 'Thang', 'Link anh'];
 var KV_HEAD = ['ID dong', 'ID phieu', 'Ngay', 'Kho', 'Loai', 'Ma VIBA', 'Ten hang', 'DVT',
-               'So luong', 'Nguoi', 'Ghi chu', 'Ghi luc', 'Thang'];
+               'So luong', 'Nguoi', 'Ghi chu', 'Ghi luc', 'Thang', 'Link anh'];
+var VBANH_FOLDER = 'Anh kho VIBA ION FUJI'; // 01/10/2026: anh bat buoc cua phieu kho + kiem kho VIBA
 // 01/10/2026: cai dat don gia cong giao / chi phi VIBA - 1 dong khoa 'cfg', gia tri JSON.
 var CFG_HEAD = ['Khoa', 'Gia tri', 'Cap nhat luc', 'Nguoi']; // Ngay, SDT nhan, Ngay giao, Thang, Ngay hoan: ep text de khong mat so 0 dau / bi doi kieu ngay
 
@@ -110,9 +111,11 @@ function doPost(e) {
     } else if (p.loai === 'vibabosung' && p.id && p.tt) {
       out = boSungViba_(ss, p);
     } else if (p.loai === 'khoviba' && p.rows && p.rows.length) {
-      out = ghiKhoViba_(ss, p.rows);
+      out = ghiKhoViba_(ss, p.rows, p.anh);
     } else if (p.loai === 'kiemkhoviba' && p.rows && p.rows.length) {
-      out = ghiKiemKhoViba_(ss, p.rows);
+      out = ghiKiemKhoViba_(ss, p.rows, p.anh);
+    } else if (p.loai === 'vibadagiao' && p.rows && p.rows.length && p.viba && p.viba.row) {
+      out = vibaDaGiao_(ss, p);
     } else if (p.loai === 'vibacfg' && p.cfg) {
       out = ghiCfgViba_(ss, p.cfg, p.nguoi);
     } else if (p.loai === 'huyhd' && p.id) {
@@ -623,7 +626,7 @@ function boSungViba_(ss, p) {
 
 // Ghi phieu kho VIBA. rows: [ID dong, ID phieu, Ngay, Kho, Loai, Ma VIBA, Ten hang, DVT, So luong, Nguoi, Ghi chu]
 // Chong ghi trung theo 'ID dong' (gui lai cung phieu khong nhan doi).
-function ghiKhoViba_(ss, rows) {
+function ghiKhoViba_(ss, rows, anh) {
   var sh = ensureSheet_(ss, 'KhoVIBA', KV_HEAD);
   var daCo = {}, last = sh.getLastRow();
   if (last > 1) sh.getRange(2, 1, last - 1, 1).getValues().forEach(function (r) { daCo[String(r[0] || '').trim()] = 1; });
@@ -638,6 +641,9 @@ function ghiKhoViba_(ss, rows) {
     moi.push(x.map(function (v, i) { return (i === 2 || i === 12 || i === 0 || i === 1) ? String(v == null ? '' : v) : v; }));
   });
   if (!moi.length) return { ok: true, added: 0, skipped: rows.length };
+  // Upload anh 1 lan cho ca phieu (chi khi co dong moi -> gui lai khong tao anh trung)
+  var link = (anh && anh.data) ? uploadAnh_(anh.data, anh.mime, anh.ten, VBANH_FOLDER) : '';
+  moi.forEach(function (x) { x.push(link); });
   var dau = sh.getLastRow() + 1;
   [1, 2, 3, 13].forEach(function (c) { sh.getRange(dau, c, moi.length, 1).setNumberFormat('@'); });
   sh.getRange(dau, 1, moi.length, KV_HEAD.length).setValues(moi);
@@ -657,7 +663,7 @@ function readKhoViba_(ss) {
       idd: idd, id: String(g(r, 'ID phieu') || '').trim(), ngay: fmtD_(g(r, 'Ngay')),
       kho: g(r, 'Kho') || '', loai: g(r, 'Loai') || '', ma: String(g(r, 'Ma VIBA') || '').trim(),
       ten: g(r, 'Ten hang') || '', dvt: g(r, 'DVT') || '', sl: sl,
-      nguoi: g(r, 'Nguoi') || '', gc: g(r, 'Ghi chu') || ''
+      nguoi: g(r, 'Nguoi') || '', gc: g(r, 'Ghi chu') || '', link: String(g(r, 'Link anh') || '')
     });
   });
   return out;
@@ -665,7 +671,7 @@ function readKhoViba_(ss) {
 
 // Ghi bien ban kiem kho VIBA. rows: [ID dong, ID phieu, Ngay, Kho, Ma VIBA, Ten hang,
 // Ton so sach, So dem, Chenh lech, Nguoi kiem, Nguoi VIBA, Ghi chu]. Chong ghi trung theo ID dong.
-function ghiKiemKhoViba_(ss, rows) {
+function ghiKiemKhoViba_(ss, rows, anh) {
   var sh = ensureSheet_(ss, 'KiemKhoVIBA', KKV_HEAD);
   var daCo = {}, last = sh.getLastRow();
   if (last > 1) sh.getRange(2, 1, last - 1, 1).getValues().forEach(function (r) { daCo[String(r[0] || '').trim()] = 1; });
@@ -680,6 +686,8 @@ function ghiKiemKhoViba_(ss, rows) {
     moi.push(x.map(function (v, i) { return (i <= 2 || i === 13) ? String(v == null ? '' : v) : v; }));
   });
   if (!moi.length) return { ok: true, added: 0, skipped: rows.length };
+  var link = (anh && anh.data) ? uploadAnh_(anh.data, anh.mime, anh.ten, VBANH_FOLDER) : '';
+  moi.forEach(function (x) { x.push(link); });
   var dau = sh.getLastRow() + 1;
   [1, 2, 3, 14].forEach(function (c) { sh.getRange(dau, c, moi.length, 1).setNumberFormat('@'); });
   sh.getRange(dau, 1, moi.length, KKV_HEAD.length).setValues(moi);
@@ -699,10 +707,31 @@ function readKiemKhoViba_(ss) {
       idd: idd, id: String(g(r, 'ID phieu') || '').trim(), ngay: fmtD_(g(r, 'Ngay')), kho: g(r, 'Kho') || '',
       ma: String(g(r, 'Ma VIBA') || '').trim(), ten: g(r, 'Ten hang') || '',
       so: so(g(r, 'Ton so sach')), dem: so(g(r, 'So dem')), lech: so(g(r, 'Chenh lech')),
-      nguoi: g(r, 'Nguoi kiem') || '', vb: g(r, 'Nguoi VIBA') || '', gc: g(r, 'Ghi chu') || ''
+      nguoi: g(r, 'Nguoi kiem') || '', vb: g(r, 'Nguoi VIBA') || '', gc: g(r, 'Ghi chu') || '', link: String(g(r, 'Link anh') || '')
     });
   });
   return out;
+}
+
+// 01/10/2026 ban 3: don VIBA nhap SAU KHI DA GIAO (tab Giao VIBA > Nhap don).
+// Ghi 1 lan: GiaoVIBA (trang thai 'Đã giao' + thong tin phieu) + HoaDon (ngay = ngay giao).
+// Gui lai cung ID: GiaoVIBA va HoaDon deu chong trung theo ID -> an toan.
+function vibaDaGiao_(ss, p) {
+  var id = String(p.viba.row[0] || '').trim();
+  if (!id) return { ok: false, error: 'Thieu ID hoa don' };
+  var kq = ghiViba_(ss, p.viba.row);
+  var sh = ensureSheet_(ss, 'GiaoVIBA', VB_HEAD);
+  var dong = timDongViba_(sh, id);
+  if (dong < 0) return { ok: false, error: 'Khong ghi duoc GiaoVIBA ' + id };
+  if (String(sh.getRange(dong, 13).getValue() || '') === 'Hoàn hàng') return { ok: false, error: 'Don ' + id + ' da hoan hang' };
+  var hd = ghiHoaDonRows_(ss, 'HoaDon', p.rows);
+  sh.getRange(dong, 14).setNumberFormat('@');
+  sh.getRange(dong, 13, 1, 4).setValues([[
+    'Đã giao', String(p.ngaygiao || p.viba.row[1] || ''), String(p.nguoi || ''),
+    Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm')
+  ]]);
+  if (p.tt) ghiTtViba_(sh, dong, p.tt);
+  return { ok: true, added: hd.added, skipped: hd.skipped, viba: kq };
 }
 
 function readCfgViba_(ss) {
