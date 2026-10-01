@@ -32,15 +32,6 @@ var HOADON_SHEET_ID = '1NFWBTjzkgk-Rj6syw46gm5F5tRIDxnU5qBc1OK35Y6A'; // Sheet D
 var HY_SHEET_ID     = '1tQEhM51DiYHN3tV_zKa6OT1tLXkPBft4TtOgp1_uAck'; // Sheet kho Hung Yen (nguon ten hang)
 var HOADON_TU_NGAY  = '2026-08-16'; // yyyy-mm-dd: chi tinh hoa don tu ngay nay tro di
 
-// ============================================================
-// KHO VIBA (01/10/2026) - doi tac giao hang co kho rieng, DOC LAP voi kho HN.
-// - Don VIBA DA GIAO tu ngay VIBA_KHO_TU_NGAY: hang xuat tu kho VIBA, KHONG tru kho HN.
-//   Don truoc moc van tru HN nhu cu.
-// - Hang cho tu kho HN sang VIBA: lap phieu Xuat o app kho HN nhu thuong (khong tu dong).
-// Moc lay tu Cai dat VIBA tren app (tab CaiDatVIBA), mac dinh duoi day.
-// ============================================================
-var VIBA_KHO_TU_NGAY_MD = '2026-10-01';
-
 
 function doPost(e){
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -237,7 +228,6 @@ function readHoaDonBan_(ss){
     var tenMa = mapTenMa_(ss);
     var v = sh.getDataRange().getValues();
     var seen = {};
-    var vb = donVibaTuKho_(); // 01/10/2026: don VIBA giao tu kho VIBA -> khong tru HN
     // 0 ID,1 Ngay,2 MaKH,3 Khach,4 SDT,5 Kho,6 San pham,7 DVT,8 SL,9 Don gia,10 Thanh tien
     for (var i = 1; i < v.length; i++) {
       var r = v[i];
@@ -245,7 +235,6 @@ function readHoaDonBan_(ss){
       if (String(r[5] || '').indexOf('H\u01b0ng') >= 0) continue; // bo hoa don Hung Yen -> con lai la Ha Noi
       var ngay = ymdHoaDon_(r[1]);
       if (!ngay || ngay < HOADON_TU_NGAY) continue;
-      if (vb.ids[id] && ngay >= vb.tuNgay) continue; // hang da tru luc chuyen sang kho VIBA
       var sl = n2_(r[8]); if (!sl) continue;
       var key = id + '|' + String(r[6] || '') + '|' + sl + '|' + n2_(r[9]);
       if (seen[key]) continue; seen[key] = 1; // chong dong trung (bam dong bo nhieu lan)
@@ -259,34 +248,6 @@ function readHoaDonBan_(ss){
   } catch (e) { /* thieu quyen hoac loi mang: bao cao van chay, chi thieu phan hoa don */ }
   return out;
 }
-// Moc ngay bat dau dung kho VIBA (yyyy-mm-dd) + tap ID hoa don giao qua VIBA (da giao)
-function donVibaTuKho_(){
-  var out = { tuNgay: VIBA_KHO_TU_NGAY_MD, ids: {} };
-  try {
-    var ss = SpreadsheetApp.openById(HOADON_SHEET_ID);
-    var cf = ss.getSheetByName('CaiDatVIBA');
-    if (cf && cf.getLastRow() > 1) {
-      cf.getRange(2, 1, cf.getLastRow() - 1, 2).getValues().forEach(function(r){
-        if (String(r[0]).trim() !== 'cfg') return;
-        try { var c = JSON.parse(String(r[1])); if (c && /^\d{4}-\d{2}-\d{2}$/.test(c.tuNgay || '')) out.tuNgay = c.tuNgay; } catch (e) {}
-      });
-    }
-    var gv = ss.getSheetByName('GiaoVIBA');
-    if (gv && gv.getLastRow() > 1) {
-      gv.getRange(2, 1, gv.getLastRow() - 1, 13).getValues().forEach(function(r){
-        var id = String(r[0] || '').trim();
-        if (id && String(r[12] || '') === '\u0110\u00e3 giao') out.ids[id] = 1;
-      });
-    }
-  } catch (e) {}
-  return out;
-}
-// CHAY TAY kiem tra phan kho VIBA (Run -> xem Logger)
-function testKhoViba(){
-  var vb = donVibaTuKho_();
-  Logger.log('Moc kho VIBA: ' + vb.tuNgay + ' | don VIBA da giao (tu moc khong tru kho HN): ' + Object.keys(vb.ids).length);
-}
-
 // CHAY TAY de kiem tra ket noi hoa don (Run -> xem Logger)
 function testDocHoaDon(){
   var rows = readHoaDonBan_(SpreadsheetApp.getActiveSpreadsheet());

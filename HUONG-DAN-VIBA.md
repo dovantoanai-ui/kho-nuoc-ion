@@ -1,0 +1,40 @@
+# Hướng dẫn: Giao VIBA — kho VIBA, công giao, báo cáo (01/10/2026)
+
+App hoá đơn → tab **Giao VIBA** có 4 tab con: **Đơn giao · Kho VIBA · Báo cáo · Cài đặt**.
+
+## Triển khai (làm 1 lần, đúng thứ tự)
+1. `hoadon-backend.gs` → dán đè vào project Apps Script hoá đơn → Deploy → Manage deployments → Edit → **New version** (giữ URL /exec).
+2. `backend-hn-apps-script.gs` → dán đè vào Apps Script của Sheet **ION Kho HN** → Deploy → New version. Chạy tay hàm `testKhoViba` để kiểm tra (xem Logger).
+3. Đẩy `hoadon.html` lên GitHub (`git add -A && git commit && git push`).
+   Đẩy app SAU khi đã deploy backend — nếu không, thông tin phiếu VIBA lúc xác nhận giao sẽ không được lưu.
+
+## Bắt đầu dùng
+1. **Cài đặt**: kiểm tra đơn giá (mặc định theo bảng VIBA đề xuất), nhập **kg/đơn vị** từng mã (để tính bốc xếp), VAT mặt bằng nếu có, ngày bắt đầu dùng kho VIBA (mặc định 01/10/2026) → Lưu.
+2. **Kho VIBA** → phiếu **Tồn đầu kỳ**: số hàng + vỏ đang nằm ở kho VIBA tại ngày bắt đầu.
+3. Kho VIBA **độc lập**: phiếu **Nhập kho** chỉ cộng kho VIBA (hàng từ HN, Hưng Yên hay Hạ Long đều được). Hàng rời kho nào thì lập phiếu xuất ở app kho đó như thường. VIBA trả hàng/vỏ: phiếu **Trả về ION**. Sửa tồn sau kiểm kho: phiếu **Điều chỉnh tồn**.
+   Đơn VIBA giao từ ngày bắt đầu KHÔNG trừ kho HN nữa (xuất từ kho VIBA).
+
+## Hằng ngày
+- Lập hoá đơn, tích "Giao qua VIBA" như cũ.
+- Khi phiếu giao nhận VIBA về: **Đơn giao → Xác nhận đã giao** → nhập số phiếu VIBA, NV giao, vỏ thu về, lên tầng / ngoại thành.
+  App tự tính công và báo đỏ nếu khách giữ vỏ mà hoá đơn chưa thu cọc.
+- Đơn đã giao từ trước: chọn Xem "Đã giao, thiếu thông tin VIBA" → **Bổ sung thông tin VIBA**.
+
+## Kiểm kho VIBA (biên bản đối chiếu)
+Kho VIBA → **Kiểm kho VIBA**: chọn ngày, người kiểm, người chứng kiến bên VIBA, nhập số đếm thực tế từng mã (để trống = không kiểm).
+App hiện tồn sổ sách tính đến hết ngày kiểm + chênh lệch. Lưu = biên bản (tab `KiemKhoVIBA`), **không sửa tồn**. Muốn sửa thì lập phiếu "Điều chỉnh tồn".
+
+## Cuối tháng
+**Báo cáo** → chọn tháng → xem Nhập–xuất–tồn, Công theo NV, Tiền phải trả VIBA → **Xuất Excel theo mẫu VIBA**
+(Bảng Nhập Xuất Tồn · Tính Công Giao Hàng · Thanh toán VIBA · Chi tiết đơn · Kiểm kho nếu tháng có biên bản).
+
+## Quy tắc tính
+- Công: Bình/thùng 12.000đ/SP nội thành, 15.000đ ngoại thành; can 5L 6.000đ. Điểm giao < 10 SP: trả cố định 100.000đ (thay cho tính theo SP). Lên tầng +50.000đ/điểm.
+- Hoa hồng 6% × tiền hàng chưa VAT (không tính cọc) của đơn VIBA đã giao trong tháng.
+- Mặt bằng 5.000.000đ/tháng (chỉ tính từ tháng bắt đầu dùng kho VIBA). Bốc xếp = tấn hàng "Nhập kho" trong tháng × đơn giá/tấn.
+- Báo cáo tính lại theo đơn giá HIỆN TẠI trong Cài đặt.
+
+## Dữ liệu (Sheet DA05)
+- `GiaoVIBA`: thêm 7 cột (So phieu VIBA, NV giao, So SP, Vo thu, Len tang, Ngoai thanh, Cong giao) — backend tự thêm.
+- `KhoVIBA`: phiếu kho VIBA (mỗi dòng 1 mã hàng). `KiemKhoVIBA`: biên bản kiểm kho. `CaiDatVIBA`: cài đặt (1 dòng JSON).
+- Backup trước khi sửa: `*_backup_20261001_viba.*` cùng thư mục.
