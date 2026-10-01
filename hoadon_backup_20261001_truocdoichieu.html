@@ -411,21 +411,12 @@
           <h2>Biên bản kiểm kho</h2>
           <div id="kkvDs"></div>
         </div>
-        <div class="card">
-          <h2>Đối chiếu kiểm kê</h2>
-          <div class="row"><div style="flex:1"><label>Biên bản</label><select id="dcBb" onchange="dcRender()"></select></div>
-            <div style="flex:1"><label>Thời gian sổ sách</label><select id="dcTg" onchange="dcOnTg()"><option value="all">Tất cả thời gian</option><option value="truoc">Từ lần kiểm trước</option><option value="thang">Tháng của biên bản</option><option value="tuy">Từ ngày…</option></select></div></div>
-          <div id="dcTuy" style="display:none"><label>Từ ngày</label><input id="dcTu" type="date" onchange="dcRender()"></div>
-          <div id="dcOut"></div>
-          <button class="btn bgrn" id="dcXuatBtn" style="width:100%;margin-top:10px" onclick="dcXuatExcel()">Xuất Excel đối chiếu</button>
-        </div>
       </div>
 
       <div id="vbV-bc" style="display:none">
         <div class="card">
           <h2>Báo cáo VIBA theo tháng</h2>
-          <div class="row"><div style="flex:1"><label>Kỳ báo cáo</label><select id="vrKy" onchange="vrOnKy()"><option value="thang">Theo tháng</option><option value="all">Tất cả thời gian</option></select></div>
-            <div style="flex:1" id="vrThangWrap"><label>Tháng</label><input id="vrThang" type="month" onchange="vrRender()"></div></div>
+          <label>Tháng</label><input id="vrThang" type="month" onchange="vrRender()">
           <div id="vrCanh" style="margin-top:8px"></div>
         </div>
         <div class="card"><h2>Nhập – xuất – tồn kho VIBA</h2><div style="overflow:auto" id="vrNxt"></div></div>
@@ -2180,13 +2171,10 @@ function kvDs(){
 }
 
 /* ---------- BAO CAO THANG ---------- */
-function vrAll(){var e=document.getElementById('vrKy');return !!e&&e.value==='all'}
-function vrOnKy(){document.getElementById('vrThangWrap').style.display=vrAll()?'none':'block';vrRender()}
 function vrThangHt(){var el=document.getElementById('vrThang');if(!el.value){var t=vbHomNay();el.value=t.slice(0,7)}return el.value}
 /* Gom du lieu bao cao thang: dung chung cho man hinh va xuat Excel */
 function vrTinh(){
-  var c=vcfg(),all=vrAll(),th=vrThangHt(),tu=th+'-01',den=th+'-31';
-  if(all){tu='0000-00-00';den=vbHomNay();th=den.slice(0,7)}
+  var c=vcfg(),th=vrThangHt(),tu=th+'-01',den=th+'-31';
   var nxt=vbNxt(tu,den);
   var don=[];
   VB.forEach(function(x){
@@ -2215,12 +2203,8 @@ function vrTinh(){
   var bocxep=Math.round(kg/1000*c.bocxep);
   var hh=Math.round(tienHang*c.hh/100);
   var mb=th>=String(c.tuNgay).slice(0,7)?c.matbang:0; /* chua dung kho VIBA thi chua tinh mat bang */
-  var soThang=mb?1:0;
-  if(all){var ta=String(c.tuNgay).slice(0,7),tb=den.slice(0,7);soThang=tb<ta?0:((+tb.slice(0,4)-+ta.slice(0,4))*12+(+tb.slice(5,7)-+ta.slice(5,7))+1);mb=soThang*c.matbang}
   var mbVat=Math.round(mb*c.vatMb/100);
-  return {c:c,th:th,tu:tu,den:den,all:all,soThang:soThang,
-    nhan:all?'Tất cả thời gian (đến '+vbDmy(den)+')':'Tháng '+th.slice(5,7)+'/'+th.slice(0,4),
-    nhanUp:all?'TẤT CẢ THỜI GIAN ĐẾN '+vbDmy(den):'THÁNG '+th.slice(5,7)+'/'+th.slice(0,4),nxt:nxt,don:don,kk:kkvPhieu().filter(function(p){var n=vbYmd(p.ngay);return n>=tu&&n<=den}),nv:nvOrd.filter(function(m){return nv[m]}).map(function(m){return nv[m]}),
+  return {c:c,th:th,tu:tu,den:den,nxt:nxt,don:don,kk:kkvPhieu().filter(function(p){var n=vbYmd(p.ngay);return n>=tu&&n<=den}),nv:nvOrd.filter(function(m){return nv[m]}).map(function(m){return nv[m]}),
     tienHang:tienHang,cong:cong,kg:kg,thieuKg:thieuKg,bocxep:bocxep,hh:hh,mb:mb,mbVat:mbVat,
     tong:cong+hh+mb+mbVat+bocxep};
 }
@@ -2239,14 +2223,14 @@ function vrRender(){
   h+='<tr style="font-weight:700"><td>Tổng</td><td>'+fmt(t[0])+'</td><td>'+fmt(t[1])+'</td><td>'+fmt(t[2])+'</td><td>'+fmt(t[3])+'</td></tr></table>'
     +(gcs.length?'<div class="muted" style="margin-top:6px;line-height:1.6">'+gcs.join('<br>')+'</div>':'');
   document.getElementById('vrNxt').innerHTML=h;
-  if(!R.nv.length)document.getElementById('vrCong').innerHTML='<div class="empty">'+esc(R.nhan)+': chưa có đơn VIBA đã giao.</div>';
+  if(!R.nv.length)document.getElementById('vrCong').innerHTML='<div class="empty">Tháng '+th[1]+'/'+th[0]+' chưa có đơn VIBA đã giao.</div>';
   else{
     h='<table class="rpt"><tr><th>NV</th><th>Đơn</th><th>SP</th><th>&lt;'+c.min+'</th><th>Tầng</th><th>Ngoại</th><th>Tiền</th></tr>';
     R.nv.forEach(function(a){h+='<tr><td style="white-space:normal">'+esc(a.ten)+'</td><td>'+a.don+'</td><td>'+fmt(a.sp)+'</td><td>'+(a.duoiMin||'')+'</td><td>'+(a.tang||'')+'</td><td>'+(a.ngoai||'')+'</td><td><b>'+fmt(a.tong)+'</b></td></tr>'});
     h+='<tr style="font-weight:700"><td>Tổng</td><td>'+R.don.length+'</td><td>'+fmt(R.nv.reduce(function(s,a){return s+a.sp},0))+'</td><td>'+R.nv.reduce(function(s,a){return s+a.duoiMin},0)+'</td><td>'+R.nv.reduce(function(s,a){return s+a.tang},0)+'</td><td>'+R.nv.reduce(function(s,a){return s+a.ngoai},0)+'</td><td>'+fmt(R.cong)+'</td></tr></table>';
     document.getElementById('vrCong').innerHTML=h;
   }
-  var tr=[['Công giao hàng ('+R.don.length+' điểm giao)',R.cong],['Hoa hồng '+c.hh+'% × tiền hàng chưa VAT '+fmt(R.tienHang)+' đ',R.hh],['Mặt bằng (chưa VAT)'+(R.all?' — '+R.soThang+' tháng':'')+(R.mb?'':' — chưa dùng kho VIBA tháng này'),R.mb]];
+  var tr=[['Công giao hàng ('+R.don.length+' điểm giao)',R.cong],['Hoa hồng '+c.hh+'% × tiền hàng chưa VAT '+fmt(R.tienHang)+' đ',R.hh],['Mặt bằng (chưa VAT)'+(R.mb?'':' — chưa dùng kho VIBA tháng này'),R.mb]];
   if(R.mbVat)tr.push(['VAT mặt bằng '+c.vatMb+'%',R.mbVat]);
   tr.push(['Bốc xếp: '+(Math.round(R.kg/100)/10).toLocaleString('vi-VN')+' tấn nhập kho × '+fmt(c.bocxep)+' đ/tấn',R.bocxep]);
   document.getElementById('vrTra').innerHTML='<table class="rpt">'+tr.map(function(r){return '<tr><td style="white-space:normal">'+r[0]+'</td><td>'+fmt(r[1])+'</td></tr>'}).join('')
@@ -2287,7 +2271,7 @@ function vrTaoExcel(xong){
 
   /* Sheet 1: Bang Nhap Xuat Ton (dung mau VIBA) */
   var s1=wb.addWorksheet('Bảng Nhập Xuất Tồn');
-  tieuDe(s1,'A1:I1','BẢNG QUẢN LÝ NHẬP - XUẤT - TỒN KHO KHO '+kho+' ('+R.nhanUp+')');
+  tieuDe(s1,'A1:I1','BẢNG QUẢN LÝ NHẬP - XUẤT - TỒN KHO KHO '+kho+' (THÁNG '+thTxt+')');
   ['STT','Mã SP','Tên sản phẩm / Quy cách','Đơn vị tính','Tồn đầu kỳ','Số lượng Nhập','Số lượng Xuất (Giao hàng)','Tồn cuối kỳ','Ghi chú'].forEach(function(t,i){var cl=o(s1,COL[i]+'3',t,true,null,true);cl.fill=NEN});
   VB_SKU.forEach(function(s,i){var r=4+i,a=R.nxt[s[0]];
     o(s1,'A'+r,i+1,false,null,true);o(s1,'B'+r,s[0]);o(s1,'C'+r,s[1]);o(s1,'D'+r,s[2],false,null,true);
@@ -2302,7 +2286,7 @@ function vrTaoExcel(xong){
 
   /* Sheet 2: Tinh Cong Giao Hang (mau VIBA + cot thanh tien) */
   var s2=wb.addWorksheet('Tính Công Giao Hàng');
-  tieuDe(s2,'A1:V1','BẢNG TÍNH CÔNG & LƯƠNG NHÂN VIÊN GIAO HÀNG ('+R.nhanUp+')');
+  tieuDe(s2,'A1:V1','BẢNG TÍNH CÔNG & LƯƠNG NHÂN VIÊN GIAO HÀNG (THÁNG '+thTxt+')');
   var cotSp=[['SP01','Bình 19L'],['SP03','Can 5L'],['SP04','Thùng chai 350ml xanh'],['SP05','Thùng chai 500ml xanh'],['SP06','Thùng chai 350ml hồng'],['SP07','Thùng chai 500ml hồng']];
   [['A','STT'],['B','Mã NV'],['C','Họ và tên nhân viên']].forEach(function(x){s2.mergeCells(x[0]+'3:'+x[0]+'4');var cl=o(s2,x[0]+'3',x[1],true,null,true);cl.fill=NEN;o(s2,x[0]+'4','').fill=NEN});
   cotSp.forEach(function(sp,i){var a=COL[3+i*2],b=COL[4+i*2];s2.mergeCells(a+'3:'+b+'3');var cl=o(s2,a+'3',sp[1],true,null,true);cl.fill=NEN;o(s2,b+'3','').fill=NEN;
@@ -2338,7 +2322,7 @@ function vrTaoExcel(xong){
 
   /* Sheet 3: Thanh toan VIBA */
   var s3=wb.addWorksheet('Thanh toán VIBA');
-  tieuDe(s3,'A1:D1','TỔNG HỢP CHI PHÍ THANH TOÁN VIBA — KHO '+kho+' ('+R.nhanUp+')');
+  tieuDe(s3,'A1:D1','TỔNG HỢP CHI PHÍ THANH TOÁN VIBA — KHO '+kho+' (THÁNG '+thTxt+')');
   ['STT','Khoản mục','Cách tính','Số tiền (đ)'].forEach(function(t,i){o(s3,COL[i]+'3',t,true,null,true).fill=NEN});
   var dsTra=[['Công giao hàng',R.don.length+' điểm giao — chi tiết sheet "Tính Công Giao Hàng"',R.cong],
     ['Hoa hồng hợp tác + khấu hao xe',c.hh+'% × tiền hàng chưa VAT '+fmt(R.tienHang)+' đ',R.hh],
@@ -2353,7 +2337,7 @@ function vrTaoExcel(xong){
 
   /* Sheet 4: Chi tiet don */
   var s4=wb.addWorksheet('Chi tiết đơn');
-  tieuDe(s4,'A1:Q1','CHI TIẾT ĐƠN VIBA ĐÃ GIAO — KHO '+kho+' ('+R.nhanUp+')');
+  tieuDe(s4,'A1:Q1','CHI TIẾT ĐƠN VIBA ĐÃ GIAO — KHO '+kho+' (THÁNG '+thTxt+')');
   var h4=['Ngày giao','ID hoá đơn','Số phiếu VIBA','Mã KH','Khách','Địa chỉ giao','NV giao','Bình 19L','Can 5L','Thùng 350 xanh','Thùng 500 xanh','Thùng 350 hồng','Thùng 500 hồng','Tổng SP','Vỏ thu','Phụ phí','Công giao'];
   h4.push('Tiền hàng chưa VAT');
   h4.forEach(function(t,i){o(s4,COL[i]+'3',t,true,null,true).fill=NEN});
@@ -2367,7 +2351,7 @@ function vrTaoExcel(xong){
   /* Sheet 5: Kiem kho (bien ban trong thang) */
   if(R.kk.length){
     var s5=wb.addWorksheet('Kiểm kho');
-    tieuDe(s5,'A1:I1','BIÊN BẢN KIỂM KHO VIBA — KHO '+kho+' ('+R.nhanUp+')');
+    tieuDe(s5,'A1:I1','BIÊN BẢN KIỂM KHO VIBA — KHO '+kho+' (THÁNG '+thTxt+')');
     ['Ngày kiểm','Người kiểm (ION)','Người chứng kiến (VIBA)','Mã SP','Tên sản phẩm','Tồn sổ sách','Số đếm thực tế','Chênh lệch','Ảnh'].forEach(function(t,i){o(s5,COL[i]+'3',t,true,null,true).fill=NEN});
     var r5=4;
     R.kk.forEach(function(p){p.l.forEach(function(x){
@@ -2384,7 +2368,7 @@ function vrTaoExcel(xong){
   }
 
   wb.xlsx.writeBuffer().then(function(buf){
-    var ten=(R.all?'VIBA_TatCa_'+R.den:'VIBA_T'+th[1]+'-'+th[0])+'_Kho'+(KHOCODE)+'.xlsx';
+    var ten='VIBA_T'+th[1]+'-'+th[0]+'_Kho'+(KHOCODE)+'.xlsx';
     var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     var file=null;try{file=new File([blob],ten,{type:blob.type})}catch(e){}
     if(file&&navigator.canShare&&navigator.canShare({files:[file]})&&/iPhone|iPad|Android/i.test(navigator.userAgent)){
@@ -2440,7 +2424,7 @@ function kkvRender(){
     VB_SKU.forEach(function(s){h+='<tr><td>'+esc(VB_NGAN[s[0]])+'</td><td id="kkvSo_'+s[0]+'"></td><td><input id="kkvDem_'+s[0]+'" type="number" inputmode="numeric" min="0" style="padding:7px;font-size:15px;text-align:right" oninput="kkvVe()"></td><td id="kkvLech_'+s[0]+'"></td></tr>'});
     document.getElementById('kkvRows').innerHTML=h+'</table>';
   }
-  kkvVe();kkvDs();dcRender();
+  kkvVe();kkvDs();
 }
 function kkvVe(){
   var ng=document.getElementById('kkvNgay').value||vbHomNay(),so=kkvSoSach(ng),lech=0,dem=0;
@@ -2477,7 +2461,7 @@ function kkvLuu(){
   fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({loai:'kiemkhoviba',rows:dong,anh:VBANH.kkv})})
    .then(function(){vbChoKetQua(function(){return KKV.some(function(r){return r.id===id})},function(ok){
      btn.disabled=false;btn.textContent='Lưu biên bản kiểm kho';
-     if(ok){VB_SKU.forEach(function(s){document.getElementById('kkvDem_'+s[0]).value=''});document.getElementById('kkvGc').value='';vbXoaAnh('kkv');kkvVe();kkvDs();dcRender();
+     if(ok){VB_SKU.forEach(function(s){document.getElementById('kkvDem_'+s[0]).value=''});document.getElementById('kkvGc').value='';vbXoaAnh('kkv');kkvVe();kkvDs();
        var lk=(KKV.filter(function(r){return r.id===id})[0]||{}).link||'';alert('Đã lưu biên bản kiểm kho.'+(/^LOI/.test(lk)?'\n\nẢNH LỖI: '+lk+'\nChạy hàm capQuyen trong Apps Script rồi lập lại.':''))}
      else alert('Chưa thấy biên bản trên Sheet. Có thể mạng chậm hoặc backend chưa deploy bản mới. Vài phút nữa bấm "Tải lại". Lưu lại cũng an toàn — backend không ghi trùng.')})})
    .catch(function(e){btn.disabled=false;btn.textContent='Lưu biên bản kiểm kho';alert('Lỗi gửi dữ liệu: '+e.message)});
@@ -2498,152 +2482,6 @@ function kkvHtml(ds,rong){
       +(p.gc?'<div class="t2">Giải trình: '+esc(p.gc)+'</div>':'')+(p.link?'<div class="t2">'+vbLinkAnh(p.link).slice(3)+'</div>':'')+'</div>'}).join('');
 }
 function kkvDs(){document.getElementById('kkvDs').innerHTML=kkvHtml(kkvPhieu().slice(0,20),'Chưa có biên bản kiểm kho VIBA.')}
-/* ---------- DOI CHIEU KIEM KE (01/10/2026 ban 5) ----------
-   So bien ban kiem kho VIBA voi so sach TINH LAI theo du lieu hien tai, chi ra lech o dau:
-   - So sach den het ngay kiem = vbNxt (giong man hinh kiem kho).
-   - Ky xem chi tiet: tat ca thoi gian / tu lan kiem truoc / thang cua bien ban / tu ngay chon.
-     Ton truoc ky = so sach - tong phat sinh trong ky.
-   - Nghi van (chi goi y, khong ket luan): hoa don kho cung mat hang KHONG co phieu VIBA trong ky. */
-function dcNgaySau(ymd){var p=ymd.split('-'),d=new Date(+p[0],+p[1]-1,+p[2]+1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
-function dcOnTg(){document.getElementById('dcTuy').style.display=document.getElementById('dcTg').value==='tuy'?'block':'none';dcRender()}
-function dcKy(p){
-  var den=vbYmd(p.ngay),k=document.getElementById('dcTg').value,tu='0000-00-00',nhan='Tất cả thời gian';
-  if(k==='truoc'){var tr=null;kkvPhieu().forEach(function(q){var n=vbYmd(q.ngay);if(n<den&&(!tr||n>tr))tr=n});
-    if(tr){tu=dcNgaySau(tr);nhan='Từ sau lần kiểm '+vbDmy(tr)}else nhan='Tất cả thời gian (chưa có lần kiểm trước)'}
-  else if(k==='thang'){tu=den.slice(0,8)+'01';nhan='Tháng '+den.slice(5,7)+'/'+den.slice(0,4)}
-  else if(k==='tuy'){var t=document.getElementById('dcTu').value;if(t&&t<=den){tu=t;nhan='Từ '+vbDmy(t)}else nhan='Tất cả thời gian (chưa chọn ngày hợp lệ)'}
-  return {tu:tu,den:den,nhan:nhan+' → hết ngày '+vbDmy(den)};
-}
-/* Phat sinh trong ky — cung quy tac voi vbNxt */
-function dcSuKien(tu,den){
-  var ev=[],bd=vbBatDau();
-  KV.forEach(function(r){
-    if(r.kho&&r.kho!==KHO)return;
-    var ng=vbYmd(r.ngay),sl=Number(r.sl)||0,lo=kvLoaiChuan(r.loai);if(!ng||!sl||ng<tu||ng>den)return;
-    if(lo==='Tồn đầu kỳ'&&tu!=='0000-00-00'&&ng<=tu)return;
-    var v=lo==='Trả về ION'?-sl:sl;
-    if(lo!=='Tồn đầu kỳ'&&lo!=='Nhập kho'&&lo!=='Trả về ION'&&lo!=='Điều chỉnh tồn')return;
-    ev.push({ma:r.ma,ng:ng,sl:v,txt:lo+(r.nguoi?' · '+r.nguoi:'')+(r.gc?' · '+r.gc:''),loai:'kho'});
-  });
-  VB.forEach(function(x){
-    if(x.kho!==KHO||x.tt!=='Đã giao')return;
-    var ng=vbYmd(x.ngaygiao);if(!ng||ng<bd||ng<tu||ng>den)return;
-    var d=vbDem(vbLinesOf(x.id)),k='Giao · phiếu '+(x.sophieu||'?')+' · '+(x.khach||'')+(x.nv?' · '+x.nv:'');
-    VB_SKU.forEach(function(s){if(s[0]!=='SP02'&&d.q[s[0]])ev.push({ma:s[0],ng:ng,sl:-d.q[s[0]],txt:k,loai:'giao'})});
-    if(x.vothu)ev.push({ma:'SP02',ng:ng,sl:Number(x.vothu)||0,txt:'Vỏ thu · phiếu '+(x.sophieu||'?')+' · '+(x.khach||''),loai:'giao'});
-  });
-  ev.sort(function(a,b){return a.ng<b.ng?-1:(a.ng>b.ng?1:0)});
-  return ev;
-}
-function dcNghiVan(ma,lech,tu,den){
-  var bd=vbBatDau(),t0=tu>bd?tu:bd,out=[],can=Math.abs(lech);
-  if(ma==='SP02'){
-    if(lech>0)VB.forEach(function(x){if(x.kho!==KHO||x.tt!=='Đã giao'||!(Number(x.vothu)>0))return;var ng=vbYmd(x.ngaygiao);if(!ng||ng>=bd)return;
-      out.push({ng:ng,id:x.id,ten:'Vỏ thu trước ngày bắt đầu kho VIBA · phiếu '+(x.sophieu||'?')+' · '+(x.khach||''),sl:Number(x.vothu)})});
-    return out;
-  }
-  if(lech>0)return out;
-  var co={};VB.forEach(function(x){if(x.tt==='Đã giao')co[String(x.id).split('~')[0]]=1});
-  var ten={},g={},ord=[];HD.forEach(function(r){var k=r.khach||r.ten;if(k&&!ten[r.id])ten[r.id]=k});
-  HD.forEach(function(r){
-    if(r.kho&&r.kho!==KHO)return;if(co[r.id])return;
-    var ng=vbYmd(r.ngay);if(!ng||ng<t0||ng>den)return;if(vbSkuCua(r.sp)!==ma)return;
-    if(!g[r.id]){g[r.id]={ng:ng,id:r.id,ten:(ten[r.id]||'')+(r.ma?' ('+r.ma+')':''),sl:0};ord.push(r.id)}
-    g[r.id].sl+=Number(r.sl)||0;
-  });
-  out=ord.map(function(k){return g[k]}).sort(function(a,b){return a.ng<b.ng?-1:(a.ng>b.ng?1:0)});
-  var ngay={};out.forEach(function(o){ngay[o.ng]=(ngay[o.ng]||0)+o.sl});
-  out.forEach(function(o){if(o.sl===can)o.khop='trùng đúng số lệch';else if(ngay[o.ng]===can)o.khop='cả ngày '+vbDmy(o.ng)+' cộng lại = '+can});
-  return out;
-}
-function dcTinh(p){
-  var ky=dcKy(p),so=vbNxt('0000-00-00',ky.den),ev=dcSuKien(ky.tu,ky.den),rows=[];
-  var thu={};VB_SKU.forEach(function(s,i){thu[s[0]]=i});
-  p.l.slice().sort(function(a,b){return (thu[a.ma]||0)-(thu[b.ma]||0)}).forEach(function(r){
-    var ma=r.ma,s=so[ma]?so[ma].cuoi:0,dem=Number(r.dem)||0,lech=dem-s;
-    var e=ev.filter(function(x){return x.ma===ma}),tong=e.reduce(function(a,x){return a+x.sl},0);
-    rows.push({ma:ma,ten:VB_NGAN[ma]||r.ten||ma,so:s,soLuu:Number(r.so)||0,dem:dem,lech:lech,dau:s-tong,ev:e,nv:lech?dcNghiVan(ma,lech,ky.tu,ky.den):[]});
-  });
-  return {p:p,ky:ky,rows:rows};
-}
-function dcSo(n){return (n>0?'+':(n<0?'−':''))+fmt(Math.abs(n))}
-function dcRender(){
-  var el=document.getElementById('dcOut');if(!el)return;
-  var ds=kkvPhieu(),sel=document.getElementById('dcBb');
-  if(!ds.length){sel.innerHTML='';el.innerHTML='<div class="empty">Chưa có biên bản kiểm kho để đối chiếu.</div>';return}
-  var cur=sel.value;
-  sel.innerHTML=ds.map(function(p){return '<option value="'+esc(p.id)+'">'+esc(p.ngay)+' · '+esc(p.nguoi||'')+(p.vb?' / '+esc(p.vb):'')+'</option>'}).join('');
-  if(cur&&ds.some(function(p){return p.id===cur}))sel.value=cur;
-  var p=ds.filter(function(q){return q.id===sel.value})[0]||ds[0],R=dcTinh(p);
-  var le=R.rows.filter(function(r){return r.lech}),kh=R.rows.length-le.length;
-  var h='<div class="muted" style="margin:6px 0">'+esc(R.ky.nhan)+'</div>'
-    +'<div style="display:flex;gap:8px;margin-bottom:8px"><div style="flex:1;background:#e6f4ea;color:var(--grn);border-radius:9px;padding:7px 9px"><div style="font-size:12px">Khớp</div><b style="font-size:18px">'+kh+' mã</b></div>'
-    +'<div style="flex:1;background:'+(le.length?'#fdeceb;color:var(--red)':'#eef1f4;color:var(--ink)')+';border-radius:9px;padding:7px 9px"><div style="font-size:12px">Lệch</div><b style="font-size:18px">'+le.length+' mã</b></div></div>'
-    +'<table class="rpt"><tr><th>Mã hàng</th><th>Sổ</th><th>Đếm</th><th>Lệch</th></tr>';
-  R.rows.forEach(function(r){h+='<tr><td>'+esc(r.ten)+'</td><td>'+fmt(r.so)+'</td><td>'+fmt(r.dem)+'</td><td>'
-    +(r.lech?'<b style="color:'+(r.lech<0?'var(--red)':'var(--amb)')+'">'+dcSo(r.lech)+'</b>':'<span style="color:var(--grn)">0</span>')+'</td></tr>'});
-  h+='</table>';
-  R.rows.forEach(function(r){
-    var bd=r.lech?'var(--red)':'#dfe3e8';
-    h+='<details'+(r.lech?' open':'')+' style="margin-top:8px;border:1px solid '+bd+';border-radius:9px;padding:7px 9px">'
-      +'<summary style="font-weight:700;cursor:pointer">'+esc(r.ten)+(r.lech?' lệch '+dcSo(r.lech):' khớp')+' · sổ tính từ đâu</summary><div style="font-size:13px;line-height:1.6;margin-top:4px">';
-    if(R.ky.tu!=='0000-00-00'||r.dau)h+='<div>Tồn trước kỳ: <b>'+fmt(r.dau)+'</b></div>';
-    if(!r.ev.length)h+='<div class="muted">Không có phát sinh trong kỳ.</div>';
-    else{
-      var nh=r.ev.filter(function(x){return x.loai==='kho'}),gi=r.ev.filter(function(x){return x.loai==='giao'});
-      nh.forEach(function(x){h+='<div>'+vbDmy(x.ng)+' · '+esc(x.txt)+' <b>'+dcSo(x.sl)+'</b></div>'});
-      if(gi.length){var tg=gi.reduce(function(a,x){return a+x.sl},0);
-        h+='<details style="margin:2px 0"><summary>'+(r.ma==='SP02'?'Vỏ thu từ phiếu giao':'Giao VIBA')+' ('+gi.length+' phiếu): <b>'+dcSo(tg)+'</b></summary>'
-          +gi.map(function(x){return '<div class="muted">'+vbDmy(x.ng)+' · '+esc(x.txt)+' <b>'+dcSo(x.sl)+'</b></div>'}).join('')+'</details>'}
-    }
-    h+='<div>= Sổ <b>'+fmt(r.so)+'</b> · đếm <b>'+fmt(r.dem)+'</b>'+(r.lech?' → <b style="color:'+(r.lech<0?'var(--red)':'var(--amb)')+'">'+(r.lech<0?'thiếu ':'thừa ')+fmt(Math.abs(r.lech))+'</b>':'')+'</div>';
-    if(r.soLuu!==r.so)h+='<div class="muted">Biên bản lưu sổ '+fmt(r.soLuu)+' (theo dữ liệu lúc kiểm). Theo dữ liệu hiện tại: '+fmt(r.so)+'.</div>';
-    if(r.lech){
-      var nv=r.nv;
-      h+='<div style="margin-top:6px;background:#fff3df;color:var(--amb);border-radius:9px;padding:6px 8px">';
-      if(r.ma==='SP02'&&r.lech>0)h+='<b>Gợi ý:</b> vỏ thu trước khi có kho VIBA có thể đang nằm ở kho VIBA'+(nv.length?' ('+nv.reduce(function(a,x){return a+x.sl},0)+' vỏ):':'.');
-      else if(r.lech>0)h+='<b>Gợi ý:</b> thừa hàng — có thể phiếu giao ghi thừa số lượng, hoặc hàng nhập chưa lập phiếu nhập kho VIBA.';
-      else h+=nv.length?'<b>Nghi vấn:</b> hoá đơn kho '+esc(KHO)+' cùng mặt hàng, không có phiếu VIBA, trong kỳ:':'<b>Gợi ý:</b> không thấy hoá đơn nào cùng mặt hàng ngoài VIBA trong kỳ — kiểm tra phiếu giao chưa nhập, hàng vỡ/hỏng, hoặc đếm lại.';
-      nv.slice(0,30).forEach(function(o){h+='<div style="color:var(--ink)">'+vbDmy(o.ng)+' · '+esc(o.id)+' · '+esc(o.ten)+' <b>×'+fmt(o.sl)+'</b>'+(o.khop?' <b style="color:var(--red)">← '+esc(o.khop)+'</b>':'')+'</div>'});
-      if(nv.length>30)h+='<div class="muted">… và '+(nv.length-30)+' hoá đơn khác (xem file Excel).</div>';
-      h+='</div>';
-    }
-    h+='</div></details>';
-  });
-  if(p.gc)h+='<div class="muted" style="margin-top:6px">Giải trình trên biên bản: '+esc(p.gc)+'</div>';
-  el.innerHTML=h;
-}
-function dcXuatExcel(){
-  var ds=kkvPhieu();if(!ds.length){alert('Chưa có biên bản kiểm kho.');return}
-  var id=document.getElementById('dcBb').value,p=ds.filter(function(q){return q.id===id})[0]||ds[0];
-  var btn=document.getElementById('dcXuatBtn');btn.disabled=true;btn.textContent='Đang tạo file Excel...';
-  var xong=function(){btn.disabled=false;btn.textContent='Xuất Excel đối chiếu'};
-  vrNapExcelJS(function(ok){
-    if(!ok){xong();alert('Không tải được thư viện Excel. Kiểm tra mạng rồi thử lại.');return}
-    try{
-      var R=dcTinh(p),wb=new ExcelJS.Workbook(),F={name:'Arial',size:10},FB={name:'Arial',size:10,bold:true},NUM='#,##0';
-      var ws=wb.addWorksheet('Đối chiếu'),r=1;
-      function dong(vals,bold){vals.forEach(function(v,i){var c=ws.getCell(r,i+1);c.value=v;c.font=bold?FB:F;if(typeof v==='number')c.numFmt=NUM});r++}
-      ws.getCell('A1').value='ĐỐI CHIẾU KIỂM KÊ KHO VIBA — KHO '+String(KHO).toUpperCase();ws.getCell('A1').font={name:'Arial',size:13,bold:true};r=2;
-      dong(['Biên bản ngày '+p.ngay+' · người kiểm '+(p.nguoi||'')+(p.vb?' · VIBA: '+p.vb:'')]);
-      dong(['Kỳ sổ sách: '+R.ky.nhan]);r++;
-      dong(['Mã','Tên hàng','Tồn trước kỳ','Phát sinh trong kỳ','Sổ sách','Số đếm','Lệch','Sổ lưu trên biên bản'],true);
-      R.rows.forEach(function(x){dong([x.ma,x.ten,x.dau,x.so-x.dau,x.so,x.dem,x.lech,x.soLuu]);if(x.lech)ws.getCell(r-1,7).font={name:'Arial',size:10,bold:true,color:{argb:x.lech<0?'FFC8102E':'FFB45309'}}});
-      r++;dong(['CHI TIẾT PHÁT SINH'],true);dong(['Mã','Ngày','Diễn giải','Số lượng (+ vào / − ra)'],true);
-      R.rows.forEach(function(x){x.ev.forEach(function(e){dong([x.ma,vbDmy(e.ng),e.txt,e.sl])})});
-      r++;dong(['NGHI VẤN / GỢI Ý (chỉ để khoanh vùng, không kết luận)'],true);dong(['Mã','Ngày','Hoá đơn / phiếu','Khách / diễn giải','Số lượng','Ghi chú'],true);
-      R.rows.forEach(function(x){x.nv.forEach(function(o){dong([x.ma,vbDmy(o.ng),o.id,o.ten,o.sl,o.khop||''])})});
-      [9,22,14,40,10,10,10,14].forEach(function(w,i){ws.getColumn(i+1).width=w});
-      wb.xlsx.writeBuffer().then(function(buf){
-        var ten='VIBA_DoiChieu_'+vbYmd(p.ngay)+'_Kho'+(KHOCODE)+'.xlsx',blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-        var file=null;try{file=new File([blob],ten,{type:blob.type})}catch(e){}
-        if(file&&navigator.canShare&&navigator.canShare({files:[file]})&&/iPhone|iPad|Android/i.test(navigator.userAgent)){navigator.share({files:[file],title:ten}).catch(function(){});xong();return}
-        var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=ten;document.body.appendChild(a);a.click();
-        setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},2000);xong();
-      }).catch(function(e){xong();alert('Lỗi tạo Excel: '+e.message)});
-    }catch(e){xong();alert('Lỗi tạo Excel: '+e.message)}
-  });
-}
 /* ---------- ANH BAT BUOC (phieu kho / kiem kho) ---------- */
 function vbChonAnh(inp,k){
   var f=inp.files&&inp.files[0],info=document.getElementById(k+'AnhInfo');

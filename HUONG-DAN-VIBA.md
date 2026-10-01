@@ -40,3 +40,10 @@ App hiện tồn sổ sách tính đến hết ngày kiểm + chênh lệch. Lư
 - `GiaoVIBA`: thêm 7 cột (So phieu VIBA, NV giao, So SP, Vo thu, Len tang, Ngoai thanh, Cong giao) — backend tự thêm.
 - `KhoVIBA`: phiếu kho VIBA (mỗi dòng 1 mã hàng). `KiemKhoVIBA`: biên bản kiểm kho. `CaiDatVIBA`: cài đặt (1 dòng JSON).
 - Backup trước khi sửa: `*_backup_20261001_viba.*` cùng thư mục.
+
+## Đối chiếu kiểm kê (01/10/2026)
+- Kho VIBA → thẻ **Đối chiếu kiểm kê**: chọn biên bản + thời gian sổ sách (Tất cả thời gian / Từ lần kiểm trước / Tháng của biên bản / Từ ngày…).
+- Bảng Sổ – Đếm – Lệch. Bấm từng mã để xem sổ tính từ đâu (phiếu nhập, từng phiếu giao).
+- Mã thiếu: liệt kê hoá đơn kho cùng mặt hàng KHÔNG có phiếu VIBA trong kỳ (chỉ là gợi ý), đánh dấu đơn/ngày trùng đúng số lệch.
+- Nút **Xuất Excel đối chiếu**.
+- Báo cáo VIBA: ô **Kỳ báo cáo** có thêm "Tất cả thời gian" (mặt bằng tính theo số tháng từ ngày bắt đầu).
