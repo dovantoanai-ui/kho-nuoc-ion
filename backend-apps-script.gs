@@ -115,7 +115,7 @@ function doGet(e){
 
 // ---------- Helpers doc bao cao ----------
 function fmtYmd_(v){ if (v instanceof Date) return Utilities.formatDate(v, 'GMT+7', 'yyyy-MM-dd'); return String(v == null ? '' : v).slice(0, 10); }
-function n2_(v){ var s = String(v == null ? '' : v).replace(/[.,\s]/g, ''); var x = parseFloat(s); return isNaN(x) ? 0 : x; }
+function n2_(v){ if (typeof v === 'number') return isNaN(v) ? 0 : v; var s = String(v == null ? '' : v).replace(/[.,\s]/g, ''); var x = parseFloat(s); return isNaN(x) ? 0 : x; }
 
 function readCat_(ss){
   var sh = ss.getSheetByName('Data'); var cat = [];
@@ -192,6 +192,14 @@ function ymdHoaDon_(v){
   if (m) return m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
   return s.slice(0, 10);
 }
+// 13/10/2026: tab HoaDon doi sang KHUON MISA (cot 1 khong con la ID). Tim cot theo TEN,
+// thu ten moi truoc, ten cu sau -> doc dung ca truoc va sau khi chuyen khuon.
+function cotHoaDon_(head){
+  function c(ds){ for (var k = 0; k < ds.length; k++){ var i = head.indexOf(ds[k]); if (i >= 0) return i; } return -1; }
+  return { id: c(['ID hoa don']), ngay: c(['Ng\u00e0y ch\u1ee9ng t\u1eeb (*)', 'Ngay']), ma: c(['Ma KH app', 'Ma KH']),
+    khach: c(['T\u00ean kh\u00e1ch h\u00e0ng', 'Khach']), kho: c(['Kho']), sp: c(['T\u00ean h\u00e0ng', 'San pham']),
+    sl: c(['S\u1ed1 l\u01b0\u1ee3ng', 'SL']), gia: c(['\u0110\u01a1n gi\u00e1', 'Don gia']), tien: c(['Th\u00e0nh ti\u1ec1n', 'Thanh tien']) };
+}
 // Doc tab HoaDon cua Sheet DA05: loc Kho = Hung Yen + tu ngay moc,
 // map Ten san pham -> Ma hang theo tab Data, tra ve dang dong Ban.
 // Dong nao khong khop duoc Ma van tinh doanh thu (ma rong, khong anh huong ton).
@@ -204,21 +212,22 @@ function readHoaDonBan_(ss){
     readCat_(ss).forEach(function(c){ if (c.ten) tenMa[chuanTen_(c.ten)] = c.ma; });
     var v = sh.getDataRange().getValues();
     var seen = {};
-    // 0 ID,1 Ngay,2 MaKH,3 Khach,4 SDT,5 Kho,6 San pham,7 DVT,8 SL,9 Don gia,10 Thanh tien
+    var h = v[0].map(function(x){ return String(x).trim(); }), C = cotHoaDon_(h);
+    if (C.id < 0 || C.ngay < 0 || C.kho < 0 || C.sp < 0 || C.sl < 0) return out; // thieu cot -> khong doan
     for (var i = 1; i < v.length; i++) {
       var r = v[i];
-      var id = String(r[0] || '').trim(); if (!id) continue;
-      if (String(r[5] || '').indexOf('H\u01b0ng') < 0) continue; // chi lay hoa don kho Hung Yen
-      var ngay = ymdHoaDon_(r[1]);
+      var id = String(r[C.id] || '').trim(); if (!id) continue;
+      if (String(r[C.kho] || '').indexOf('H\u01b0ng') < 0) continue; // chi lay hoa don kho Hung Yen
+      var ngay = ymdHoaDon_(r[C.ngay]);
       if (!ngay || ngay < HOADON_TU_NGAY) continue;
-      var sl = n2_(r[8]); if (!sl) continue;
-      var key = id + '|' + String(r[6] || '') + '|' + sl + '|' + n2_(r[9]);
+      var sl = n2_(r[C.sl]); if (!sl) continue;
+      var key = id + '|' + String(r[C.sp] || '') + '|' + sl + '|' + (C.gia >= 0 ? n2_(r[C.gia]) : '');
       if (seen[key]) continue; seen[key] = 1; // chong dong trung (bam dong bo nhieu lan)
       out.push({
         ngay: ngay,
-        ma: tenMa[chuanTen_(r[6])] || '',
-        sl: sl, tien: n2_(r[10]), lt: 'Ban',
-        khach: '[HD] ' + String(r[3] || r[2] || ''), no: 0
+        ma: tenMa[chuanTen_(r[C.sp])] || '',
+        sl: sl, tien: C.tien >= 0 ? n2_(r[C.tien]) : 0, lt: 'Ban',
+        khach: '[HD] ' + String((C.khach >= 0 ? r[C.khach] : '') || (C.ma >= 0 ? r[C.ma] : '') || ''), no: 0
       });
     }
   } catch (e) { /* thieu quyen hoac loi mang: bao cao van chay, chi thieu phan hoa don */ }

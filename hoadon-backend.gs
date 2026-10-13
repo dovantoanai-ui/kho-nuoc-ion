@@ -19,20 +19,79 @@ var KHO_SHEET_ID = '1tQEhM51DiYHN3tV_zKa6OT1tLXkPBft4TtOgp1_uAck'; // Sheet kho,
 var KH_HEAD = ['Ma KH', 'Ten', 'SDT', 'Quan/Huyen', 'Kho',
                'Thanh toan', 'Ky han no', 'Ngay tao'];
 
-var HD_HEAD = ['ID hoa don', 'Ngay', 'Ma KH', 'Khach', 'SDT', 'Kho',
-               'San pham', 'DVT', 'SL', 'Don gia', 'Thanh tien',
-               'VAT %', 'Coc binh', 'Tong thanh toan', 'Da thu',
-               'Trang thai TT', 'Nguoi thu', 'Hinh thuc TT', 'Ghi chu',
-               'Ngày CK', 'Thang']; // 13/08/2026: cot 20 'Ngày CK' | 29/08/2026: cot 21 'Thang' (yyyy-MM, backend tu dien - khong go tay)
+// ============================================================
+// 13/10/2026 — KHUON MISA. Tab HoaDon / HoaDonCho / HoaDonHuy:
+//  - 67 cot dau = DUNG ten cot file mau "Chung tu ban hang" cua MISA AMIS
+//    (template_banhang.xlsx). Tai tab HoaDon ve -> MISA > Ban hang > Nhap tu excel,
+//    chon dong tieu de = 1 la len duoc.
+//  - Sau do la cot rieng cua app (ID, cong no, coc binh, doi soat...) - MISA bo qua.
+//  - App VAN gui dong theo thu tu cu (19-20 phan tu, xem O_ ben duoi); backend tu doi
+//    sang khuon MISA khi ghi va doi nguoc khi doc -> app khong phai sua.
+//  - Ma hang / ma khach / ma kho / ma NV cua MISA: ke toan dien 1 lan o tab MaMISA,
+//    backend tu dien vao cac dong (khong ghi de o ke toan da go tay).
+//  - Coc binh KHONG dua vao phan MISA (ke toan lam tay).
+// ============================================================
+var MISA_HEAD = ['Hình thức bán hàng', 'Phương thức thanh toán', 'Kiêm phiếu xuất kho', 'Lập kèm hóa đơn',
+  'Đã lập hóa đơn', 'Ngày hạch toán (*)', 'Ngày chứng từ (*)', 'Số chứng từ (*)', 'Số phiếu xuất', 'Mẫu số HĐ',
+  'Ký hiệu HĐ', 'Số hóa đơn', 'Ngày hóa đơn', 'Mã khách hàng', 'Tên khách hàng', 'Địa chỉ', 'Mã số thuế',
+  'Đơn vị giao đại lý', 'Người nộp', 'Nộp vào TK', 'Tên ngân hàng', 'Diễn giải/Lý do nộp', 'Lý do xuất',
+  'Mã nhân viên bán hàng', 'Số chứng từ kèm theo (Phiếu thu)', 'Số chứng từ kèm theo (Phiếu xuất)',
+  'Hạn thanh toán', 'Mã hàng (*)', 'Thuộc combo', 'Tên hàng', 'Là dòng ghi chú', 'Hàng khuyến mại',
+  'Chiết khấu thương mại', 'TK Tiền/Chi phí/Nợ (*)', 'TK Doanh thu/Có (*)', 'ĐVT', 'Số lượng', 'Đơn giá',
+  'Thành tiền', 'Tỷ lệ CK (%)', 'Tiền chiết khấu', 'TK chiết khấu', 'Giá tính thuế XK', '% thuế xuất khẩu',
+  'Tiền thuế xuất khẩu', 'TK thuế xuất khẩu', '% thuế GTGT', '% thuế suất KHAC', 'Tiền thuế GTGT',
+  'TK thuế GTGT', 'Biển kiểm soát', 'HH không TH trên tờ khai thuế GTGT', 'Mã khoản mục chi phí', 'Mã đơn vị',
+  'Mã đối tượng THCP', 'Mã công trình', 'Số đơn đặt hàng', 'Số hợp đồng bán', 'Mã thống kê',
+  'Số khế ước cho vay', 'CP không hợp lý', 'Mã kho', 'TK giá vốn', 'TK Kho', 'Đơn giá vốn', 'Tiền vốn',
+  'Hàng hóa giữ hộ/bán hộ'];
 
-// 01/10/2026: cot 'Link bill' (link anh bill chuyen tien tren Drive) KHONG gan cung vi tri:
-// backend tim theo TEN cot, chua co thi them vao sau cot cuoi -> khong dung cot anh tu them.
+// 01/10/2026: 'Link bill' = link anh bill chuyen tien tren Drive (doi soat CK)
 var COT_LINK = 'Link bill';
 
+// Cot rieng cua app (sau 67 cot MISA). Ten giu nhu cu de cac noi doc theo ten van dung.
+// Cac cot cap HOA DON (Coc binh -> Ngày CK) chi ghi o DONG DAU moi hoa don, nhu truoc.
+var APP_HEAD = ['ID hoa don', 'Ma KH app', 'SDT', 'Kho', 'Coc binh', 'Tong thanh toan', 'Da thu',
+                'Trang thai TT', 'Nguoi thu', 'Hinh thuc TT', 'Ghi chu', 'Ngày CK', 'Thang', COT_LINK];
+
+var HD_HEAD = MISA_HEAD.concat(APP_HEAD);
+
 // 01/10/2026: tab HoaDonHuy = cac dong hoa don bi huy (nhap sai / VIBA hoan hang),
-// cung cau truc HoaDon + 5 cot luu vet. HoaDon chi giu hoa don dang hieu luc ->
+// cung cau truc HoaDon + 4 cot luu vet. HoaDon chi giu hoa don dang hieu luc ->
 // kho HY/HN, doanh thu, dashboard tu dung ma khong phai sua cho khac.
-var HUY_HEAD = HD_HEAD.concat([COT_LINK, 'Ly do huy', 'Nguoi huy', 'Ngay huy', 'Thay bang']);
+var HUY_HEAD = HD_HEAD.concat(['Ly do huy', 'Nguoi huy', 'Ngay huy', 'Thay bang']);
+
+// Tai khoan hach toan mac dinh (MISA rieng ION FUJI). Ke toan dung so TK khac -> sua o day.
+var MISA_TK = { tienMat: '1111', nganHang: '1121', congNo: '131', doanhThu: '5111',
+                thue: '33311', giaVon: '632', kho: '156' };
+
+// DVT app go khong dau (Thung, Binh...) -> ten DVT co dau cho cot 'ĐVT' cua MISA.
+// Khoa = ten bo dau, chu thuong. DVT MISA cua ION dat khac thi sua o day. Khong co trong bang -> giu nguyen.
+var DVT_MISA = { 'thung': 'Thùng', 'binh': 'Bình', 'loc': 'Lốc', 'can': 'Can', 'chai': 'Chai', 'hop': 'Hộp', 'goi': 'Gói' };
+
+// Cot ep dang CHU khi ghi (giu so 0 dau SDT/ma, khong cho Sheet tu doi ngay/thang)
+var HD_COT_CHU = ['Ngày hạch toán (*)', 'Ngày chứng từ (*)', 'Số chứng từ (*)', 'Số phiếu xuất',
+  'Mã khách hàng', 'Mã nhân viên bán hàng', 'Mã hàng (*)', 'Mã kho', 'TK Tiền/Chi phí/Nợ (*)',
+  'TK Doanh thu/Có (*)', 'TK thuế GTGT', 'TK giá vốn', 'TK Kho', 'ID hoa don', 'Ma KH app', 'SDT',
+  'Ngày CK', 'Thang', 'Ngay huy'];
+
+// Thu tu phan tu cua 1 dong hoa don app gui len (giu nguyen giao thuc cu):
+// 0 ID,1 Ngay,2 Ma KH,3 Khach,4 SDT,5 Kho,6 San pham,7 DVT,8 SL,9 Don gia,10 Thanh tien,
+// 11 VAT %,12 Coc binh,13 Tong TT,14 Da thu,15 Trang thai TT,16 Nguoi thu,17 Hinh thuc TT,
+// 18 Ghi chu,19 Ngay CK,20 Thang,21 Link bill,22 Ly do huy,23 Nguoi huy,24 Ngay huy,25 Thay bang
+// Truong -> ten cot (khuon MISA truoc, khuon cu sau) -> doc duoc ca tab chua chuyen khuon.
+var HD_TRUONG = [
+  ['ID hoa don'], ['Ngày chứng từ (*)', 'Ngay'], ['Ma KH app', 'Ma KH'], ['Tên khách hàng', 'Khach'],
+  ['SDT'], ['Kho'], ['Tên hàng', 'San pham'], ['ĐVT', 'DVT'], ['Số lượng', 'SL'], ['Đơn giá', 'Don gia'],
+  ['Thành tiền', 'Thanh tien'], ['% thuế GTGT', 'VAT %'], ['Coc binh'], ['Tong thanh toan'], ['Da thu'],
+  ['Trang thai TT'], ['Nguoi thu'], ['Hinh thuc TT'], ['Ghi chu'], ['Ngày CK'], ['Thang'], [COT_LINK, 'Link'],
+  ['Ly do huy'], ['Nguoi huy'], ['Ngay huy'], ['Thay bang']];
+var HD_DAU = [3, 4, 11, 12, 13, 14, 15, 16, 17, 18, 19]; // truong chi co o dong dau hoa don
+
+// Tab MaMISA: ke toan dien cot 'Ma MISA'. Backend tu them dong (ma de trong) khi gap ten moi.
+var MM_HEAD = ['Loai', 'Ten trong app', 'Ma MISA', 'Ghi chu', 'Them luc'];
+// [cot MISA can ma, Loai trong tab MaMISA]
+var MM_COT = [['Mã hàng (*)', 'Hàng hóa'], ['Mã khách hàng', 'Khách hàng'], ['Mã kho', 'Kho'],
+              ['Mã nhân viên bán hàng', 'Nhân viên']];
 
 // 01/10/2026: so doi soat tien CK. Moi dong = 1 hoa don trong 1 dot nop tien.
 var DS_HEAD = ['ID dot', 'Ngay nop', 'Nguoi nop', 'TK nhan', 'Tong nop',
@@ -96,6 +155,7 @@ function doPost(e) {
       var kq = ghiHoaDonRows_(ss, 'HoaDon', p.rows);
       out.added = kq.added;
       out.skipped = kq.skipped;
+      try { out.dienMa = dienMaMisa_(ss); } catch (e3) {} // 13/10/2026: bu ma MISA ke toan vua dien
       // Tuong thich app ban cu (truoc 23/09 ban 2) van gui viba kem loai 'hoadon'
       if (p.viba && p.viba.row) out.viba = ghiViba_(ss, p.viba.row);
     } else if (p.loai === 'vibamoi' && p.rows && p.rows.length && p.viba && p.viba.row) {
@@ -134,67 +194,251 @@ function doPost(e) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// Ghi cac dong hoa don vao tab name (HoaDon / HoaDonCho / HoaDonHuy) - cung 1 cau truc HD_HEAD.
+// Ghi cac dong hoa don vao tab name (HoaDon / HoaDonCho / HoaDonHuy).
+// rows = dong theo thu tu app gui (xem HD_TRUONG). Backend doi sang khuon MISA roi ghi 1 lan.
 // 16/08/2026: ID hoa don da co trong tab thi bo qua ca chum dong cua ID do (chong ghi trung).
-// 29/08/2026: cot 21 'Thang' (yyyy-MM) ep dinh dang text TRUOC khi ghi, neu khong Sheet
-// tu doi '2026-08' thanh kieu NGAY va pivot tach lam 2 dong (text vs ngay).
-// 01/10/2026: tab HoaDonHuy dung HUY_HEAD (dai hon). Phan tu tu vi tri 21 tro di cua
-// moi dong (Link bill, Ly do huy...) ghi tiep vao cot 22+. Cot 21 'Thang' luon tinh lai.
+// 13/10/2026: tim cot theo TEN (cot 1 khong con la ID); ep dang chu truoc khi ghi.
 function ghiHoaDonRows_(ss, name, rows) {
   var head = (name === 'HoaDonHuy') ? HUY_HEAD : HD_HEAD;
   var sh = ensureSheet_(ss, name, head);
+  var cId = head.indexOf('ID hoa don') + 1;
   var daCoId = {};
   var lastR = sh.getLastRow();
   if (lastR >= 2) {
-    sh.getRange(2, 1, lastR - 1, 1).getValues().forEach(function (r0) {
+    sh.getRange(2, cId, lastR - 1, 1).getValues().forEach(function (r0) {
       var id0 = String(r0[0] || '').trim(); if (id0) daCoId[id0] = 1;
     });
   }
   var moi = rows.filter(function (r) { return !daCoId[String(r[0] || '').trim()]; });
+  if (!moi.length) return { added: 0, skipped: rows.length };
+  var mm = docMaMisa_(ss);
+  var data = hdSangMisa_(moi, head, mm);
   var dongDau = sh.getLastRow() + 1;
-  moi.forEach(function (r) {
-    var row = r.slice(0, 20);
-    while (row.length < 20) row.push('');
-    sh.appendRow(row);
+  if (sh.getMaxColumns() < head.length) sh.insertColumnsAfter(sh.getMaxColumns(), head.length - sh.getMaxColumns());
+  HD_COT_CHU.forEach(function (n) {
+    var c = head.indexOf(n);
+    if (c >= 0) sh.getRange(dongDau, c + 1, data.length, 1).setNumberFormat('@');
   });
-  if (moi.length) {
-    var cotThang = moi.map(function (r) { return [thang_(r[1])]; });
-    sh.getRange(dongDau, 21, moi.length, 1).setNumberFormat('@').setValues(cotThang);
-    var soThem = head.length - 21;
-    if (soThem > 0) {
-      var them = moi.map(function (r) {
-        var x = r.slice(21, 21 + soThem);
-        while (x.length < soThem) x.push('');
-        return x;
-      });
-      var coChu = them.some(function (x) { return x.some(function (v) { return v !== '' && v != null; }); });
-      if (coChu) sh.getRange(dongDau, 22, moi.length, soThem).setNumberFormat('@').setValues(them);
-    }
+  sh.getRange(dongDau, 1, data.length, head.length).setValues(data);
+  if (name === 'HoaDon') {
+    try { themKhoaMaMisa_(ss, mm, moi); } catch (e) {} // loi tab MaMISA khong lam hong hoa don
   }
   return { added: moi.length, skipped: rows.length - moi.length };
 }
 
+// Doi cac dong (thu tu app) sang khuon tab (head = HD_HEAD hoac HUY_HEAD).
+// Thong tin cap hoa don (khach, VAT, thanh toan...) lay o dong DAU cua moi ID trong rows.
+function hdSangMisa_(rows, head, mm) {
+  var c = {}; head.forEach(function (n, i) { c[n] = i; });
+  var chu = {}; HD_COT_CHU.forEach(function (n) { if (c[n] != null) chu[c[n]] = 1; });
+  var dau = {};
+  rows.forEach(function (r) { var id = String(r[0] || '').trim(); if (!dau[id]) dau[id] = r; });
+  return rows.map(function (r) {
+    var id = String(r[0] || '').trim(), h = dau[id], laDau = (h === r);
+    var o = head.map(function () { return ''; });
+    function set(n, v) { if (c[n] != null) o[c[n]] = (v == null ? '' : v); }
+    var khach = String(h[3] || '').trim(), tt = String(h[15] || '').trim(), ht = String(h[17] || '').trim();
+    var vat = num_(h[11]), sl = num_(r[8]), tien = num_(r[10]), ngay = ngayChu_(r[1]);
+    var pt = ptThanhToan_(tt, ht);
+    var dien = 'Bán hàng ' + khach + ' [' + id + ']';
+    if (tt === 'Thanh toán 1 phần') dien += ' - đã thu ' + num_(h[14]);
+    // --- phan MISA (lap lai o moi dong cua phieu) ---
+    set('Hình thức bán hàng', 'Bán hàng hóa trong nước');
+    set('Phương thức thanh toán', pt[0]);
+    set('Kiêm phiếu xuất kho', 'Có');
+    set('Lập kèm hóa đơn', 'Không');
+    set('Ngày hạch toán (*)', ngay);
+    set('Ngày chứng từ (*)', ngay);
+    set('Số chứng từ (*)', id);
+    set('Số phiếu xuất', /^HD/.test(id) ? id.replace(/^HD/, 'XK') : 'XK' + id);
+    set('Mã khách hàng', maMisa_(mm, 'Khách hàng', r[2] || h[2]));
+    set('Tên khách hàng', khach);
+    set('Diễn giải/Lý do nộp', dien);
+    set('Lý do xuất', 'Xuất bán ' + khach + ' [' + id + ']');
+    set('Mã nhân viên bán hàng', maMisa_(mm, 'Nhân viên', h[16]));
+    set('Mã hàng (*)', maMisa_(mm, 'Hàng hóa', r[6]));
+    set('Tên hàng', r[6]);
+    set('Là dòng ghi chú', 'Không');
+    set('Hàng khuyến mại', (tien === 0 && sl > 0) ? 'Có' : 'Không'); // dong 0d = hang tang
+    set('TK Tiền/Chi phí/Nợ (*)', pt[1]);
+    set('TK Doanh thu/Có (*)', MISA_TK.doanhThu);
+    set('ĐVT', DVT_MISA[chuanTen_(r[7])] || r[7]);
+    set('Số lượng', sl);
+    set('Đơn giá', num_(r[9]));
+    set('Thành tiền', tien);
+    if (vat > 0) {
+      set('% thuế GTGT', vat);
+      set('Tiền thuế GTGT', Math.round(tien * vat / 100));
+      set('TK thuế GTGT', MISA_TK.thue);
+    }
+    set('Mã kho', maMisa_(mm, 'Kho', r[5]));
+    set('TK giá vốn', MISA_TK.giaVon);
+    set('TK Kho', MISA_TK.kho);
+    // --- phan rieng app ---
+    set('ID hoa don', id);
+    set('Ma KH app', String(r[2] || '').trim());
+    set('Kho', r[5]);
+    set('Thang', thang_(r[1]));
+    set(COT_LINK, r[21]);
+    if (laDau) {
+      set('SDT', sdtChu_(h[4]));
+      set('Coc binh', h[12]); set('Tong thanh toan', h[13]); set('Da thu', h[14]);
+      set('Trang thai TT', h[15]); set('Nguoi thu', h[16]); set('Hinh thuc TT', h[17]);
+      set('Ghi chu', h[18]); set('Ngày CK', h[19] ? ngayChu_(h[19]) : '');
+    }
+    set('Ly do huy', r[22]); set('Nguoi huy', r[23]);
+    set('Ngay huy', r[24] ? ngayChu_(r[24]) : ''); set('Thay bang', r[25]);
+    return o.map(function (v, i) { return (chu[i] && v !== '') ? String(v) : v; });
+  });
+}
+
+// Trang thai + hinh thuc TT luc ban -> [Phuong thuc thanh toan MISA, TK No].
+// Chua thu / thu 1 phan -> 'Chua thu tien' (phan da thu ke toan lap phieu thu rieng).
+// Sau nay thu no / doi soat chi sua cot app, KHONG doi phan MISA (chung tu ban giu nguyen).
+function ptThanhToan_(tt, ht) {
+  if (tt === 'Đã thanh toán') {
+    if (!ht || ht === 'Tiền mặt') return ['Thu tiền ngay - Tiền mặt', MISA_TK.tienMat];
+    return ['Thu tiền ngay - Chuyển khoản', MISA_TK.nganHang];
+  }
+  return ['Chưa thu tiền', MISA_TK.congNo];
+}
+
+// Ngay (Date / dd/MM/yyyy / yyyy-MM-dd) -> chuoi 'dd/MM/yyyy' nhu mau MISA
+function ngayChu_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, 'GMT+7', 'dd/MM/yyyy');
+  var s = String(v == null ? '' : v).trim(), m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return ('0' + m[3]).slice(-2) + '/' + ('0' + m[2]).slice(-2) + '/' + m[1];
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return ('0' + m[1]).slice(-2) + '/' + ('0' + m[2]).slice(-2) + '/' + m[3];
+  return s;
+}
+
+// SDT bi Sheet doi thanh so (mat 0 dau, vd 349650229) -> them lai so 0
+function sdtChu_(v) {
+  var s = String(v == null ? '' : v).trim();
+  if (typeof v === 'number' && /^\d{9}$/.test(s)) s = '0' + s;
+  return s;
+}
+
+// Ban do ten cot -> vi tri (cot dau tien trung ten)
+function cotMap_(head) {
+  var m = {};
+  head.forEach(function (x, i) { var k = String(x).trim(); if (m[k] == null) m[k] = i; });
+  return m;
+}
+
+// 1 dong cua tab (khuon MISA hoac khuon cu) -> dong theo thu tu app (26 phan tu).
+// laDau = dong dau tien cua ID: chi dong dau mang khach/SDT/VAT/thanh toan (nhu app gui).
+function hdCu_(m, r, laDau) {
+  var o = HD_TRUONG.map(function (ten) {
+    for (var k = 0; k < ten.length; k++) if (m[ten[k]] != null) return r[m[ten[k]]];
+    return '';
+  });
+  o[0] = String(o[0] || '').trim();
+  o[1] = ngayChu_(o[1]);
+  if (!laDau) HD_DAU.forEach(function (i) { o[i] = ''; });
+  return o;
+}
+
 // Doc (CHUA xoa) moi dong cua 1 ID hoa don trong tab name.
-// Tra ve { sh, rows (21 cot dau, kem them gia tri Link bill o vi tri 21), dong }.
+// Tra ve { sh, rows (thu tu app, 22 phan tu 0..21 - xem HD_TRUONG), dong }.
 // Goi xoaDong_ SAU khi da ghi xong noi moi: buoc ghi loi giua chung thi du lieu cu con nguyen.
 function docHoaDonId_(ss, name, id) {
   var sh = ss.getSheetByName(name);
   if (!sh || sh.getLastRow() < 2) return { sh: sh, rows: [], dong: [] };
-  var n = sh.getLastRow() - 1;
-  var w = Math.max(sh.getLastColumn(), HD_HEAD.length);
-  if (sh.getMaxColumns() < w) w = sh.getMaxColumns();
-  var head = sh.getRange(1, 1, 1, w).getValues()[0].map(function (x) { return String(x).trim(); });
-  var iLink = head.indexOf(COT_LINK);
-  var vals = sh.getRange(2, 1, n, w).getValues();
+  var v = sh.getDataRange().getValues();
+  var m = cotMap_(v[0]);
+  var cId = m['ID hoa don'];
   var rows = [], dong = [];
-  for (var i = 0; i < n; i++) {
-    if (String(vals[i][0] || '').trim() !== id) continue;
-    var r = vals[i].slice(0, HD_HEAD.length);
-    while (r.length < HD_HEAD.length) r.push('');
-    r.push(iLink >= 0 ? vals[i][iLink] : '');
-    rows.push(r); dong.push(i + 2);
+  if (cId == null) return { sh: sh, rows: rows, dong: dong };
+  for (var i = 1; i < v.length; i++) {
+    if (String(v[i][cId] || '').trim() !== id) continue;
+    // chi lay 22 phan tu dau (0..21 = den Link bill) nhu truoc: noi goi se concat 4 cot luu vet huy vao sau
+    rows.push(hdCu_(m, v[i], rows.length === 0).slice(0, 22)); dong.push(i + 1);
   }
   return { sh: sh, rows: rows, dong: dong };
+}
+
+// ---------- MA MISA (tab MaMISA) ----------
+function chuanTen_(s) {
+  s = String(s == null ? '' : s).toLowerCase();
+  try { s = s.normalize('NFD').replace(/[̀-ͯ]/g, ''); } catch (e) {}
+  return s.replace(/đ/g, 'd').replace(/\s+/g, ' ').trim();
+}
+// { ma: {'Loai|ten chuan': 'Ma MISA'}, co: {'Loai|ten chuan': 1} }
+function docMaMisa_(ss) {
+  var out = { ma: {}, co: {} };
+  var d = rowsOf_(ss, 'MaMISA'); if (!d.head.length) return out;
+  var iL = idx_(d.head, 'Loai'), iT = idx_(d.head, 'Ten trong app'), iM = idx_(d.head, 'Ma MISA');
+  if (iL < 0 || iT < 0 || iM < 0) return out;
+  d.rows.forEach(function (r) {
+    var k = String(r[iL] || '').trim() + '|' + chuanTen_(r[iT]);
+    out.co[k] = 1;
+    var ma = String(r[iM] == null ? '' : r[iM]).trim();
+    if (ma) out.ma[k] = ma;
+  });
+  return out;
+}
+function maMisa_(mm, loai, ten) {
+  if (!mm || ten == null || String(ten).trim() === '') return '';
+  return mm.ma[loai + '|' + chuanTen_(ten)] || '';
+}
+// Ten moi chua co trong MaMISA -> them 1 dong (Ma MISA de trong cho ke toan dien)
+function themKhoaMaMisa_(ss, mm, rows) {
+  var dau = {}, moi = [], luc = Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm');
+  function them(loai, ten, gc) {
+    ten = String(ten == null ? '' : ten).trim(); if (!ten) return;
+    var k = loai + '|' + chuanTen_(ten); if (mm.co[k]) return;
+    mm.co[k] = 1; moi.push([loai, ten, '', String(gc || ''), luc]);
+  }
+  rows.forEach(function (r) {
+    var id = String(r[0] || '').trim(); if (!dau[id]) dau[id] = r;
+    var h = dau[id];
+    them('Hàng hóa', r[6], r[7] ? 'ĐVT: ' + r[7] : '');
+    them('Khách hàng', r[2] || h[2], h[3]);
+    them('Kho', r[5], '');
+    them('Nhân viên', h[16], '');
+  });
+  if (!moi.length) return 0;
+  var sh = ensureSheet_(ss, 'MaMISA', MM_HEAD);
+  var dong = sh.getLastRow() + 1;
+  sh.getRange(dong, 2, moi.length, 2).setNumberFormat('@');
+  sh.getRange(dong, 1, moi.length, MM_HEAD.length).setValues(moi);
+  return moi.length;
+}
+// Dien ma MISA con trong o tab HoaDon theo tab MaMISA. KHONG ghi de o da co ma.
+// Chay sau moi lan ghi hoa don, hoac mo link <URL exec>?lenh=dienma sau khi ke toan dien MaMISA.
+function dienMaMisa_(ss) {
+  var sh = ss.getSheetByName('HoaDon');
+  if (!sh || sh.getLastRow() < 2) return 0;
+  var mm = docMaMisa_(ss);
+  if (!Object.keys(mm.ma).length) return 0;
+  var n = sh.getLastRow() - 1;
+  var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(function (x) { return String(x).trim(); });
+  var m = cotMap_(head);
+  function cot(t) { return m[t] == null ? null : sh.getRange(2, m[t] + 1, n, 1).getValues(); }
+  var ids = cot('ID hoa don'), khoa = { 'Hàng hóa': cot('Tên hàng'), 'Khách hàng': cot('Ma KH app'),
+    'Kho': cot('Kho'), 'Nhân viên': cot('Nguoi thu') };
+  if (!ids) return 0;
+  var nvTheoId = {};
+  for (var i = 0; i < n; i++) {
+    var id = String(ids[i][0] || '').trim(), nv = khoa['Nhân viên'] ? String(khoa['Nhân viên'][i][0] || '').trim() : '';
+    if (id && nv && !nvTheoId[id]) nvTheoId[id] = nv;
+  }
+  var dem = 0;
+  MM_COT.forEach(function (x) {
+    var tenCot = x[0], loai = x[1];
+    if (m[tenCot] == null || !khoa[loai]) return;
+    var rg = sh.getRange(2, m[tenCot] + 1, n, 1), v = rg.getValues(), doi = false;
+    for (var i = 0; i < n; i++) {
+      if (String(v[i][0] == null ? '' : v[i][0]).trim() !== '') continue;
+      var ten = (loai === 'Nhân viên') ? nvTheoId[String(ids[i][0] || '').trim()] : khoa[loai][i][0];
+      var ma = maMisa_(mm, loai, ten);
+      if (ma) { v[i][0] = ma; doi = true; dem++; }
+    }
+    if (doi) rg.setNumberFormat('@').setValues(v);
+  });
+  return dem;
 }
 
 // So cot (1-based) cua cot ten name trong sh; chua co thi tao o sau cot cuoi.
@@ -231,6 +475,15 @@ function nextMa_(sh, kho) {
 function doGet(e) {
   var cb = (e && e.parameter && e.parameter.callback) ? e.parameter.callback : 'callback';
   var out = { ok: true, khach: [], hoadon: [], thanhtoan: [], viba: [], cho: [], huy: [], khoviba: [], kiemkhoviba: [], vbcfg: null };
+  // 13/10/2026: mo <URL exec>?lenh=dienma sau khi ke toan dien tab MaMISA -> dien ma cho cac dong cu
+  if (e && e.parameter && e.parameter.lenh === 'dienma') {
+    var lk = LockService.getScriptLock();
+    try { lk.waitLock(30000); out = { ok: true, dienMa: dienMaMisa_(SpreadsheetApp.openById(SHEET_ID)) }; }
+    catch (err0) { out = { ok: false, error: err0.message }; }
+    finally { try { lk.releaseLock(); } catch (e4) {} }
+    return ContentService.createTextOutput(cb + '(' + JSON.stringify(out) + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
   try {
     var ss = SpreadsheetApp.openById(SHEET_ID);
     out.khach = readKhach_(ss);
@@ -273,8 +526,10 @@ function ensureSheet_(ss, name, head) {
   // (truoc day doi ten sang _old roi tao tab trang -> de mat dau du lieu dang dung).
   if (sh.getLastRow() > 1) {
     throw new Error('Tab ' + name + ' co tieu de cot ' + (i + 1) + ' la "' + eh[i] +
-                    '", backend can "' + head[i] + '". Khong ghi de - sua lai tieu de cot roi thu lai.');
+                    '", backend can "' + head[i] + '". Khong ghi de - sua lai tieu de cot roi thu lai.' +
+                    (eh[0] === 'ID hoa don' ? ' (Tab dang o khuon cu: chay ham chuyenKhuonMISA_20261013 1 lan.)' : ''));
   }
+  if (sh.getMaxColumns() < head.length) sh.insertColumnsAfter(sh.getMaxColumns(), head.length - sh.getMaxColumns());
   sh.getRange(1, 1, 1, head.length).setValues([head]); // tab chi co dong tieu de -> dat lai tieu de
   return sh;
 }
@@ -291,6 +546,7 @@ function rowsOf_(ss, name) {
 function idx_(head, name) { return head.indexOf(name); }
 
 function num_(v) {
+  if (typeof v === 'number') return isNaN(v) ? 0 : v; // 13/10/2026: so that (vd 8.5) giu nguyen, khong bo dau cham
   var s = String(v == null ? '' : v).replace(/[.,\s]/g, '');
   var x = parseFloat(s); return isNaN(x) ? 0 : x;
 }
@@ -332,35 +588,26 @@ function readKhach_(ss) {
 }
 
 // name mac dinh 'HoaDon'; 23/09/2026 dung lai de doc 'HoaDonCho' (cung cau truc)
+// 13/10/2026: doc theo TEN cot qua hdCu_ -> doc duoc ca khuon MISA lan khuon cu.
+// Tra ve dung cau truc cu: khach/SDT/VAT/thanh toan chi co o dong dau moi hoa don.
 function readHoaDon_(ss, name) {
   var d = rowsOf_(ss, name || 'HoaDon'); if (!d.head.length) return [];
-  var h = d.head;
-  var iId = idx_(h, 'ID hoa don'), iNg = idx_(h, 'Ngay'), iMa = idx_(h, 'Ma KH'),
-      iKh = idx_(h, 'Khach'), iSd = idx_(h, 'SDT'), iKho = idx_(h, 'Kho'),
-      iSp = idx_(h, 'San pham'), iDv = idx_(h, 'DVT'), iSl = idx_(h, 'SL'),
-      iGia = idx_(h, 'Don gia'), iTien = idx_(h, 'Thanh tien'), iVat = idx_(h, 'VAT %'),
-      iCoc = idx_(h, 'Coc binh'), iTong = idx_(h, 'Tong thanh toan'),
-      iDathu = idx_(h, 'Da thu'), iTt = idx_(h, 'Trang thai TT'), iThu = idx_(h, 'Nguoi thu'),
-      iHt = idx_(h, 'Hinh thuc TT'), iGc = idx_(h, 'Ghi chu');
-  // 01/10/2026: them Ngay CK, Link bill, va 4 cot luu vet khi doc tab HoaDonHuy
-  var iCk = idx_(h, 'Ngày CK'), iLink = idx_(h, COT_LINK), iLd = idx_(h, 'Ly do huy'),
-      iNh = idx_(h, 'Nguoi huy'), iNgh = idx_(h, 'Ngay huy'), iTb = idx_(h, 'Thay bang');
-  function o(i, r) { return i >= 0 ? String(r[i] == null ? '' : r[i]) : ''; }
-  var out = [];
-  d.rows.forEach(function (r) {
-    if (!String(r[iId] || '').trim()) return;
+  var m = cotMap_(d.head);
+  if (m['ID hoa don'] == null) return [];
+  function s(v) { return String(v == null ? '' : v); }
+  var daGap = {}, out = [];
+  d.rows.forEach(function (r0) {
+    var id = String(r0[m['ID hoa don']] || '').trim(); if (!id) return;
+    var r = hdCu_(m, r0, !daGap[id]); daGap[id] = 1;
     out.push({
-      id: String(r[iId]).trim(),
-      ngay: fmtD_(r[iNg]),
-      ma: String(r[iMa] || '').trim(),
-      khach: r[iKh] || '', sdt: String(r[iSd] || ''), kho: r[iKho] || '',
-      sp: r[iSp] || '', dvt: r[iDv] || '', sl: num_(r[iSl]), gia: num_(r[iGia]),
-      tien: num_(r[iTien]), vat: num_(r[iVat]), coc: num_(r[iCoc]),
-      tong: num_(r[iTong]), dathu: num_(r[iDathu]),
-      tt: r[iTt] || '', thu: r[iThu] || '', ht: iHt >= 0 ? (r[iHt] || '') : '',
-      ghichu: iGc >= 0 ? (r[iGc] || '') : '',
-      ngayck: iCk >= 0 ? fmtD_(r[iCk]) : '', link: o(iLink, r),
-      lydo: o(iLd, r), nguoihuy: o(iNh, r), ngayhuy: iNgh >= 0 ? fmtD_(r[iNgh]) : '', thaythe: o(iTb, r)
+      id: id, ngay: r[1], ma: String(r[2] || '').trim(),
+      khach: r[3] || '', sdt: sdtChu_(r[4]), kho: r[5] || '',
+      sp: r[6] || '', dvt: r[7] || '', sl: num_(r[8]), gia: num_(r[9]),
+      tien: num_(r[10]), vat: num_(r[11]), coc: num_(r[12]),
+      tong: num_(r[13]), dathu: num_(r[14]),
+      tt: r[15] || '', thu: r[16] || '', ht: r[17] || '', ghichu: r[18] || '',
+      ngayck: r[19] ? fmtD_(r[19]) : '', link: s(r[21]),
+      lydo: s(r[22]), nguoihuy: s(r[23]), ngayhuy: r[24] ? fmtD_(r[24]) : '', thaythe: s(r[25])
     });
   });
   return out;
@@ -869,10 +1116,10 @@ function huyHoaDon_(ss, p) {
     if (!idMoi || idMoi === id) return { ok: false, error: 'Ma phieu thay the khong hop le' };
     ghiHoaDonRows_(ss, 'HoaDon', p.thaythe);
     var shHD = ss.getSheetByName('HoaDon');
-    var dongMoi = timDongDau_(shHD, idMoi);
+    var dongMoi = timDongDau_(shHD, idMoi, cotTheoTen_(shHD, 'ID hoa don'));
     var dau = cu.rows[0];
     // Mang sang phieu moi: Ngay CK + Link bill da doi soat cua phieu cu (neu co)
-    if (dongMoi > 0 && dau[19]) shHD.getRange(dongMoi, 20).setNumberFormat('@').setValue(fmtD_(dau[19]));
+    if (dongMoi > 0 && dau[19]) shHD.getRange(dongMoi, cotTheoTen_(shHD, 'Ngày CK')).setNumberFormat('@').setValue(ngayChu_(dau[19]));
     if (dongMoi > 0 && dau[21]) shHD.getRange(dongMoi, cotTheoTen_(shHD, COT_LINK)).setValue(dau[21]);
     doiIdHoaDon_(ss, 'ThanhToan', 'ID hoa don', id, idMoi); // phieu thu cu tro sang phieu moi
     doiIdHoaDon_(ss, 'GiaoVIBA', 'ID hoa don', id, idMoi);
@@ -886,10 +1133,11 @@ function huyHoaDon_(ss, p) {
   return { ok: true, huy: cu.rows.length, thaythe: idMoi };
 }
 
-// So dong (>=2) dau tien cua ID hoa don trong sh, -1 neu khong co
-function timDongDau_(sh, id) {
+// So dong (>=2) dau tien cua ma id trong cot col (mac dinh cot 1), -1 neu khong co.
+// 13/10/2026: tab HoaDon khuon MISA -> ID hoa don KHONG o cot 1, phai truyen col.
+function timDongDau_(sh, id, col) {
   if (!sh || sh.getLastRow() < 2) return -1;
-  var ids = sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues();
+  var ids = sh.getRange(2, col || 1, sh.getLastRow() - 1, 1).getValues();
   for (var i = 0; i < ids.length; i++) if (String(ids[i][0] || '').trim() === id) return i + 2;
   return -1;
 }
@@ -930,10 +1178,11 @@ function doiSoatCK_(ss, p) {
   var head = shHD.getRange(1, 1, 1, shHD.getLastColumn()).getValues()[0].map(function (x) { return String(x).trim(); });
   function cot(t) { return head.indexOf(t) + 1; }
   var cTong = cot('Tong thanh toan'), cThu = cot('Da thu'), cTt = cot('Trang thai TT'),
-      cHt = cot('Hinh thuc TT'), cGc = cot('Ghi chu'), cCk = cot('Ngày CK'), cKh = cot('Khach');
-  if (cTong < 1 || cThu < 1 || cTt < 1 || cHt < 1 || cGc < 1 || cCk < 1) return { ok: false, error: 'HoaDon thieu cot can thiet' };
+      cHt = cot('Hinh thuc TT'), cGc = cot('Ghi chu'), cCk = cot('Ngày CK'),
+      cKh = cot('Tên khách hàng') || cot('Khach'), cId = cot('ID hoa don'); // 13/10/2026: khuon MISA
+  if (cId < 1 || cTong < 1 || cThu < 1 || cTt < 1 || cHt < 1 || cGc < 1 || cCk < 1) return { ok: false, error: 'HoaDon thieu cot can thiet' };
 
-  var ids = shHD.getRange(2, 1, Math.max(shHD.getLastRow() - 1, 1), 1).getValues();
+  var ids = shHD.getRange(2, cId, Math.max(shHD.getLastRow() - 1, 1), 1).getValues();
   var dongCua = {};
   for (var i = ids.length - 1; i >= 0; i--) { var k = String(ids[i][0] || '').trim(); if (k) dongCua[k] = i + 2; } // giu dong DAU
   var thieu = p.rows.filter(function (x) { return !dongCua[String(x.id).trim()]; }).map(function (x) { return x.id; });
@@ -994,109 +1243,70 @@ function capQuyen() {
   Logger.log('OK: ' + ss.getName() + ' | folder anh: ' + f.getName());
 }
 
+
 // ============================================================
-// CHAY TAY 1 LAN (13/08/2026): gop sheet hoa don ve 1 sheet HoaDon.
-// Lam gi: dien header 'Ngày CK' vao o T1 cua sheet gop, xoa cot thua
-// sau cot T, copy hoa don moi tu sheet HoaDon trang sang (khong trung),
-// xoa sheet HoaDon trang, doi ten sheet gop thanh HoaDon.
-// CACH CHAY: chon ham gopHoaDon_13082026 tren thanh cong cu -> Run.
-// LUU Y: deploy New version TRUOC roi moi chay ham nay.
-// Chay xong co the xoa ca khoi code nay di (khong bat buoc).
+// CHAY TAY 1 LAN (13/10/2026): chuyen HoaDon / HoaDonCho / HoaDonHuy sang KHUON MISA.
+// CACH CHAY: dan code -> Deploy New version -> chon ham chuyenKhuonMISA_20261013 -> Run
+//            (lam luc khong ai dang lap hoa don). Xem ket qua o Nhat ky thuc thi.
+// AN TOAN:
+//  - Tab cu KHONG bi xoa/sua: doi ten thanh '<ten>_truocMISA_20261013' (ban sao luu).
+//  - Du lieu moi ghi vao tab moi, so dong + tong Thanh tien / Tong TT / Da thu phai KHOP
+//    voi tab cu thi moi doi ten, lech 1 dong la DUNG, khong doi gi.
+//  - Chay lai lan 2: tab da o khuon MISA thi bo qua.
 // ============================================================
-function gopHoaDon_13082026() {
+function chuyenKhuonMISA_20261013() {
   var lock = LockService.getScriptLock();
-  lock.waitLock(30000); // chan doPost ghi xen vao giua luc gop
+  lock.waitLock(30000); // chan app ghi xen vao giua luc chuyen
+  var bao = [];
   try {
     var ss = SpreadsheetApp.openById(SHEET_ID);
-    var gop = ss.getSheetByName('HoaDon_old_1786592187847');
-    if (!gop) {
-      if (ss.getSheetByName('HoaDon') && !ss.getSheetByName('HoaDon_old_1786592187847')) {
-        Logger.log('Khong thay sheet gop — co the da chay xong truoc do. Khong lam gi.');
-        return;
+    var mm = docMaMisa_(ss);
+    ['HoaDon', 'HoaDonCho', 'HoaDonHuy'].forEach(function (name) {
+      var sh = ss.getSheetByName(name);
+      if (!sh) { bao.push(name + ': khong co tab, bo qua'); return; }
+      var v = sh.getDataRange().getValues();
+      var m = cotMap_(v[0] || []);
+      if (m['Số chứng từ (*)'] != null) { bao.push(name + ': da o khuon MISA, bo qua'); return; }
+      if (m['ID hoa don'] == null) throw new Error(name + ': khong thay cot "ID hoa don" - DUNG, khong doi gi');
+      var head = (name === 'HoaDonHuy') ? HUY_HEAD : HD_HEAD;
+      var rows = [], daGap = {}, cu = { dong: 0, tien: 0, tong: 0, thu: 0 };
+      for (var i = 1; i < v.length; i++) {
+        var id = String(v[i][m['ID hoa don']] || '').trim(); if (!id) continue;
+        var r = hdCu_(m, v[i], !daGap[id]); daGap[id] = 1;
+        rows.push(r);
+        cu.dong++; cu.tien += num_(r[10]); cu.tong += num_(r[13]); cu.thu += num_(r[14]);
       }
-      throw new Error('Khong tim thay sheet HoaDon_old_1786592187847');
-    }
-
-    // 1) Header o T1 phai dung y het HD_HEAD cot 20
-    gop.getRange(1, 20).setValue(HD_HEAD[19]); // 'Ngày CK'
-
-    // 2) Xoa han cac cot sau cot T (U tro di) cho sach
-    var mc = gop.getMaxColumns();
-    if (mc > 20) gop.deleteColumns(21, mc - 20);
-
-    // 3) Copy hoa don tu sheet HoaDon trang sang cuoi sheet gop.
-    //    Dedupe theo ID HOA DON (1 hoa don nhieu san pham = nhieu dong cung ID
-    //    -> phai copy du ca chum dong, chi bo qua ID da co san trong sheet gop).
-    var cur = ss.getSheetByName('HoaDon');
-    var daCopy = 0;
-    if (cur && cur.getLastRow() >= 2) {
-      var daCo = {};
-      var last = gop.getLastRow();
-      if (last >= 2) {
-        gop.getRange(2, 1, last - 1, 1).getValues().forEach(function (r) {
-          var id = String(r[0] || '').trim(); if (id) daCo[id] = 1;
-        });
+      var data = rows.length ? hdSangMisa_(rows, head, mm) : [];
+      // Kiem tra khop truoc khi doi
+      var c = cotMap_(head), moi = { dong: data.length, tien: 0, tong: 0, thu: 0 };
+      data.forEach(function (x) {
+        moi.tien += num_(x[c['Thành tiền']]); moi.tong += num_(x[c['Tong thanh toan']]); moi.thu += num_(x[c['Da thu']]);
+      });
+      if (cu.dong !== moi.dong || Math.round(cu.tien) !== Math.round(moi.tien) ||
+          Math.round(cu.tong) !== Math.round(moi.tong) || Math.round(cu.thu) !== Math.round(moi.thu)) {
+        throw new Error(name + ': LECH sau khi chuyen ' + JSON.stringify({ cu: cu, moi: moi }) + ' - DUNG, khong doi gi');
       }
-      var rows = cur.getRange(2, 1, cur.getLastRow() - 1, 19).getValues();
-      var idMoi = {};
-      rows.forEach(function (r) {
-        var id = String(r[0] || '').trim();
-        if (id && !daCo[id]) idMoi[id] = 1;
-      });
-      rows.forEach(function (r) {
-        var id = String(r[0] || '').trim();
-        if (idMoi[id]) { gop.appendRow(r); daCopy++; }
-      });
-    }
-
-    // 4) Xoa sheet HoaDon trang, doi ten sheet gop thanh HoaDon
-    if (cur) ss.deleteSheet(cur);
-    gop.setName('HoaDon');
-
-    Logger.log('XONG: copy them ' + daCopy + ' dong. Sheet HoaDon hien co ' +
-               (gop.getLastRow() - 1) + ' dong du lieu.');
+      var tam = ss.insertSheet(name + '_MISA_' + Date.now());
+      if (tam.getMaxColumns() < head.length) tam.insertColumnsAfter(tam.getMaxColumns(), head.length - tam.getMaxColumns());
+      tam.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold');
+      tam.getRange(1, 1, 1, MISA_HEAD.length).setBackground('#DDEBF7');               // cot MISA
+      tam.getRange(1, MISA_HEAD.length + 1, 1, head.length - MISA_HEAD.length).setBackground('#FCE4D6'); // cot app
+      MM_COT.forEach(function (x) { tam.getRange(1, c[x[0]] + 1).setBackground('#FFF2CC'); }); // cot ma ke toan dien
+      tam.setFrozenRows(1);
+      if (data.length) {
+        HD_COT_CHU.forEach(function (n) { if (c[n] != null) tam.getRange(2, c[n] + 1, data.length, 1).setNumberFormat('@'); });
+        tam.getRange(2, 1, data.length, head.length).setValues(data);
+      }
+      sh.setName(name + '_truocMISA_20261013');
+      tam.setName(name);
+      if (name === 'HoaDon' && rows.length) themKhoaMaMisa_(ss, mm, rows);
+      bao.push(name + ': OK ' + moi.dong + ' dong, Thanh tien ' + Math.round(moi.tien) +
+               ', Tong TT ' + Math.round(moi.tong) + ', Da thu ' + Math.round(moi.thu) +
+               ' (ban cu luu o tab ' + name + '_truocMISA_20261013)');
+    });
   } finally {
     try { lock.releaseLock(); } catch (e) {}
+    Logger.log(bao.join('\n'));
   }
-}
-
-// ============================================================
-// CHAY TAY 1 LAN (29/08/2026): them cot 21 'Thang' vao sheet HoaDon.
-// Lam gi: ghi header 'Thang' vao o U1, tinh 'yyyy-MM' tu cot Ngay (cot B)
-// va dien cho toan bo dong da co. Ghi GIA TRI TINH SAN dang text (khong
-// dung cong thuc) de khong lam lech getLastRow() cua doPost khi ghi hoa don.
-// CACH CHAY: deploy New version TRUOC -> chon ham themCotThang_29082026 -> Run.
-// Chay lai nhieu lan van an toan (chi ghi de dung gia tri do).
-// 29/08/2026 (lan 2): chay lai ham nay de chuan hoa cac dong da bi
-// Sheet doi thanh kieu NGAY ve lai text -> pivot gop dung 1 dong/thang.
-// ============================================================
-function themCotThang_29082026() {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000); // chan doPost ghi xen vao giua
-  try {
-    var ss = SpreadsheetApp.openById(SHEET_ID);
-    var sh = ss.getSheetByName('HoaDon');
-    if (!sh) throw new Error('Khong tim thay sheet HoaDon');
-
-    var mc = sh.getMaxColumns();
-    if (mc < 21) sh.insertColumnsAfter(mc, 21 - mc);
-
-    // Ep CA cot U ve dinh dang text truoc, ke ca cac dong con trong ->
-    // dong hoa don moi them sau nay cung thua dinh dang text, khong bi
-    // Sheet doi '2026-08' thanh kieu ngay.
-    sh.getRange(1, 21, sh.getMaxRows(), 1).setNumberFormat('@');
-    sh.getRange(1, 21).setValue(HD_HEAD[20]); // 'Thang'
-
-    var n = sh.getLastRow() - 1;
-    if (n < 1) { Logger.log('Sheet chua co dong du lieu nao. Chi them header.'); return; }
-
-    var ngay = sh.getRange(2, 2, n, 1).getValues(); // cot B 'Ngay'
-    var out = ngay.map(function (r) { return [thang_(r[0])]; });
-    sh.getRange(2, 21, n, 1).setNumberFormat('@').setValues(out); // '@' = text, tranh bi ep thanh ngay
-
-    var trong = out.filter(function (r) { return !r[0]; }).length;
-    Logger.log('XONG: dien Thang cho ' + n + ' dong. Khong doc duoc ngay: ' + trong + ' dong.');
-  } finally {
-    try { lock.releaseLock(); } catch (e) {}
-  }
+  return bao;
 }
