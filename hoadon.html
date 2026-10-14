@@ -50,6 +50,11 @@
   .kho-ttl{font-size:16px;font-weight:700;margin:14px 0 14px}
   .kho-pick{display:block;width:100%;border:2px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-weight:700;font-size:16px;padding:16px;border-radius:12px;margin-bottom:10px;cursor:pointer}
   .kho-pick:active{border-color:var(--red)}
+  .khgy{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:30;background:#fff;border:1px solid var(--line);border-radius:10px;max-height:330px;overflow-y:auto;box-shadow:0 6px 18px rgba(0,0,0,.12)}
+  .khgy .it{padding:9px 12px;border-top:1px solid var(--line);cursor:pointer}
+  .khgy .it:first-child{border-top:0}
+  .khgy .it.on,.khgy .it:active{background:#fff3f0}
+  .khgy .s{font-size:12px;color:#6b7683}
   /* invoice preview */
   #inv{background:#fff;color:#1a1a1a;font-family:Arial,sans-serif}
   .ivh{background:#c8102e;color:#fff;padding:12px 14px}
@@ -102,7 +107,6 @@
     <div class="lg">ION FUJI</div>
     <div class="kho-ttl">Bạn đang bán từ kho nào?</div>
     <button class="kho-pick" onclick="setKho('Hà Nội')">Kho Hà Nội</button>
-    <button class="kho-pick" onclick="setKho('Hưng Yên')">Kho Hưng Yên</button>
   </div>
 </div>
 
@@ -139,7 +143,7 @@
         <h2>Khách hàng</h2>
         <label>Chọn khách (bắt buộc có mã)</label>
         <div class="row" style="align-items:stretch;margin-bottom:0">
-          <div style="flex:1"><select id="khSel" onchange="onKhSel()"><option value="">-- chọn khách --</option></select></div>
+          <div style="flex:1;position:relative"><input id="khTim" type="search" autocomplete="off" placeholder="Gõ tên, mã hoặc SĐT khách..."><div id="khGoiY" class="khgy" style="display:none"></div><select id="khSel" onchange="onKhSel()" style="display:none"><option value="">-- chọn khách --</option></select></div>
           <button class="add" style="flex:0 0 92px;width:auto" onclick="showTab('kh')">+ Thêm</button>
         </div>
         <div id="khInfo" class="muted" style="margin-top:8px;display:none"></div>
@@ -629,6 +633,7 @@ function khoCode(name){return String(name).indexOf('Hưng')>=0?'HY':'HN'}
 
 /* ---------- KHO / NAV ---------- */
 function setKho(name){
+  if(khoCode(name)==='HY')name='Hà Nội'; /* 14/10/2026: kho Hung Yen da ngung */
   KHO=name;KHOCODE=khoCode(name);localStorage.setItem('hd_kho',name);
   document.getElementById('screenKho').style.display='none';
   document.getElementById('app').style.display='block';
@@ -701,9 +706,10 @@ function fillKhSelect(){
   var sel=document.getElementById('khSel');var cur=sel.value;
   var h='<option value="">-- chọn khách --</option>';
   khInKho().forEach(function(k){h+='<option value="'+k.ma+'">'+k.ma+' — '+k.ten+(k.qh?', '+k.qh:'')+'</option>'});
-  sel.innerHTML=h;sel.value=cur;
+  sel.innerHTML=h;sel.value=cur;khTxtDongBo();
 }
 function onKhSel(){
+  khTxtDongBo();
   var k=selKh();var box=document.getElementById('khInfo');
   if(!k){box.style.display='none';render();return}
   box.style.display='block';
@@ -713,6 +719,65 @@ function onKhSel(){
   document.getElementById('vbTien').removeAttribute('data-tay'); /* khach moi -> thu ho lai tu theo tong */
   if(document.getElementById('viba').checked)vbFill(true); /* doi khach -> nguoi nhan theo khach moi */
 }
+
+/* ---------- 14/10/2026: CHON KHACH BANG GO TU KHOA (goi y toi da 8) ---------- */
+var KHGY_MAX=8,KHGY=[],KHGY_I=-1;
+function khBoDau(s){s=String(s==null?'':s).toLowerCase();try{s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'')}catch(e){}return s.replace(/\u0111/g,'d').replace(/\s+/g,' ').trim()}
+function khNhan(k){return k.ma+' \u2014 '+k.ten}
+function khTxtDongBo(){var el=document.getElementById('khTim');if(!el)return;var k=selKh();el.value=k?khNhan(k):''}
+function khLoc(q){
+  var tu=khBoDau(q).split(' ').filter(function(x){return x});
+  var ds=khInKho();if(!tu.length)return ds.slice(0,KHGY_MAX);
+  var kq=[];
+  ds.forEach(function(k){
+    var ten=khBoDau(k.ten),all=khBoDau(k.ma+' '+k.ten+' '+(k.sdt||'')+' '+(k.qh||''));
+    var sdt=String(k.sdt||'').replace(/\D/g,'');
+    var ok=tu.every(function(t){return all.indexOf(t)>=0||(/^\d{3,}$/.test(t)&&sdt.indexOf(t)>=0)});
+    if(!ok)return;
+    var diem=(ten.indexOf(tu[0])===0?0:(khBoDau(k.ma).indexOf(tu[0])===0?1:2));
+    kq.push({k:k,d:diem});
+  });
+  kq.sort(function(a,b){return a.d-b.d||String(a.k.ten).localeCompare(String(b.k.ten),'vi')});
+  return kq.slice(0,KHGY_MAX).map(function(x){return x.k});
+}
+function khGoiYVe(){
+  var box=document.getElementById('khGoiY');var q=document.getElementById('khTim').value;
+  KHGY=khLoc(q);KHGY_I=-1;box.innerHTML='';
+  if(!KHGY.length){var e=document.createElement('div');e.className='it s';e.textContent='Không thấy khách - bấm + Thêm';box.appendChild(e);box.style.display='block';return}
+  KHGY.forEach(function(k,i){
+    var d=document.createElement('div');d.className='it';
+    var a=document.createElement('div');a.textContent=khNhan(k);
+    var b=document.createElement('div');b.className='s';b.textContent=(k.sdt||'-')+(k.qh?' \u00b7 '+k.qh:'');
+    d.appendChild(a);d.appendChild(b);
+    d.addEventListener('mousedown',function(ev){ev.preventDefault()});d.addEventListener('click',function(){khChon(k.ma)});
+    box.appendChild(d);
+  });
+  box.style.display='block';
+}
+function khChon(ma){
+  document.getElementById('khSel').value=ma;
+  document.getElementById('khGoiY').style.display='none';
+  document.getElementById('khTim').blur();
+  onKhSel();
+}
+function khGoiYAn(){document.getElementById('khGoiY').style.display='none';khTxtDongBo()}
+(function(){
+  var el=document.getElementById('khTim');if(!el)return;
+  el.addEventListener('focus',function(){el.select();khGoiYVe()});
+  el.addEventListener('input',function(){
+    if(!el.value&&document.getElementById('khSel').value){document.getElementById('khSel').value='';onKhSel();el.focus()}
+    khGoiYVe();
+  });
+  el.addEventListener('blur',function(){setTimeout(khGoiYAn,250)});
+  el.addEventListener('keydown',function(ev){
+    var box=document.getElementById('khGoiY'),its=box.querySelectorAll('.it');
+    if(ev.key==='ArrowDown'||ev.key==='ArrowUp'){ev.preventDefault();if(!KHGY.length)return;
+      KHGY_I=(KHGY_I+(ev.key==='ArrowDown'?1:-1)+KHGY.length)%KHGY.length;
+      its.forEach(function(x,i){x.classList.toggle('on',i===KHGY_I)});}
+    else if(ev.key==='Enter'){ev.preventDefault();var k=KHGY[KHGY_I<0?0:KHGY_I];if(k)khChon(k.ma)}
+    else if(ev.key==='Escape'){el.blur()}
+  });
+})();
 
 /* ---------- GIAO VIBA: khoi tren form hoa don ---------- */
 /* Tong tien + so da thu theo dung cong thuc cua dongBo() */
