@@ -42,6 +42,7 @@
   .ionseg{display:flex;background:#eef1f4;border-radius:10px;padding:3px;margin-bottom:10px;overflow:auto}
   .ionseg button{flex:1;border:none;background:transparent;font:inherit;font-size:13px;padding:7px 8px;border-radius:8px;color:var(--mut);white-space:nowrap;cursor:pointer}
   .ionseg button.on{background:#fff;color:var(--red);font-weight:700}
+  #tab-nt input[type=checkbox]{-webkit-appearance:checkbox;appearance:auto;accent-color:var(--red);padding:0;border:none;cursor:pointer;margin:0}
   #bgSp input[type=checkbox]{-webkit-appearance:checkbox;appearance:auto;accent-color:var(--red);padding:0;border:none;cursor:pointer}
   /* kho screen */
   .kho-screen{min-height:82vh;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -127,6 +128,7 @@
       <button class="tb" data-t="dh" onclick="showTab('dh')">Đơn</button>
       <button class="tb" data-t="cn" onclick="showTab('cn')">Công nợ</button>
       <button class="tb" data-t="tn" onclick="showTab('tn')">Thu nợ</button>
+      <button class="tb" data-t="nt" onclick="showTab('nt')">Nộp tiền</button>
       <button class="tb" data-t="vb" onclick="showTab('vb')">Giao VIBA</button>
       <button class="tb" data-t="kk" onclick="showTab('kk')">Kiểm kê</button>
       <button class="tb" data-t="cs" onclick="showTab('cs')">CSKH</button>
@@ -339,6 +341,31 @@
         <div class="muted" style="margin-bottom:8px">Thu tháng này: <b id="tnThang">0</b> đ · Tổng đã thu: <b id="tnTong">0</b> đ</div>
         <button class="btn bgrn" style="width:100%;margin-bottom:10px" onclick="loadData(true)">Tải lại từ Sheet</button>
         <div id="tnList"></div>
+      </div>
+    </div>
+
+    <!-- ===== TAB NOP TIEN VE TK CONG TY (16/10/2026) ===== -->
+    <div id="tab-nt" class="tab-pane" style="display:none">
+      <div class="card">
+        <h2>Nộp tiền về TK công ty</h2>
+        <div class="muted" style="margin-bottom:8px">Đơn đã thanh toán, người thu giữ tiền, chưa nộp về TK công ty Fuji (từ 01/10/2026). Không gồm đơn khách trả vào TK công ty Fuji / TK Anh Hưng.</div>
+        <div class="row">
+          <div style="flex:1"><label>Người thu</label><select id="ntNguoi" onchange="ntVe()"></select></div>
+          <div style="flex:1"><label>Ngày nộp</label><input id="ntNgay" type="date"></div>
+        </div>
+        <label style="display:flex;gap:8px;align-items:center;margin:8px 0;font-weight:600"><input type="checkbox" id="ntAll" onchange="ntChonHet(this.checked)" style="width:20px;height:20px;flex:0 0 20px"> Chọn tất cả</label>
+        <div id="ntList"></div>
+        <label style="margin-top:10px">Ảnh bill chuyển khoản (không bắt buộc)</label>
+        <input type="file" accept="image/*" onchange="ntChonAnh(this)">
+        <div id="ntAnhInfo" class="muted">Chưa chọn ảnh.</div>
+        <label style="margin-top:8px">Ghi chú</label>
+        <input id="ntGc" placeholder="VD: CK lúc 18h, nội dung Huy nop tien">
+        <div id="ntTong" style="margin:12px 0;padding:10px;border-radius:10px;background:#fff6e8;font-weight:700">Đã chọn 0 đơn · 0 đ</div>
+        <button id="ntSave" class="btn bgrn" style="width:100%" onclick="ntLuu()">Lưu đã nộp</button>
+      </div>
+      <div class="card">
+        <h2>Đã nộp gần đây</h2>
+        <div id="ntDa" class="muted"></div>
       </div>
     </div>
 
@@ -665,6 +692,7 @@ function showTab(t){
     renderViba();vbView(VBV);}
   if(t==='kk'){document.getElementById('kkKhoLbl').textContent=KHO;if(!KKCAT.length)loadKhoKiemKe();else renderKK();}
   if(t==='cs')renderCSKH();
+  if(t==='nt')ntInit();
   window.scrollTo(0,0);
 }
 function caiDat(){
@@ -694,6 +722,7 @@ function loadData(manual,cb){
     if(d.cat&&d.cat.length){CAT=d.cat;try{localStorage.setItem('hd_cat',JSON.stringify(CAT))}catch(e){}refreshRows();}
     document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn';
     fillKhSelect();renderMaPreview();renderKhList();renderBaoCao();if(TAB==='bc')bcXChon(BCX);renderCongNo();renderThuNo();renderViba();renderCSKH();vbRenderSub();
+    if(TAB==='nt')ntVe();
     if(cb)cb(true);
   });
 }
@@ -778,6 +807,116 @@ function khGoiYAn(){document.getElementById('khGoiY').style.display='none';khTxt
     else if(ev.key==='Escape'){el.blur()}
   });
 })();
+
+/* ---------- 16/10/2026: NOP TIEN VE TK CONG TY ----------
+ * Don hien: Da thanh toan, nguoi thu chon, Hinh thuc TT khong phai TK cong ty Fuji / TK Anh Hung,
+ * cot Ngay CK con trong, ngay don tu NT_TU. Luu -> backend doiSoatCK_ (giuHt) ghi Ngay CK, Ghi chu,
+ * Link bill vao HoaDon + 1 dot o tab DoiSoatCK. Khong doi tien, khong doi Hinh thuc TT. */
+var NT={chon:{},anh:null,ds:[]};
+var NT_TU='2026-10-01';
+var NT_BO=['TK công ty Fuji','TK Anh Hưng'];
+function ntIso(s){var p=String(s||'').slice(0,10).split('/');return p.length===3?(p[2]+'-'+('0'+p[1]).slice(-2)+'-'+('0'+p[0]).slice(-2)):''}
+function ntKhoa(s){return khBoDau(s).replace(/^(mr|anh|a|chi|c)\s+/,'')}
+function ntGop(){
+  var m={},ord=[];
+  HD.forEach(function(x){
+    var g=m[x.id];
+    if(!g){g=m[x.id]={id:x.id,ngay:x.ngay,ma:x.ma,khach:x.khach,kho:x.kho,tong:0,tt:'',thu:'',ht:'',ngayck:''};ord.push(g)}
+    if(Number(x.tong)>g.tong)g.tong=Number(x.tong);
+    if(x.tt)g.tt=x.tt; if(x.thu)g.thu=x.thu; if(x.ht)g.ht=x.ht; if(x.ngayck)g.ngayck=x.ngayck;
+    if(!g.khach&&x.khach)g.khach=x.khach;
+  });
+  return ord;
+}
+function ntHopLe(g){return g.tt==='Đã thanh toán'&&NT_BO.indexOf(String(g.ht||'').trim())<0&&ntIso(g.ngay)>=NT_TU&&g.tong>0}
+function ntInit(){
+  var d=document.getElementById('ntNgay');if(!d.value)d.value=todayISO();
+  var sel=document.getElementById('ntNguoi'),cur=sel.value,ten={};
+  ntGop().forEach(function(g){if(ntHopLe(g)&&g.thu){var k=ntKhoa(g.thu);if(k&&!ten[k])ten[k]=g.thu}});
+  sel.innerHTML='';
+  Object.keys(ten).sort().forEach(function(k){var o=document.createElement('option');o.value=k;o.textContent=ten[k];sel.appendChild(o)});
+  var o2=document.createElement('option');o2.value='*';o2.textContent='Tất cả người thu';sel.appendChild(o2);
+  if(cur&&(ten[cur]||cur==='*'))sel.value=cur;else if(ten['huy'])sel.value='huy';
+  ntVe();
+}
+function ntVe(){
+  var sel=document.getElementById('ntNguoi');if(!sel)return;
+  var nguoi=sel.value||'*',all=ntGop().filter(ntHopLe).filter(function(g){return nguoi==='*'||ntKhoa(g.thu)===nguoi});
+  NT.ds=all.filter(function(g){return !g.ngayck}).sort(function(a,b){return ntIso(a.ngay)<ntIso(b.ngay)?-1:1});
+  var ids={};NT.ds.forEach(function(g){ids[g.id]=1});
+  Object.keys(NT.chon).forEach(function(k){if(!ids[k])delete NT.chon[k]});
+  var box=document.getElementById('ntList');box.innerHTML='';
+  if(!NT.ds.length){box.innerHTML='<div class="muted" style="padding:8px 0">Không có đơn nào chờ nộp.</div>'}
+  NT.ds.forEach(function(g){
+    var row=document.createElement('label');
+    row.style.cssText='display:flex;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)';
+    var cb=document.createElement('input');cb.type='checkbox';cb.checked=!!NT.chon[g.id];
+    cb.style.cssText='width:20px;height:20px;flex:0 0 20px';
+    cb.addEventListener('change',function(){if(cb.checked)NT.chon[g.id]=1;else delete NT.chon[g.id];ntTong()});
+    var mid=document.createElement('div');mid.style.flex='1';
+    var a=document.createElement('div');a.style.fontWeight='600';a.textContent=g.khach||g.ma||'-';
+    var b=document.createElement('div');b.className='muted';b.style.fontSize='12px';b.textContent=g.ngay+' · '+g.id+' · '+(g.ht||'-')+' · '+(g.thu||'');
+    mid.appendChild(a);mid.appendChild(b);
+    var t=document.createElement('div');t.style.fontWeight='600';t.textContent=fmt(g.tong);
+    row.appendChild(cb);row.appendChild(mid);row.appendChild(t);box.appendChild(row);
+  });
+  var da=all.filter(function(g){return g.ngayck}).sort(function(a,b){return ntIso(a.ngayck)>ntIso(b.ngayck)?-1:1}).slice(0,15);
+  document.getElementById('ntDa').innerHTML=da.length?da.map(function(g){return '<div style="padding:6px 0;border-top:1px solid var(--line)">'+esc(g.ngayck)+' · '+esc(g.khach||'')+' · '+fmt(g.tong)+' đ</div>'}).join(''):'Chưa có.';
+  ntTong();
+}
+function ntChonHet(on){NT.chon={};if(on)NT.ds.forEach(function(g){NT.chon[g.id]=1});ntVe()}
+function ntDaChon(){return NT.ds.filter(function(g){return NT.chon[g.id]})}
+function ntTong(){
+  var c=ntDaChon(),t=0;c.forEach(function(g){t+=g.tong});
+  document.getElementById('ntTong').textContent='Đã chọn '+c.length+' đơn · '+fmt(t)+' đ';
+  var all=document.getElementById('ntAll');all.checked=c.length>0&&c.length===NT.ds.length;
+}
+function ntChonAnh(inp){
+  var f=inp.files&&inp.files[0],info=document.getElementById('ntAnhInfo');
+  if(!f){NT.anh=null;info.textContent='Chưa chọn ảnh.';return}
+  info.textContent='Đang nén ảnh...';
+  nenAnh(f,function(u){
+    if(!u){NT.anh=null;info.textContent='Không đọc được ảnh. Thử ảnh khác.';return}
+    var i=u.indexOf(',');NT.anh={data:u.slice(i+1),mime:'image/jpeg',ten:'nop-'+todayISO()+'-'+Date.now()+'.jpg'};
+    info.textContent='Đã đính kèm ảnh (~'+Math.round(NT.anh.data.length*0.75/1024)+' KB).';
+  });
+}
+function ntLuu(){
+  if(!GS){alert('Chưa cấu hình backend. Bấm Cài đặt.');return}
+  var c=ntDaChon();if(!c.length){alert('Tích chọn ít nhất 1 đơn.');return}
+  var ngay=document.getElementById('ntNgay').value;if(!ngay){alert('Chọn ngày nộp.');return}
+  var tong=0;c.forEach(function(g){tong+=g.tong});
+  var sel=document.getElementById('ntNguoi'),nguoi=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].text:'';
+  if(sel.value==='*')nguoi=c[0].thu||'';
+  if(!confirm('Xác nhận đã nộp '+fmt(tong)+' đ ('+c.length+' đơn) về TK công ty Fuji ngày '+isoToVn(ngay)+'?'))return;
+  var idDot='NT'+Date.now(),gc=(document.getElementById('ntGc').value||'').trim();
+  var body={loai:'doisoatck',giuHt:true,ht:'',
+    dot:{id:idDot,ngaynop:isoToVn(ngay),nguoinop:nguoi,tknhan:'TK công ty Fuji',tongnop:tong,ghichu:gc},
+    rows:c.map(function(g){return {id:g.id,tien:g.tong,ngaykh:g.ngay,ghichu:gc}}),
+    anh:NT.anh?[NT.anh]:[]};
+  var btn=document.getElementById('ntSave');btn.disabled=true;btn.textContent='Đang gửi...';
+  var ids=c.map(function(g){return g.id});
+  fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)})
+   .then(function(){ntXacNhan(ids,1)})
+   .catch(function(e){btn.disabled=false;btn.textContent='Lưu đã nộp';alert('Lỗi gửi dữ liệu: '+e.message)});
+}
+/* no-cors khong doc duoc phan hoi -> tai lai Sheet, kiem tra cac don da co Ngay CK chua */
+function ntXacNhan(ids,lan){
+  var btn=document.getElementById('ntSave');btn.textContent='Đang kiểm tra trên Sheet...';
+  setTimeout(function(){
+    loadData(false,function(){
+      var m={};ntGop().forEach(function(g){m[g.id]=g});
+      var thieu=ids.filter(function(id){return !(m[id]&&m[id].ngayck)});
+      if(!thieu.length){
+        btn.disabled=false;btn.textContent='Lưu đã nộp';
+        NT.chon={};NT.anh=null;document.getElementById('ntGc').value='';document.getElementById('ntAnhInfo').textContent='Chưa chọn ảnh.';
+        ntVe();alert('Đã ghi nộp '+ids.length+' đơn về TK công ty.');
+      }else if(lan<3){ntXacNhan(ids,lan+1)}
+      else{btn.disabled=false;btn.textContent='Lưu đã nộp';ntVe();
+        alert('Chưa thấy '+thieu.length+' đơn được ghi trên Sheet. Bấm Làm mới để kiểm tra lại trước khi lưu lần nữa (tránh ghi 2 lần).');}
+    });
+  },lan===1?2500:4000);
+}
 
 /* ---------- GIAO VIBA: khoi tren form hoa don ---------- */
 /* Tong tien + so da thu theo dung cong thuc cua dongBo() */

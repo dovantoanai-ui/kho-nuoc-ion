@@ -53,7 +53,17 @@ var COT_LINK = 'Link bill';
 var APP_HEAD = ['ID hoa don', 'Ma KH app', 'SDT', 'Kho', 'Coc binh', 'Tong thanh toan', 'Da thu',
                 'Trang thai TT', 'Nguoi thu', 'Hinh thuc TT', 'Ghi chu', 'Ngày CK', 'Thang', COT_LINK];
 
-var HD_HEAD = MISA_HEAD.concat(APP_HEAD);
+// 16/10/2026: anh Toan rut tab HoaDon con 27 cot (bo cac cot MISA khong dung).
+// Backend GHI THEO TIEU DE THAT cua tab (xem ghiHoaDonRows_) -> them/bot/doi thu tu cot
+// khong lam hong app. HD_HEAD chi dung khi phai TAO tab moi (vd HoaDonCho chua co).
+var HD_HEAD = ['Ngày chứng từ (*)', 'Số chứng từ (*)', 'Mã khách hàng', 'Tên khách hàng', 'Tên hàng', 'ĐVT',
+  'Số lượng', 'Đơn giá', 'Thành tiền', '% thuế GTGT', '% thuế suất KHAC', 'Tiền thuế GTGT', 'TK thuế GTGT']
+  .concat(APP_HEAD);
+// Cot BAT BUOC tren tab HoaDon / HoaDonCho / HoaDonHuy (moi cap: ten moi hoac ten cu).
+// Thieu 1 cot -> DUNG, bao loi ro (thay vi ghi am tham lam mat san pham / tien).
+var HD_COT_BAT_BUOC = [['ID hoa don'], ['Ngày chứng từ (*)', 'Ngay'], ['Tên khách hàng', 'Khach'],
+  ['Tên hàng', 'San pham'], ['Số lượng', 'SL'], ['Đơn giá', 'Don gia'], ['Thành tiền', 'Thanh tien'],
+  ['Kho'], ['Tong thanh toan'], ['Da thu'], ['Trang thai TT']];
 
 // 01/10/2026: tab HoaDonHuy = cac dong hoa don bi huy (nhap sai / VIBA hoan hang),
 // cung cau truc HoaDon + 4 cot luu vet. HoaDon chi giu hoa don dang hieu luc ->
@@ -199,8 +209,20 @@ function doPost(e) {
 // 16/08/2026: ID hoa don da co trong tab thi bo qua ca chum dong cua ID do (chong ghi trung).
 // 13/10/2026: tim cot theo TEN (cot 1 khong con la ID); ep dang chu truoc khi ghi.
 function ghiHoaDonRows_(ss, name, rows) {
-  var head = (name === 'HoaDonHuy') ? HUY_HEAD : HD_HEAD;
-  var sh = ensureSheet_(ss, name, head);
+  // 16/10/2026: tab DA CO -> doc tieu de that, ghi theo ten cot (cot da xoa thi bo qua).
+  // Tab chua co / trang -> tao theo khuon mac dinh.
+  var sh = ss.getSheetByName(name), head;
+  if (sh && sh.getLastRow() >= 1 && sh.getLastColumn() > 0) {
+    head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(function (x) { return String(x).trim(); });
+    var thieu = HD_COT_BAT_BUOC.filter(function (ds) {
+      return !ds.some(function (t) { return head.indexOf(t) >= 0; });
+    }).map(function (ds) { return ds[0]; });
+    if (thieu.length) throw new Error('Tab ' + name + ' thieu cot: ' + thieu.join(', ') +
+                                     '. Them lai cot (dung ten) roi luu lai hoa don.');
+  } else {
+    head = (name === 'HoaDonHuy') ? HUY_HEAD : HD_HEAD;
+    sh = ensureSheet_(ss, name, head);
+  }
   var cId = head.indexOf('ID hoa don') + 1;
   var daCoId = {};
   var lastR = sh.getLastRow();
@@ -228,6 +250,9 @@ function ghiHoaDonRows_(ss, name, rows) {
 
 // Doi cac dong (thu tu app) sang khuon tab (head = HD_HEAD hoac HUY_HEAD).
 // Thong tin cap hoa don (khach, VAT, thanh toan...) lay o dong DAU cua moi ID trong rows.
+var TEN_CU_ = { 'Ngày chứng từ (*)': 'Ngay', 'Tên khách hàng': 'Khach', 'Tên hàng': 'San pham',
+  'ĐVT': 'DVT', 'Số lượng': 'SL', 'Đơn giá': 'Don gia', 'Thành tiền': 'Thanh tien', '% thuế GTGT': 'VAT %',
+  'Ma KH app': 'Ma KH' };
 function hdSangMisa_(rows, head, mm) {
   var c = {}; head.forEach(function (n, i) { c[n] = i; });
   var chu = {}; HD_COT_CHU.forEach(function (n) { if (c[n] != null) chu[c[n]] = 1; });
@@ -236,7 +261,10 @@ function hdSangMisa_(rows, head, mm) {
   return rows.map(function (r) {
     var id = String(r[0] || '').trim(), h = dau[id], laDau = (h === r);
     var o = head.map(function () { return ''; });
-    function set(n, v) { if (c[n] != null) o[c[n]] = (v == null ? '' : v); }
+    function set(n, v) { // 16/10/2026: tab con ten cot cu thi ghi vao ten cu
+      var k = (c[n] != null) ? n : (TEN_CU_[n] && c[TEN_CU_[n]] != null ? TEN_CU_[n] : null);
+      if (k != null) o[c[k]] = (v == null ? '' : v);
+    }
     var khach = String(h[3] || '').trim(), tt = String(h[15] || '').trim(), ht = String(h[17] || '').trim();
     var vat = num_(h[11]), sl = num_(r[8]), tien = num_(r[10]), ngay = ngayChu_(r[1]);
     var pt = ptThanhToan_(tt, ht);
@@ -1208,13 +1236,15 @@ function doiSoatCK_(ss, p) {
     }
     var note = 'ĐS CK ' + idDot + ' nộp ' + d.ngaynop + ' (KH TT ' + (x.ngaykh || '?') +
                (x.ghichu ? ', ' + x.ghichu : '') + ')';
+    if (p.giuHt) note = 'Nộp TK công ty ' + d.ngaynop + ' · đợt ' + idDot +
+                        (d.nguoinop ? ' · ' + d.nguoinop : '') + (x.ghichu ? ', ' + x.ghichu : '');
     ketqua.push({ id: id, khach: cKh > 0 ? shHD.getRange(dong, cKh).getValue() : '', tong: tong,
                   thuCu: thuCu, thuMoi: thuMoi, ttCu: ttCu, ttMoi: ttMoi, tien: tien,
                   lech: (ttCu !== 'Đã thanh toán' && thuCu + tien !== tong) ? (thuCu + tien - tong) : 0 });
     if (!ghi) return;
     shHD.getRange(dong, cThu).setValue(thuMoi);
     shHD.getRange(dong, cTt).setValue(ttMoi);
-    shHD.getRange(dong, cHt).setValue(ht);
+    if (!p.giuHt) shHD.getRange(dong, cHt).setValue(ht); // 16/10/2026: nop tien ve TK cong ty -> giu Hinh thuc TT goc
     shHD.getRange(dong, cCk).setNumberFormat('@').setValue(String(d.ngaynop));
     var gcCu = String(shHD.getRange(dong, cGc).getValue() || '');
     shHD.getRange(dong, cGc).setValue(gcCu ? gcCu + ' | ' + note : note);
