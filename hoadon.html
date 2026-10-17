@@ -533,12 +533,25 @@
     <!-- ===== TAB CSKH ===== -->
     <div id="tab-cs" class="tab-pane" style="display:none">
       <div class="card">
-        <h2>Chăm sóc lại — đến hạn</h2>
+        <h2>Chăm sóc khách hàng</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div style="background:#f6f7f9;border-radius:10px;padding:10px"><div class="muted" style="font-size:12px">Đến hạn chăm sóc</div><div id="csDen" style="font-size:20px;font-weight:700">0</div></div>
+          <div style="background:#f6f7f9;border-radius:10px;padding:10px"><div class="muted" style="font-size:12px">Đã chăm sóc hôm nay</div><div id="csNay" style="font-size:20px;font-weight:700">0</div></div>
+        </div>
+        <div id="csNv" class="muted" style="font-size:12px;margin-bottom:8px"></div>
         <div class="row" style="align-items:center">
           <span class="muted" style="flex:1">Nhắc sau lần mua gần nhất (ngày):</span>
           <input id="csN" type="number" inputmode="numeric" style="width:70px;text-align:center" value="10" onchange="saveCsN();renderCSKH()">
         </div>
+        <label>Người chăm sóc</label>
+        <input id="csNguoi" placeholder="Tên của bạn (VD: Huy)" onchange="csLuuNguoi()">
+        <label style="margin-top:8px">Tìm khách bất kỳ (kể cả chưa đến hạn)</label>
+        <input id="csTim" type="search" autocomplete="off" placeholder="Gõ tên, mã hoặc SĐT" oninput="renderCSKH()">
         <div id="csList" style="margin-top:8px"></div>
+      </div>
+      <div class="card">
+        <h2>Đã chăm sóc hôm nay</h2>
+        <div id="csDa"></div>
       </div>
     </div>
 
@@ -718,7 +731,7 @@ function loadData(manual,cb){
   document.getElementById('dataInfo').textContent='Đang tải dữ liệu...';
   jsonp(GS,function(d){
     if(!d||!d.ok){document.getElementById('dataInfo').textContent='Lỗi tải dữ liệu';if(manual)alert('Không tải được dữ liệu. Kiểm tra URL backend đã deploy đúng chưa.');if(cb)cb(false);return}
-    KH=d.khach||[];HD=d.hoadon||[];TT=d.thanhtoan||[];VB=d.viba||[];CHO=d.cho||[];HUY=d.huy||[];KV=d.khoviba||[];KKV=d.kiemkhoviba||[];VCFG=d.vbcfg||null;VBSHEET=d.vbSheet||'';
+    KH=d.khach||[];HD=d.hoadon||[];TT=d.thanhtoan||[];VB=d.viba||[];CHO=d.cho||[];HUY=d.huy||[];KV=d.khoviba||[];KKV=d.kiemkhoviba||[];VCFG=d.vbcfg||null;VBSHEET=d.vbSheet||'';CSK=d.cskh||[];
     if(d.cat&&d.cat.length){CAT=d.cat;try{localStorage.setItem('hd_cat',JSON.stringify(CAT))}catch(e){}refreshRows();}
     document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn';
     fillKhSelect();renderMaPreview();renderKhList();renderBaoCao();if(TAB==='bc')bcXChon(BCX);renderCongNo();renderThuNo();renderViba();renderCSKH();vbRenderSub();
@@ -1767,21 +1780,142 @@ function vbKiemTra(id,btn,lan,ttMongDoi,nhanNut,thongBao){
 
 /* ---------- CSKH ---------- */
 function saveCsN(){localStorage.setItem('hd_cskh_ngay',document.getElementById('csN').value||'10')}
+/* ---------- 17/10/2026: CHAM SOC KHACH HANG ----------
+ * Den han: mua gan nhat >= N ngay va (chua cham soc tu lan mua do, hoac den ngay hen goi lai,
+ * hoac lan cham soc cuoi da qua N ngay). 'Khong mua nua' -> an cho toi khi khach mua lai.
+ * Nut Goi/Zalo: ghi luc bam + so giay roi app (UOC LUONG thoi luong goi). Bao cao -> tab CSKH. */
+var CSK=[];var CS={mo:'',kq:'',trk:{},dangGoi:'',anLuc:0};
+var CS_KQ=['Nghe máy','Không nghe','Đã nhắn Zalo','Hẹn đặt hàng','Khách đặt luôn','Không mua nữa'];
+function csLuuNguoi(){try{localStorage.setItem('hd_cs_nguoi',document.getElementById('csNguoi').value.trim())}catch(e){}}
+function csSo(s){var d=String(s||'').replace(/\D/g,'');if(/^84\d{9}$/.test(d))d='0'+d.slice(2);if(/^\d{9}$/.test(d))d='0'+d;return d}
+function csGio(){var d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes())}
+function csLast(ma){var c=null;CSK.forEach(function(x){if(x.ma===ma)c=x});return c}
+function csDenHan(ma,lb,N){
+  var c=csLast(ma);if(!c)return lb.days>=N;
+  if(ntIso(c.ngay)<lb.iso)return lb.days>=N;
+  if(c.ketqua==='Không mua nữa')return false;
+  if(c.hen)return ntIso(c.hen)<=todayISO();
+  return lb.days>=N&&daysSince(c.ngay)>=N;
+}
+function csGiay(n){n=Math.round(Number(n)||0);if(!n)return '';var m=Math.floor(n/60),s2=n%60;return (m?m+' phút ':'')+s2+' giây'}
 function renderCSKH(){
   var N=Number(localStorage.getItem('hd_cskh_ngay')||10);document.getElementById('csN').value=N;
+  var ng=document.getElementById('csNguoi');if(!ng.value)ng.value=localStorage.getItem('hd_cs_nguoi')||localStorage.getItem('hd_nguoithu')||'';
   var last={};
-  HD.forEach(function(x){if(x.kho!==KHO||!x.ma)return;var d=daysSince(x.ngay);if(!(x.ma in last)||d<last[x.ma])last[x.ma]=d});
-  var arr=[];for(var m in last){if(last[m]>=N){var k=khByMa(m);arr.push({ma:m,ten:k?k.ten:'',sdt:k?k.sdt:'',days:last[m]})}}
-  arr.sort(function(a,b){return b.days-a.days});
-  var el=document.getElementById('csList');
-  if(!arr.length){el.innerHTML='<div class="empty">Chưa có khách đến hạn chăm sóc.</div>';return}
-  var h='';
-  arr.forEach(function(a){
-    h+='<div class="li"><div><div class="t1">'+a.ma+' · '+(a.ten||'—')+'</div>'
-      +'<div class="t2">Mua gần nhất '+a.days+' ngày trước'+(a.sdt?' · '+a.sdt:'')+'</div></div>'
-      +'<div class="rt"><span class="pill p-warn">gọi lại</span></div></div>';
+  HD.forEach(function(x){if(x.kho!==KHO||!x.ma)return;var d=daysSince(x.ngay);if(!(x.ma in last)||d<last[x.ma].days)last[x.ma]={days:d,iso:ntIso(x.ngay)}});
+  var den=[];for(var m in last){if(csDenHan(m,last[m],N)){var k=khByMa(m);den.push({ma:m,ten:k?k.ten:'',sdt:k?k.sdt:'',days:last[m].days})}}
+  den.sort(function(a,b){return b.days-a.days});
+  var homNay=today(),nay=CSK.filter(function(x){return x.ngay===homNay&&(!x.kho||x.kho===KHO)});
+  document.getElementById('csDen').textContent=den.length+' khách';
+  document.getElementById('csNay').textContent=nay.length;
+  var nv={};nay.forEach(function(x){var t=x.nguoi||'(chưa ghi tên)';nv[t]=(nv[t]||0)+1});
+  document.getElementById('csNv').textContent=Object.keys(nv).length?('Hôm nay: '+Object.keys(nv).map(function(t){return t+' '+nv[t]}).join(' · ')):'';
+  var q=(document.getElementById('csTim').value||'').trim(),ds;
+  if(q){ds=khLoc(q).map(function(k){return {ma:k.ma,ten:k.ten,sdt:k.sdt,days:last[k.ma]?last[k.ma].days:null}})}else ds=den;
+  var el=document.getElementById('csList');el.innerHTML='';
+  if(!ds.length){el.innerHTML='<div class="empty">'+(q?'Không thấy khách.':'Chưa có khách đến hạn chăm sóc.')+'</div>'}
+  ds.forEach(function(a){el.appendChild(csDong(a))});
+  var da=document.getElementById('csDa');da.innerHTML='';
+  if(!nay.length){da.innerHTML='<div class="muted">Chưa có.</div>'}
+  nay.slice().reverse().forEach(function(x){
+    var d=document.createElement('div');d.style.cssText='padding:7px 0;border-top:1px solid var(--line);font-size:13px';
+    var t1=document.createElement('div');t1.style.fontWeight='600';t1.textContent=String(x.luc||'').slice(11,16)+' · '+(x.ten||x.ma)+' · '+x.ketqua;
+    var t2=document.createElement('div');t2.className='muted';t2.style.fontSize='12px';
+    t2.textContent=(x.nguoi||'')+(x.kenh?' · '+x.kenh:'')+(x.roi?' · rời app '+csGiay(x.roi):'')+(x.hen?' · hẹn '+x.hen:'')+(x.ghichu?' · '+x.ghichu:'');
+    d.appendChild(t1);d.appendChild(t2);da.appendChild(d);
   });
-  el.innerHTML=h;
+}
+function csDong(a){
+  var w=document.createElement('div');w.style.cssText='padding:9px 0;border-top:1px solid var(--line)';
+  var hd=document.createElement('div');hd.style.cssText='display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:8px';
+  var l=document.createElement('div');
+  var t1=document.createElement('div');t1.className='t1';t1.textContent=a.ma+' · '+(a.ten||'-');t1.style.fontWeight='600';
+  var c=csLast(a.ma);
+  var t2=document.createElement('div');t2.className='t2 muted';t2.style.fontSize='12px';
+  t2.textContent=(a.days!=null?'Mua gần nhất '+a.days+' ngày trước':'Chưa mua')+(a.sdt?' · '+a.sdt:'')+(c?' · CS gần nhất '+c.ngay+' ('+c.ketqua+')':'');
+  l.appendChild(t1);l.appendChild(t2);
+  var r=document.createElement('span');r.className='pill p-warn';r.textContent=CS.mo===a.ma?'đóng':'chăm sóc';
+  hd.appendChild(l);hd.appendChild(r);
+  hd.addEventListener('click',function(){CS.mo=(CS.mo===a.ma)?'':a.ma;CS.kq='';renderCSKH()});
+  w.appendChild(hd);
+  if(CS.mo===a.ma)w.appendChild(csPanel(a));
+  return w;
+}
+function csPanel(a){
+  var p=document.createElement('div');p.style.cssText='margin-top:10px;background:#fafbfc;border:1px solid var(--line);border-radius:10px;padding:10px';
+  var so=csSo(a.sdt),t=CS.trk[a.ma]||{sogoi:0,sozalo:0,roi:0,goiluc:''};
+  var nut=document.createElement('div');nut.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px';
+  var bg=document.createElement('button');bg.className='btn bgrn';bg.textContent='Gọi';
+  var bz=document.createElement('button');bz.className='btn';bz.style.cssText='background:#e8f1ff;color:#0068ff;border:1px solid #b9d4ff';bz.textContent='Zalo';
+  if(!so){bg.disabled=true;bz.disabled=true}
+  bg.addEventListener('click',function(){csBam(a,'goi',so)});
+  bz.addEventListener('click',function(){csBam(a,'zalo',so)});
+  nut.appendChild(bg);nut.appendChild(bz);p.appendChild(nut);
+  var info=document.createElement('div');info.className='muted';info.style.cssText='font-size:12px;margin:6px 0';
+  info.textContent=!so?'Khách chưa có SĐT.':(t.sogoi||t.sozalo)?('Đã bấm: '+(t.sogoi?t.sogoi+' lần gọi':'')+(t.sogoi&&t.sozalo?', ':'')+(t.sozalo?t.sozalo+' lần Zalo':'')+(t.goiluc?' · lần cuối '+t.goiluc:'')+(t.roi?' · rời app khoảng '+csGiay(t.roi):'')):'Bấm Gọi / Zalo ngay trong app để hệ thống ghi nhận.';
+  p.appendChild(info);
+  var lb=document.createElement('div');lb.className='muted';lb.style.cssText='font-size:12px;margin:6px 0 4px';lb.textContent='Kết quả';p.appendChild(lb);
+  var chips=document.createElement('div');chips.style.cssText='display:flex;flex-wrap:wrap;gap:6px';
+  CS_KQ.forEach(function(k){
+    var b=document.createElement('button');b.type='button';b.textContent=k;
+    var on=CS.kq===k;b.style.cssText='font:inherit;font-size:13px;padding:6px 10px;border-radius:999px;cursor:pointer;border:1px solid '+(on?'var(--red)':'var(--line)')+';background:'+(on?'#fff0ee':'#fff')+';color:'+(on?'var(--red)':'var(--ink)')+';font-weight:'+(on?'700':'400');
+    b.addEventListener('click',function(){var g=document.getElementById('csGc'),h=document.getElementById('csHen');var gv=g?g.value:'',hv=h?h.value:'';CS.kq=k;renderCSKH();var g2=document.getElementById('csGc'),h2=document.getElementById('csHen');if(g2)g2.value=gv;if(h2)h2.value=hv});
+    chips.appendChild(b);
+  });
+  p.appendChild(chips);
+  var l2=document.createElement('label');l2.style.marginTop='8px';l2.textContent='Ghi chú';p.appendChild(l2);
+  var gc=document.createElement('textarea');gc.id='csGc';gc.rows=2;gc.placeholder='VD: khách còn 3 bình, hẹn thứ 5 giao 10 bình';
+  gc.style.cssText='width:100%;box-sizing:border-box;font:inherit;padding:10px;border:1px solid var(--line);border-radius:10px';p.appendChild(gc);
+  var l3=document.createElement('label');l3.style.marginTop='8px';l3.textContent='Hẹn gọi lại (không bắt buộc)';p.appendChild(l3);
+  var hen=document.createElement('input');hen.type='date';hen.id='csHen';p.appendChild(hen);
+  var sv=document.createElement('button');sv.className='btn bgrn';sv.style.cssText='width:100%;margin-top:10px';sv.textContent='Lưu báo cáo đã chăm sóc';
+  sv.addEventListener('click',function(){csLuu(a,sv)});
+  p.appendChild(sv);
+  return p;
+}
+function csBam(a,kenh,so){
+  var t=CS.trk[a.ma]||(CS.trk[a.ma]={sogoi:0,sozalo:0,roi:0,goiluc:''});
+  if(kenh==='goi')t.sogoi++;else t.sozalo++;
+  t.goiluc=csGio();CS.dangGoi=a.ma;CS.anLuc=0;
+  if(kenh==='goi')window.location.href='tel:'+so;else window.open('https://zalo.me/'+so,'_blank');
+  setTimeout(renderCSKH,300);
+}
+document.addEventListener('visibilitychange',function(){
+  if(!CS.dangGoi)return;
+  if(document.hidden){CS.anLuc=Date.now();return}
+  if(CS.anLuc){var t=CS.trk[CS.dangGoi];if(t)t.roi+=Math.round((Date.now()-CS.anLuc)/1000)}
+  CS.dangGoi='';CS.anLuc=0;if(TAB==='cs')renderCSKH();
+});
+function csLuu(a,btn){
+  if(!GS){alert('Chưa cấu hình backend. Bấm Cài đặt.');return}
+  if(!CS.kq){alert('Chọn kết quả chăm sóc.');return}
+  var nguoi=(document.getElementById('csNguoi').value||'').trim();
+  if(!nguoi){alert('Ghi tên người chăm sóc ở ô phía trên.');document.getElementById('csNguoi').focus();return}
+  csLuuNguoi();
+  var t=CS.trk[a.ma]||{sogoi:0,sozalo:0,roi:0,goiluc:''};
+  var kenh=(t.sogoi&&t.sozalo)?'Gọi + Zalo':t.sogoi?'Gọi':t.sozalo?'Zalo':'Không bấm từ app';
+  var henIso=document.getElementById('csHen').value;
+  var cs={id:'CS'+Date.now(),ngay:today(),ma:a.ma,ten:a.ten||'',sdt:a.sdt||'',kho:KHO,nguoi:nguoi,kenh:kenh,
+    ketqua:CS.kq,ghichu:(document.getElementById('csGc').value||'').trim(),hen:henIso?isoToVn(henIso):'',
+    goiluc:t.goiluc,roi:t.roi||0,sogoi:t.sogoi||0,sozalo:t.sozalo||0};
+  btn.disabled=true;btn.textContent='Đang gửi...';
+  fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({loai:'cskh',cs:cs})})
+   .then(function(){
+     var d=new Date();CSK.push({id:cs.id,luc:today()+' '+csGio(),ngay:cs.ngay,ma:cs.ma,ten:cs.ten,kho:KHO,nguoi:nguoi,kenh:kenh,ketqua:cs.ketqua,ghichu:cs.ghichu,hen:cs.hen,roi:cs.roi,cho:1});
+     delete CS.trk[a.ma];CS.mo='';CS.kq='';document.getElementById('csTim').value='';renderCSKH();
+     csXacNhan(cs.id,1);
+   })
+   .catch(function(e){btn.disabled=false;btn.textContent='Lưu báo cáo đã chăm sóc';alert('Lỗi gửi dữ liệu: '+e.message)});
+}
+/* no-cors: tai lai ngam de chac dong da vao Sheet; that bai 2 lan thi bao */
+function csXacNhan(id,lan){
+  setTimeout(function(){
+    jsonp(GS,function(d){
+      if(d&&d.ok&&(d.cskh||[]).some(function(x){return x.id===id})){
+        var cho=CSK.filter(function(x){return x.cho&&x.id!==id});CSK=(d.cskh||[]).concat(cho);if(TAB==='cs')renderCSKH();return}
+      if(lan<2)csXacNhan(id,lan+1);else alert('Chưa thấy báo cáo chăm sóc vừa lưu trên Sheet. Bấm Làm mới để kiểm tra, nếu vẫn thiếu thì lưu lại.');
+    });
+  },lan===1?3000:5000);
 }
 
 /* ---------- KIEM KE (ghi vao backend KHO proj1) ---------- */

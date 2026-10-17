@@ -192,6 +192,8 @@ function doPost(e) {
       out = ghiCfgViba_(ss, p.cfg, p.nguoi);
     } else if (p.loai === 'huyhd' && p.id) {
       out = huyHoaDon_(ss, p);
+    } else if (p.loai === 'cskh' && p.cs && p.cs.id) {
+      out = ghiCskh_(ss, p.cs); // 17/10/2026: bao cao cham soc khach hang
     } else if (p.loai === 'doisoatck' && p.dot && p.rows && p.rows.length) {
       out = doiSoatCK_(ss, p);
     }
@@ -524,6 +526,7 @@ function doGet(e) {
     out.khoviba = readKhoViba_(ss); // 01/10/2026
     out.kiemkhoviba = readKiemKhoViba_(ss);
     out.vbcfg = readCfgViba_(ss);
+    try { out.cskh = readCskh_(ss); } catch (e5) { out.cskh = []; } // 17/10/2026
     var vbid = PropertiesService.getScriptProperties().getProperty(VBSHEET_KEY);
     if (vbid) out.vbSheet = 'https://docs.google.com/spreadsheets/d/' + vbid + '/edit';
   } catch (err) {
@@ -531,6 +534,43 @@ function doGet(e) {
   }
   return ContentService.createTextOutput(cb + '(' + JSON.stringify(out) + ')')
     .setMimeType(ContentService.MimeType.JAVASCRIPT);
+}
+
+// ============================================================
+// 17/10/2026 — CHAM SOC KHACH HANG (tab CSKH). Moi lan NV bao cao = 1 dong.
+// 'Bam goi luc' / 'Roi app (giay)': app ghi luc NV bam nut Goi/Zalo trong app va so giay
+// roi app sau do (UOC LUONG thoi luong cuoc goi - app web khong doc duoc nhat ky cuoc goi).
+// ============================================================
+var CS_HEAD = ['ID', 'Thoi gian', 'Ngay', 'Ma KH', 'Ten KH', 'SDT', 'Kho', 'Nguoi CS', 'Kenh',
+               'Ket qua', 'Ghi chu', 'Hen goi lai', 'Bam goi luc', 'Roi app (giay)', 'So lan bam Goi',
+               'So lan bam Zalo', 'Thang'];
+function ghiCskh_(ss, c) {
+  var sh = ensureSheet_(ss, 'CSKH', CS_HEAD);
+  var id = String(c.id).trim();
+  if (sh.getLastRow() >= 2) {
+    var ids = sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues();
+    for (var i = 0; i < ids.length; i++) if (String(ids[i][0]).trim() === id) return { ok: true, skipped: 1 };
+  }
+  var luc = Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm');
+  var ngay = String(c.ngay || luc.slice(0, 10));
+  var row = [id, luc, ngay, String(c.ma || ''), String(c.ten || ''), sdtChu_(c.sdt), String(c.kho || ''),
+             String(c.nguoi || ''), String(c.kenh || ''), String(c.ketqua || ''), String(c.ghichu || ''),
+             String(c.hen || ''), String(c.goiluc || ''), num_(c.roi), num_(c.sogoi), num_(c.sozalo), thang_(ngay)];
+  var dong = sh.getLastRow() + 1;
+  [1, 2, 3, 4, 6, 12, 13, 17].forEach(function (k) { sh.getRange(dong, k).setNumberFormat('@'); });
+  sh.getRange(dong, 1, 1, CS_HEAD.length).setValues([row]);
+  return { ok: true, added: 1, id: id };
+}
+function readCskh_(ss) {
+  var d = rowsOf_(ss, 'CSKH'); if (!d.head.length) return [];
+  var m = cotMap_(d.head);
+  function g(r, n) { return m[n] == null ? '' : r[m[n]]; }
+  return d.rows.filter(function (r) { return String(g(r, 'ID')).trim(); }).map(function (r) {
+    return { id: String(g(r, 'ID')), luc: String(g(r, 'Thoi gian')), ngay: fmtD_(g(r, 'Ngay')), ma: String(g(r, 'Ma KH')),
+             ten: String(g(r, 'Ten KH')), kho: String(g(r, 'Kho')), nguoi: String(g(r, 'Nguoi CS')), kenh: String(g(r, 'Kenh')),
+             ketqua: String(g(r, 'Ket qua')), ghichu: String(g(r, 'Ghi chu')), hen: g(r, 'Hen goi lai') ? fmtD_(g(r, 'Hen goi lai')) : '',
+             roi: num_(g(r, 'Roi app (giay)')) };
+  });
 }
 
 // ---------- Helpers ----------
