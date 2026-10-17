@@ -740,14 +740,17 @@ function loadData(manual,cb){
   });
 }
 function countInvoices(){var s={};HD.forEach(function(x){s[x.id]=1});return Object.keys(s).length}
-function khInKho(){return KH.filter(function(k){return k.kho===KHO})}
+/* 17/10/2026: kho Hung Yen da dong -> o kho Ha Noi, khach + don cu cua Hung Yen coi nhu cua minh
+   (chon khach, cong no, thu no, CSKH). Don MOI ban cho khach HY ghi Kho = Ha Noi. */
+function khoGop(k){k=String(k||'');return k===KHO||(KHO==='Hà Nội'&&k.indexOf('Hưng')>=0)}
+function khInKho(){return KH.filter(function(k){return khoGop(k.kho)})}
 function khByMa(ma){for(var i=0;i<KH.length;i++)if(KH[i].ma===ma)return KH[i];return null}
 
 /* ---------- KHACH ---------- */
 function fillKhSelect(){
   var sel=document.getElementById('khSel');var cur=sel.value;
   var h='<option value="">-- chọn khách --</option>';
-  khInKho().forEach(function(k){h+='<option value="'+k.ma+'">'+k.ma+' — '+k.ten+(k.qh?', '+k.qh:'')+'</option>'});
+  khInKho().forEach(function(k){h+='<option value="'+k.ma+'">'+khNhan(k)+(k.qh?', '+k.qh:'')+'</option>'});
   sel.innerHTML=h;sel.value=cur;khTxtDongBo();
 }
 function onKhSel(){
@@ -765,7 +768,7 @@ function onKhSel(){
 /* ---------- 14/10/2026: CHON KHACH BANG GO TU KHOA (goi y toi da 8) ---------- */
 var KHGY_MAX=8,KHGY=[],KHGY_I=-1;
 function khBoDau(s){s=String(s==null?'':s).toLowerCase();try{s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'')}catch(e){}return s.replace(/\u0111/g,'d').replace(/\s+/g,' ').trim()}
-function khNhan(k){return k.ma+' \u2014 '+k.ten}
+function khNhan(k){return k.ma+' \u2014 '+k.ten+(String(k.kho||'').indexOf('Hưng')>=0?' (HY)':'')}
 function khTxtDongBo(){var el=document.getElementById('khTim');if(!el)return;var k=selKh();el.value=k?khNhan(k):''}
 function khLoc(q){
   var tu=khBoDau(q).split(' ').filter(function(x){return x});
@@ -1184,7 +1187,7 @@ function dongBo(){
 function invoicesInKho(){
   var m={};
   HD.forEach(function(x){
-    if(x.kho!==KHO)return;
+    if(!khoGop(x.kho))return;
     var g=m[x.id];if(!g){g=m[x.id]={id:x.id,ma:x.ma,khach:x.khach,ngay:x.ngay,tong:0,dathu:0,tienHang:0,tt:''};}
     g.tienHang+=x.tien;
     if(x.tong>g.tong)g.tong=x.tong;
@@ -1520,7 +1523,7 @@ function renderTnNo(){
 function renderThuNo(){
   renderTnNo();
   var el=document.getElementById('tnList');if(!el)return;
-  var arr=TT.filter(function(x){return x.kho===KHO});
+  var arr=TT.filter(function(x){return khoGop(x.kho)});
   arr.sort(function(a,b){return String(b.id).localeCompare(String(a.id))});
   var tong=0,thangNay=0,mm=thangHienTai();
   arr.forEach(function(x){tong+=x.tien;if(thangCua(x.ngay)===mm)thangNay+=x.tien});
@@ -1802,10 +1805,10 @@ function renderCSKH(){
   var N=Number(localStorage.getItem('hd_cskh_ngay')||10);document.getElementById('csN').value=N;
   var ng=document.getElementById('csNguoi');if(!ng.value)ng.value=localStorage.getItem('hd_cs_nguoi')||localStorage.getItem('hd_nguoithu')||'';
   var last={};
-  HD.forEach(function(x){if(x.kho!==KHO||!x.ma)return;var d=daysSince(x.ngay);if(!(x.ma in last)||d<last[x.ma].days)last[x.ma]={days:d,iso:ntIso(x.ngay)}});
+  HD.forEach(function(x){if(!khoGop(x.kho)||!x.ma)return;var d=daysSince(x.ngay);if(!(x.ma in last)||d<last[x.ma].days)last[x.ma]={days:d,iso:ntIso(x.ngay)}});
   var den=[];for(var m in last){if(csDenHan(m,last[m],N)){var k=khByMa(m);den.push({ma:m,ten:k?k.ten:'',sdt:k?k.sdt:'',days:last[m].days})}}
   den.sort(function(a,b){return b.days-a.days});
-  var homNay=today(),nay=CSK.filter(function(x){return x.ngay===homNay&&(!x.kho||x.kho===KHO)});
+  var homNay=today(),nay=CSK.filter(function(x){return x.ngay===homNay&&(!x.kho||khoGop(x.kho))});
   document.getElementById('csDen').textContent=den.length+' khách';
   document.getElementById('csNay').textContent=nay.length;
   var nv={};nay.forEach(function(x){var t=x.nguoi||'(chưa ghi tên)';nv[t]=(nv[t]||0)+1});
