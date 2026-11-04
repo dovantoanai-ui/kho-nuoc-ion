@@ -190,6 +190,10 @@ function doPost(e) {
       out = ghiSheetViba_(p);
     } else if (p.loai === 'vibacfg' && p.cfg) {
       out = ghiCfgViba_(ss, p.cfg, p.nguoi);
+    } else if (p.loai === 'vibasua' && p.id && p.sua) {
+      out = suaViba_(ss, p); // 23/10/2026: sua thong tin giao VIBA + nhat ky
+    } else if (p.loai === 'huykhoviba' && p.id) {
+      out = huyPhieuKhoViba_(ss, p); // 23/10/2026: huy phieu kho / kiem kho VIBA
     } else if (p.loai === 'huyhd' && p.id) {
       out = huyHoaDon_(ss, p);
     } else if (p.loai === 'cskh' && p.cs && p.cs.id) {
@@ -939,7 +943,12 @@ function boSungViba_(ss, p) {
   if (dong < 0) return { ok: false, error: 'Khong tim thay don ' + id };
   var tt = String(sh.getRange(dong, 13).getValue() || '');
   if (tt !== 'Đã giao') return { ok: false, error: 'Don ' + id + ' chua giao - dung nut Xac nhan da giao' };
+  var c0 = VB_HEAD.indexOf('So phieu VIBA') + 1;
+  var cu = sh.getRange(dong, c0, 1, 7).getValues()[0].map(giaTriO_); // 23/10/2026: nho gia tri cu de ghi nhat ky
   ghiTtViba_(sh, dong, p.tt);
+  var moi = sh.getRange(dong, c0, 1, 7).getValues()[0].map(giaTriO_), ds = [];
+  for (var k = 0; k < 7; k++) if (cu[k] !== moi[k]) ds.push([VB_HEAD[c0 - 1 + k], cu[k], moi[k]]);
+  if (ds.length) ghiNhatKy_(ss, p.nguoi, 'Sửa thông tin phiếu VIBA', id, ds, '');
   sh.getRange(dong, 16).setValue(Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm'));
   return { ok: true, capnhat: 1 };
 }
@@ -974,10 +983,12 @@ function readKhoViba_(ss) {
   var d = rowsOf_(ss, 'KhoVIBA'); if (!d.head.length) return [];
   var h = d.head, c = {};
   KV_HEAD.forEach(function (n) { c[n] = idx_(h, n); });
+  c[KV_COT_HUY] = idx_(h, KV_COT_HUY);
   function g(r, n) { return c[n] >= 0 ? r[c[n]] : ''; }
   var out = [];
   d.rows.forEach(function (r) {
     var idd = String(g(r, 'ID dong') || '').trim(); if (!idd) return;
+    if (String(g(r, KV_COT_HUY) || '').trim()) return; // 23/10/2026: phieu da huy -> khong tinh ton
     var slRaw = g(r, 'So luong'); var sl = (typeof slRaw === 'number') ? slRaw : num_(slRaw);
     out.push({
       idd: idd, id: String(g(r, 'ID phieu') || '').trim(), ngay: fmtD_(g(r, 'Ngay')),
@@ -1018,11 +1029,13 @@ function readKiemKhoViba_(ss) {
   var d = rowsOf_(ss, 'KiemKhoVIBA'); if (!d.head.length) return [];
   var h = d.head, c = {};
   KKV_HEAD.forEach(function (n) { c[n] = idx_(h, n); });
+  c[KV_COT_HUY] = idx_(h, KV_COT_HUY);
   function g(r, n) { return c[n] >= 0 ? r[c[n]] : ''; }
   function so(v) { return (typeof v === 'number') ? v : num_(v); }
   var out = [];
   d.rows.forEach(function (r) {
     var idd = String(g(r, 'ID dong') || '').trim(); if (!idd) return;
+    if (String(g(r, KV_COT_HUY) || '').trim()) return; // 23/10/2026: bien ban da huy
     out.push({
       idd: idd, id: String(g(r, 'ID phieu') || '').trim(), ngay: fmtD_(g(r, 'Ngay')), kho: g(r, 'Kho') || '',
       ma: String(g(r, 'Ma VIBA') || '').trim(), ten: g(r, 'Ten hang') || '',
@@ -1083,14 +1096,15 @@ function ghiSheetViba_(p) {
       for (var j = 0; j < w; j++) {
         var v = r[j]; if (v === null || v === undefined) v = '';
         // chuoi bat dau bang so (so phieu 0007208, ngay 11/09/2026) -> giu nguyen dang chu
-        if (typeof v === 'string' && /^[0-9+\-]/.test(v)) v = "'" + v;
         o.push(v);
       }
       return o;
     });
+    // 05/11/2026: chuoi giu dang chu ('@'), so dinh dang #,##0 -> het loi thang/ngay/so phieu thanh so 46.296
+    var fmts = data.map(function (r) { return r.map(function (v) { return typeof v === 'number' ? '#,##0' : '@'; }); });
     if (sh.getMaxColumns() < w) sh.insertColumnsAfter(sh.getMaxColumns(), w - sh.getMaxColumns());
     var rg = sh.getRange(1, 1, data.length, w);
-    rg.setValues(data).setNumberFormat('#,##0').setFontFamily('Arial').setFontSize(10);
+    rg.setNumberFormats(fmts).setValues(data).setFontFamily('Arial').setFontSize(10);
     sh.getRange(1, 1).setFontSize(13).setFontWeight('bold');
     (t.dam || []).forEach(function (r) { if (r < data.length) sh.getRange(r + 1, 1, 1, w).setFontWeight('bold').setBackground('#FBEAEA'); });
     (t.rong || []).forEach(function (px, j) { try { sh.setColumnWidth(j + 1, Math.round(px * 7.5)); } catch (e) {} });
@@ -1198,7 +1212,15 @@ function huyHoaDon_(ss, p) {
   // Ma nay da co san trong HoaDonHuy (hiem) -> KHONG xoa o HoaDon, tranh mat dong khong luu vet
   if (!kqHuy.added) return { ok: false, error: 'Ma ' + id + ' da co trong HoaDonHuy - khong xoa, kiem tra tay' };
   xoaDong_(cu.sh, cu.dong); // phieu moi chi them o cuoi tab -> so dong phieu cu khong doi
-  return { ok: true, huy: cu.rows.length, thaythe: idMoi };
+  // 23/10/2026: dong bo don VIBA + ghi nhat ky sua
+  var vb = '';
+  try { vb = capNhatVibaSauHuy_(ss, id, idMoi, p.thaythe, lydo, nguoi, ngay); } catch (e6) { vb = 'LOI GiaoVIBA: ' + e6.message; }
+  try {
+    ghiNhatKy_(ss, nguoi, idMoi ? 'Sửa hoá đơn (phiếu thay thế)' : 'Huỷ hoá đơn', id,
+      idMoi ? [['ID hoa don', id, idMoi]].concat(soSanhHd_(cu.rows, p.thaythe)) : [['Hoá đơn', tomTatHd_(cu.rows).hang + ' · ' + tomTatHd_(cu.rows).tong, 'Đã huỷ']],
+      lydo + (vb ? ' · ' + vb : ''));
+  } catch (e7) {}
+  return { ok: true, huy: cu.rows.length, thaythe: idMoi, viba: vb };
 }
 
 // So dong (>=2) dau tien cua ma id trong cot col (mac dinh cot 1), -1 neu khong co.
@@ -1379,4 +1401,219 @@ function chuyenKhuonMISA_20261013() {
     Logger.log(bao.join('\n'));
   }
   return bao;
+}
+
+// ============================================================
+// 17/10/2026 — BO SUNG MA KHACH CHO KHACH HUNG YEN BAN BANG TEN (chua co ma).
+// Chay tay trong Apps Script, 1 lan:
+//   1) chayThu_BoSungKhachHY  -> xem Log: ten -> ma moi, so hoa don se gan ma. KHONG ghi gi.
+//   2) ghiThat_BoSungKhachHY  -> them khach vao tab KhachHang + dien ma vao cac dong hoa don cu.
+// Ten trung voi khach da co ma (so khop bo dau) -> dung lai ma cu, khong tao trung.
+// Chi dien vao o Ma KH dang TRONG, khong sua o da co ma.
+// ============================================================
+function chayThu_BoSungKhachHY() { return boSungKhachHY_(false); }
+function ghiThat_BoSungKhachHY() { return boSungKhachHY_(true); }
+function khoaTenKH_(t) { return chuanTen_(t).replace(/[\s()\[\].,\-_\/]+/g, ''); } // 'mợ Chiêm ( konoike)' = 'Mợ Chiêm (Konoike)'
+function boSungKhachHY_(ghi) {
+  var lock = LockService.getScriptLock(); lock.waitLock(30000);
+  var bao = [];
+  try {
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var shKH = ensureSheet_(ss, 'KhachHang', KH_HEAD);
+    var dk = readKhach_(ss), maTheoTen = {}, maxHY = 0;
+    dk.forEach(function (k) {
+      maTheoTen[khoaTenKH_(k.ten)] = k.ma;
+      var m = String(k.ma).match(/^HY(\d+)/); if (m) maxHY = Math.max(maxHY, parseInt(m[1], 10));
+    });
+    var tabs = ss.getSheets().filter(function (s) {
+      var n = s.getName(); return /^HoaDon/.test(n) && !/^HoaDonCho/.test(n) && !/_truocMISA/.test(n);
+    });
+    var nhom = {}, thuTu = [];   // khoa ten chuan -> {ten, sdt, cn, hd:{}, o:[{sh,row,col}]}
+    tabs.forEach(function (sh) {
+      var v = sh.getDataRange().getValues(); if (v.length < 2) return;
+      var m = cotMap_(v[0]);
+      var cId = m['ID hoa don'], cKho = m['Kho'], cTen = (m['Tên khách hàng'] != null) ? m['Tên khách hàng'] : m['Khach'];
+      var cMa = (m['Ma KH app'] != null) ? m['Ma KH app'] : m['Ma KH'], cSdt = m['SDT'], cHt = m['Hinh thuc TT'];
+      if (cId == null || cKho == null || cTen == null || cMa == null) { bao.push('Bo qua tab ' + sh.getName() + ' (thieu cot)'); return; }
+      var tenId = {};
+      for (var i = 1; i < v.length; i++) { var id0 = String(v[i][cId] || '').trim(), t0 = String(v[i][cTen] || '').trim(); if (id0 && t0 && !tenId[id0]) tenId[id0] = t0; }
+      for (var j = 1; j < v.length; j++) {
+        var r = v[j], id = String(r[cId] || '').trim();
+        if (!id || String(r[cKho]).indexOf('Hưng') < 0 || String(r[cMa] || '').trim()) continue;
+        var ten = String(r[cTen] || '').trim() || tenId[id] || ''; if (!ten) continue;
+        var k = khoaTenKH_(ten);
+        var g = nhom[k]; if (!g) { g = nhom[k] = { ten: ten, sdt: '', cn: false, hd: {}, o: [] }; thuTu.push(k); }
+        if (!g.sdt && cSdt != null && String(r[cSdt] || '').trim()) g.sdt = sdtChu_(r[cSdt]);
+        if (cHt != null && String(r[cHt]) === 'Công nợ') g.cn = true;
+        g.hd[id] = 1; g.o.push({ sh: sh, row: j + 1, col: cMa + 1 });
+      }
+    });
+    var moi = [], luc = Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm');
+    thuTu.forEach(function (k) {
+      var g = nhom[k], ma = maTheoTen[k], cu = !!ma;
+      if (!ma) { maxHY++; ma = 'HY' + ('0000' + maxHY).slice(-4); maTheoTen[k] = ma;
+        moi.push([ma, g.ten, g.sdt, '', 'Hưng Yên', g.cn ? 'Công nợ' : 'Thanh toán luôn', g.cn ? 15 : 0, luc]); }
+      g.ma = ma;
+      bao.push(g.ten + ' -> ' + ma + (cu ? ' (ma da co)' : ' (MOI)') + ' | ' + Object.keys(g.hd).length + ' hoa don, ' + g.o.length + ' dong' + (g.sdt ? ' | SDT ' + g.sdt : ''));
+    });
+    bao.unshift((ghi ? 'GHI THAT' : 'CHAY THU (chua ghi)') + ': ' + thuTu.length + ' khach, ' + moi.length + ' ma moi');
+    if (ghi) {
+      if (moi.length) {
+        var d0 = shKH.getLastRow() + 1;
+        shKH.getRange(d0, 1, moi.length, 1).setNumberFormat('@'); shKH.getRange(d0, 3, moi.length, 1).setNumberFormat('@');
+        shKH.getRange(d0, 1, moi.length, KH_HEAD.length).setValues(moi);
+      }
+      var dem = 0;
+      thuTu.forEach(function (k) { var g = nhom[k]; g.o.forEach(function (o) { o.sh.getRange(o.row, o.col).setNumberFormat('@').setValue(g.ma); dem++; }); });
+      bao.push('Da dien ma vao ' + dem + ' dong hoa don.');
+    }
+  } finally { try { lock.releaseLock(); } catch (e) {} Logger.log(bao.join('\n')); }
+  return bao;
+}
+
+// ============================================================
+// 23/10/2026 — SUA PHIEU VIBA + NHAT KY SUA (ai cung sua duoc, co luu vet)
+// Moi lan sua / huy -> tab NhatKySua: 1 dong cho 1 truong thay doi (gia tri cu -> moi).
+// ============================================================
+var NK_HEAD = ['Thoi gian', 'Nguoi sua', 'Loai', 'Doi tuong', 'Truong', 'Gia tri cu', 'Gia tri moi', 'Ghi chu', 'Thang'];
+function ghiNhatKy_(ss, nguoi, loai, doiTuong, ds, gc) {
+  if (!ds || !ds.length) ds = [['', '', '']];
+  var sh = ensureSheet_(ss, 'NhatKySua', NK_HEAD);
+  var now = new Date();
+  var luc = Utilities.formatDate(now, 'GMT+7', 'dd/MM/yyyy HH:mm:ss'), th = Utilities.formatDate(now, 'GMT+7', 'yyyy-MM');
+  var rows = ds.map(function (d) {
+    return [luc, String(nguoi || ''), loai, String(doiTuong || ''), String(d[0] == null ? '' : d[0]),
+            String(d[1] == null ? '' : d[1]), String(d[2] == null ? '' : d[2]), String(gc || ''), th];
+  });
+  sh.getRange(sh.getLastRow() + 1, 1, rows.length, NK_HEAD.length).setNumberFormat('@').setValues(rows);
+  return rows.length;
+}
+function giaTriO_(v) { return (v instanceof Date) ? fmtD_(v) : String(v == null ? '' : v).trim(); }
+
+// Sua thong tin giao cua don VIBA. p = { id, nguoi, sua: {nhan, sdt, dc, thuho, gc, ngaygiao} }
+// Chi ghi truong thuc su doi. Doi ngay giao (don Da giao) -> doi ngay + thang cac dong HoaDon cua don.
+var VB_SUA = [['nhan', 'Nguoi nhan'], ['sdt', 'SDT nhan'], ['dc', 'Dia chi giao'], ['thuho', 'Thu ho'],
+              ['gc', 'Ghi chu giao'], ['ngaygiao', 'Ngay giao']];
+function suaViba_(ss, p) {
+  var id = String(p.id).trim(), nguoi = String(p.nguoi || '').trim(), s = p.sua || {};
+  if (!nguoi) return { ok: false, error: 'Can ghi ten nguoi sua' };
+  if (!ss.getSheetByName('GiaoVIBA')) return { ok: false, error: 'Chua co tab GiaoVIBA' };
+  var sh = ensureSheet_(ss, 'GiaoVIBA', VB_HEAD);
+  var dong = timDongViba_(sh, id);
+  if (dong < 0) return { ok: false, error: 'Khong tim thay don ' + id };
+  var hang = sh.getRange(dong, 1, 1, VB_HEAD.length).getValues()[0];
+  var tt = String(hang[12] || '');
+  if (tt === 'Đã huỷ' || tt === 'Hoàn hàng') return { ok: false, error: 'Don ' + id + ' da ' + tt + ', khong sua duoc' };
+  var ds = [], ngayMoi = '';
+  VB_SUA.forEach(function (x) {
+    if (s[x[0]] == null) return;
+    var c = VB_HEAD.indexOf(x[1]) + 1, cu = giaTriO_(hang[c - 1]), moi = String(s[x[0]]).trim();
+    if (x[0] === 'thuho') { moi = num_(moi); if (num_(cu) === moi) return; }
+    else if (x[0] === 'ngaygiao') {
+      if (tt !== 'Đã giao') return;
+      moi = ngayChu_(moi); if (!/^\d{2}\/\d{2}\/\d{4}$/.test(moi) || ngayChu_(cu) === moi) return;
+      ngayMoi = moi;
+    } else if (moi === cu) return;
+    if (VB_COT_TEXT.indexOf(c) >= 0) sh.getRange(dong, c).setNumberFormat('@');
+    sh.getRange(dong, c).setValue(moi);
+    ds.push([x[1], cu, moi]);
+  });
+  if (!ds.length) return { ok: true, capnhat: 0 };
+  var doiHd = 0;
+  if (ngayMoi) {
+    doiHd = doiNgayHoaDon_(ss, id, ngayMoi);
+    // Don nhap sau khi giao: cot 'Ngay' = ngay giao cu -> doi theo cho khop thang
+    if (ngayChu_(hang[1]) === ngayChu_(hang[13])) {
+      sh.getRange(dong, 2).setNumberFormat('@').setValue(ngayMoi);
+      sh.getRange(dong, 17).setNumberFormat('@').setValue(thang_(ngayMoi));
+    }
+  }
+  sh.getRange(dong, 16).setValue(Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm'));
+  ghiNhatKy_(ss, nguoi, 'Sửa thông tin giao VIBA', id, ds, doiHd ? ('Đổi ngày ' + doiHd + ' dòng HoaDon') : '');
+  return { ok: true, capnhat: ds.length, doiHoaDon: doiHd };
+}
+
+// Doi ngay chung tu + thang cua moi dong 1 hoa don o tab HoaDon (tim cot theo ten)
+function doiNgayHoaDon_(ss, id, ngay) {
+  var sh = ss.getSheetByName('HoaDon'); if (!sh || sh.getLastRow() < 2) return 0;
+  var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(function (x) { return String(x).trim(); });
+  var cId = head.indexOf('ID hoa don'); if (cId < 0) return 0;
+  var cNg = ['Ngày chứng từ (*)', 'Ngay', 'Ngày hạch toán (*)'].map(function (t) { return head.indexOf(t); })
+    .filter(function (i) { return i >= 0; });
+  var cTh = head.indexOf('Thang');
+  var ids = sh.getRange(2, cId + 1, sh.getLastRow() - 1, 1).getValues(), dem = 0;
+  for (var i = 0; i < ids.length; i++) {
+    if (String(ids[i][0] || '').trim() !== id) continue;
+    cNg.forEach(function (c) { sh.getRange(i + 2, c + 1).setNumberFormat('@').setValue(ngay); });
+    if (cTh >= 0) sh.getRange(i + 2, cTh + 1).setNumberFormat('@').setValue(thang_(ngay));
+    dem++;
+  }
+  return dem;
+}
+
+// Tom tat 1 hoa don (dong theo thu tu app) de ghi nhat ky cu -> moi
+function tomTatHd_(rows) {
+  var d = rows[0] || [];
+  return { hang: rows.map(function (r) { return r[6] + ' ×' + r[8] + ' @' + r[9]; }).join('; '),
+           tong: d[13], dathu: d[14], tt: d[15], ht: d[17], thu: d[16] };
+}
+function soSanhHd_(cu, moi) {
+  if (!moi || !moi.length) return [];
+  var a = tomTatHd_(cu), b = tomTatHd_(moi), ds = [];
+  [['hang', 'Hàng hoá'], ['tong', 'Tong thanh toan'], ['dathu', 'Da thu'], ['tt', 'Trang thai TT'],
+   ['ht', 'Hinh thuc TT'], ['thu', 'Nguoi thu']].forEach(function (k) {
+    if (String(a[k[0]] == null ? '' : a[k[0]]) !== String(b[k[0]] == null ? '' : b[k[0]])) ds.push([k[1], a[k[0]], b[k[0]]]);
+  });
+  return ds;
+}
+
+// Sau khi huy / thay the hoa don: dong bo tab GiaoVIBA (neu hoa don la don VIBA)
+// - Thay the: GiaoVIBA da doi sang ID moi (doiIdHoaDon_) -> cap nhat Hang hoa + Tong tien.
+// - Chi huy: don VIBA -> 'Đã huỷ' -> bao cao cong giao / ton kho VIBA tu bo ra.
+function capNhatVibaSauHuy_(ss, id, idMoi, thaythe, lydo, nguoi, ngay) {
+  var sh = ss.getSheetByName('GiaoVIBA'); if (!sh) return '';
+  var dong = timDongViba_(sh, idMoi || id); if (dong < 0) return '';
+  var luc = Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm');
+  if (idMoi) {
+    var hang = thaythe.map(function (r) { return String(r[6]) + ' ×' + r[8]; }).join('; ');
+    sh.getRange(dong, 9, 1, 2).setValues([[hang, num_(thaythe[0][13])]]);
+    sh.getRange(dong, 16).setValue(luc);
+    return 'GiaoVIBA gắn sang ' + idMoi;
+  }
+  var tt = String(sh.getRange(dong, 13).getValue() || '');
+  if (tt === 'Đã huỷ') return '';
+  sh.getRange(dong, 13).setValue('Đã huỷ');
+  sh.getRange(dong, 15, 1, 2).setValues([[nguoi, luc]]);
+  sh.getRange(dong, 18, 1, 2).setNumberFormat('@').setValues([['Huỷ hoá đơn: ' + lydo, ngay]]);
+  return 'GiaoVIBA ' + tt + ' → Đã huỷ';
+}
+
+// Huy phieu kho VIBA / bien ban kiem kho VIBA (KHONG xoa dong: ghi cot 'Huy', readKhoViba_ bo qua).
+// p = { tab: 'KhoVIBA' | 'KiemKhoVIBA', id: ID phieu, lydo, nguoi }. Muon sua: huy roi lap phieu dung.
+var KV_COT_HUY = 'Huy';
+function huyPhieuKhoViba_(ss, p) {
+  var tab = p.tab === 'KiemKhoVIBA' ? 'KiemKhoVIBA' : 'KhoVIBA';
+  var id = String(p.id || '').trim(), lydo = String(p.lydo || '').trim(), nguoi = String(p.nguoi || '').trim();
+  if (!id || !lydo || !nguoi) return { ok: false, error: 'Can ma phieu, ly do va nguoi huy' };
+  var sh = ss.getSheetByName(tab);
+  if (!sh || sh.getLastRow() < 2) return { ok: false, error: 'Chua co tab ' + tab };
+  var cH = cotTheoTen_(sh, KV_COT_HUY);
+  var v = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
+  var head = v[0].map(function (x) { return String(x).trim(); });
+  var cP = head.indexOf('ID phieu'), cMa = head.indexOf('Ma VIBA');
+  var cSl = head.indexOf(tab === 'KhoVIBA' ? 'So luong' : 'So dem');
+  if (cP < 0) return { ok: false, error: 'Tab ' + tab + ' thieu cot ID phieu' };
+  var ngay = Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm');
+  var ghi = 'Đã huỷ ' + ngay + ' · ' + nguoi + ' · ' + lydo, ds = [], co = 0;
+  for (var i = 1; i < v.length; i++) {
+    if (String(v[i][cP] || '').trim() !== id) continue;
+    co++;
+    if (String(v[i][cH - 1] || '').trim()) continue; // da huy truoc do
+    sh.getRange(i + 1, cH).setValue(ghi);
+    ds.push([cMa >= 0 ? v[i][cMa] : 'dong ' + (i + 1), cSl >= 0 ? v[i][cSl] : '', 'Đã huỷ']);
+  }
+  if (!co) return { ok: false, error: 'Khong tim thay phieu ' + id };
+  if (!ds.length) return { ok: true, skipped: 1 };
+  ghiNhatKy_(ss, nguoi, tab === 'KhoVIBA' ? 'Huỷ phiếu kho VIBA' : 'Huỷ biên bản kiểm kho VIBA', id, ds, lydo);
+  return { ok: true, huy: ds.length };
 }
