@@ -1749,7 +1749,7 @@ function renderViba(){
       +'<div class="t2">'+esc(x.ma)+' · '+esc(x.khach||'—')+'</div>'
       +'<div class="t2">Nhận: <b>'+esc(x.nhan||'—')+'</b>'+(x.sdt?' · '+esc(x.sdt):'')+'</div>'
       +'<div class="t2">'+esc(x.dc||'—')+'</div>'
-      +(x.hang?'<div class="t2">'+esc(x.hang)+'</div>':'')
+      +(vbHangTxt(x)?'<div class="t2">'+esc(vbHangTxt(x))+'</div>':'')
       +'<div class="t2">Tổng: '+fmt(x.tong)+' đ'+(x.thuho>0?' · <b style="color:var(--red)">Thu hộ '+fmt(x.thuho)+' đ</b>':' · không thu hộ')+'</div>'
       +(x.gc?'<div class="t2">Ghi chú: '+esc(x.gc)+'</div>':'')
       +cuoi+'</div>';
@@ -2372,6 +2372,8 @@ function vbYmd(s){var p=String(s||'').slice(0,10).split('/');return p.length===3
 function vbDmy(y){var p=String(y||'').split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:''}
 function vbHomNay(){return vbYmd(today())}
 /* Dong hoa don cua 1 don VIBA: dang cho -> tab HoaDonCho; da giao -> tab HoaDon */
+/* 05/11/2026: ten hang lay tu dong hoa don that (khong dung cot 'Hang hoa' GiaoVIBA de khoi lech khi sua hoa don) */
+function vbHangTxt(x){var l=vbLinesOf(x.id);if(!l.length)return x.hang||'';var g={},o=[];l.forEach(function(r){if(!(r.sp in g)){g[r.sp]=0;o.push(r.sp)}g[r.sp]+=Number(r.sl)||0});return o.map(function(k){return k+' ×'+g[k]}).join('; ')}
 function vbLinesOf(id){var a=CHO.filter(function(r){return r.id===id});if(!a.length)a=HD.filter(function(r){return r.id===id});
   /* 01/10/2026: diem giao tach tu 1 hoa don gop (ID 'HDxxx~n', vd 3 Hao 5 cua hang): hang lay tu cot 'Hang hoa' cua dong GiaoVIBA,
      don gia lay tu hoa don goc -> moi phieu VIBA tinh cong rieng, doanh thu khong dem 2 lan (hoa don goc khong co dong GiaoVIBA) */
@@ -2403,7 +2405,7 @@ function vbCong(dem,ngoai,tang,c){
   r.tong=r.coban+r.ngoaiThem+r.tang;
   return r;
 }
-function vbNvTen(ma,c){c=c||vcfg();for(var i=0;i<c.nv.length;i++)if(c.nv[i][0]===ma)return c.nv[i][1];return ma||''}
+function vbNvTen(ma,c){if(ma==='TL')return 'Tự lấy tại kho (không tính công)';c=c||vcfg();for(var i=0;i<c.nv.length;i++)if(c.nv[i][0]===ma)return c.nv[i][1];return ma||''}
 
 /* ---------- tab con ---------- */
 function vbView(v){
@@ -2438,7 +2440,7 @@ function vgMo(id,che){
     +'<div class="t2">'+esc(x.dc||'')+'</div><div class="t2" style="margin-top:4px">'+hang+'</div>'
     +(che==='bosung'?'<div class="t2" style="margin-top:4px">Đã giao '+esc(x.ngaygiao||'')+'</div>':'');
   var nv=document.getElementById('vgNv');
-  nv.innerHTML='<option value="">-- chọn NV giao --</option>'+c.nv.map(function(n){return '<option value="'+esc(n[0])+'">'+esc(n[0])+' — '+esc(n[1])+'</option>'}).join('');
+  nv.innerHTML='<option value="">-- chọn NV giao --</option><option value="TL">TL — Tự lấy tại kho (không tính công)</option>'+c.nv.map(function(n){return '<option value="'+esc(n[0])+'">'+esc(n[0])+' — '+esc(n[1])+'</option>'}).join('');
   document.getElementById('vgSoPhieu').value=x.sophieu||'';
   nv.value=x.nv||'';
   document.getElementById('vgTang').checked=!!x.tang;
@@ -2659,7 +2661,7 @@ function vrTinh(){
   VB.forEach(function(x){
     if(x.kho!==KHO||x.tt!=='Đã giao')return;
     var ng=vbYmd(x.ngaygiao);if(!ng||ng<tu||ng>den)return;
-    var lines=vbLinesOf(x.id),d=vbDem(lines),k=vbCong(d,x.ngoai,x.tang,c);
+    var lines=vbLinesOf(x.id),d=vbDem(lines),k=x.nv==='TL'?vbCong({sosp:0},0,0,c):vbCong(d,x.ngoai,x.tang,c); /* 05/11: TL = tu lay tai kho, khong tinh cong */
     don.push({x:x,ng:ng,d:d,k:k,thieu:!x.cotTt,thieuVo:d.binh19>0&&x.cotTt&&d.binh19-x.vothu>0&&d.coc<=0?d.binh19-x.vothu:0});
   });
   don.sort(function(a,b){return a.ng<b.ng?-1:(a.ng>b.ng?1:(a.x.id<b.x.id?-1:1))});
@@ -3191,7 +3193,7 @@ function vbSheetTabs(){
   var tieu='VIBA — KHO ION FUJI '+String(KHO).toUpperCase();
   var don=[];
   VB.forEach(function(x){if(x.kho!==KHO||x.tt!=='Đã giao')return;var ng=vbYmd(x.ngaygiao);if(!ng)return;
-    var d=vbDem(vbLinesOf(x.id)),k=vbCong(d,x.ngoai,x.tang,c);don.push({x:x,ng:ng,d:d,k:k,thieu:!x.cotTt})});
+    var d=vbDem(vbLinesOf(x.id)),k=x.nv==='TL'?vbCong({sosp:0},0,0,c):vbCong(d,x.ngoai,x.tang,c);don.push({x:x,ng:ng,d:d,k:k,thieu:!x.cotTt})});
   don.sort(function(a,b){return a.ng<b.ng?-1:(a.ng>b.ng?1:(a.x.id<b.x.id?-1:1))});
   var dau=bd;don.forEach(function(o){if(o.ng<dau)dau=o.ng});
   var thang=vbThangDs(dau,hn),thTxt=function(t){return t.slice(5,7)+'/'+t.slice(0,4)};
@@ -3240,7 +3242,7 @@ function vbSheetTabs(){
   r=[[tieu+' — DOANH SỐ ĐƠN VIBA GIAO'],['Cập nhật: '+luc],[],['Tháng','Số đơn','Doanh số (tiền hàng)']];dam=[3];
   thang.forEach(function(t){var a=don.filter(function(o){return o.ng.slice(0,7)===t});r.push([thTxt(t),a.length,a.reduce(function(s,o){return s+o.d.tien},0)])});
   r.push([]);r.push(['Ngày giao','Số phiếu','Mã KH','Khách','Hàng','Số SP','Tiền hàng']);dam.push(r.length-1);
-  don.forEach(function(o){var x=o.x;r.push([x.ngaygiao,x.sophieu||'(thiếu)',x.ma||'',x.khach||'',x.hang||'',o.d.sosp,o.d.tien])});
+  don.forEach(function(o){var x=o.x;r.push([x.ngaygiao,x.sophieu||'(thiếu)',x.ma||'',x.khach||'',vbHangTxt(x),o.d.sosp,o.d.tien])});
   r.push([]);r.push(['Tiền hàng chưa VAT, không gồm cọc vỏ.']);
   tabs.push({ten:'Doanh số',rows:r,dam:dam,rong:[12,14,10,30,50,10,16]});
   /* 6. Moi NV giao 1 tab: tien nhan + so don, SP, duoi min, len tang, ngoai thanh (01/10 ban 8) */
@@ -3259,10 +3261,48 @@ function vbSheetTabs(){
     r.push([]);r.push(['CHI TIẾT ĐƠN']);dam.push(r.length-1);
     r.push(['Ngày giao','Số phiếu','Khách','Địa chỉ','Hàng','Số SP','Ghi chú','Tiền']);dam.push(r.length-1);
     ds.forEach(function(o){var x=o.x,g=[];if(o.k.duoiMin)g.push('dưới '+c.min+' SP');if(x.tang)g.push('lên tầng');if(x.ngoai)g.push('ngoại thành');
-      r.push([x.ngaygiao,x.sophieu||'(thiếu)',x.khach||'',x.dc||'',x.hang||'',o.d.sosp,g.join(', '),o.k.tong])});
+      r.push([x.ngaygiao,x.sophieu||'(thiếu)',x.khach||'',x.dc||'',vbHangTxt(x),o.d.sosp,g.join(', '),o.k.tong])});
     r.push([]);r.push(['Đơn giá theo bảng giá VIBA; dưới '+c.min+' SP tính cố định '+c.phiMin+' đ/đơn; lên tầng +'+c.tang+' đ/đơn; ngoại thành tính theo đơn giá ngoại thành.']);
     tabs.push({ten:ten,rows:r,dam:dam,rong:[12,12,24,26,40,10,22,16,16,18,14]});
   });
+  /* 7. 05/11/2026: moi thang 1 tab THANH TOAN VIBA (tu T10/2026): cong giao + boc xep nhap kho 200k/tan + thuong DS (tam chua tinh) */
+  var KG={SP01:19,SP03:5,SP04:8.4,SP05:12,SP06:8.4,SP07:12},BXG=200000,mt=[];
+  thang.filter(function(t){return t>='2026-10'}).forEach(function(t){
+    var a=don.filter(function(o){return o.ng.slice(0,7)===t}),sp=0,cong=0,dso=0;
+    a.forEach(function(o){sp+=o.d.sosp;cong+=o.k.tong;dso+=o.d.tien});
+    var nh=KV.filter(function(x){return (!x.kho||x.kho===KHO)&&kvLoaiChuan(x.loai)==='Nhập kho'&&String(vbYmd(x.ngay)).slice(0,7)===t&&KG[x.ma]})
+      .slice().sort(function(p,q){var u=vbYmd(p.ngay),v=vbYmd(q.ngay);return u<v?-1:(u>v?1:0)});
+    var kgT=0,bx=0,bxRows=nh.map(function(x){var sl=Number(x.sl)||0,kg=Math.round(sl*KG[x.ma]*10)/10,tien=Math.round(kg/1000*BXG);kgT+=kg;bx+=tien;return [x.ngay,x.ma,VB_NGAN[x.ma]||x.ten,sl,String(KG[x.ma]).replace('.',','),kg,tien]});
+    kgT=Math.round(kgT*10)/10;
+    var r=[[tieu+' — THANH TOÁN THÁNG '+thTxt(t)],['Cập nhật: '+luc],[]],dam=[];
+    r.push(['A. TỔNG HỢP THANH TOÁN']);dam.push(r.length-1);
+    r.push(['Khoản','Căn cứ','Thành tiền']);dam.push(r.length-1);
+    r.push(['1. Công giao hàng',a.length+' đơn · '+sp+' SP',cong]);
+    r.push(['2. Công bốc xếp nhập kho',String(kgT/1000).replace('.',',')+' tấn × '+fmt(BXG)+' đ',bx]);
+    r.push(['3. Thưởng 1% doanh số (tạm chưa tính)','Doanh số '+fmt(dso),'']);
+    r.push(['4. Thưởng 5% doanh số (tạm chưa tính)','Doanh số '+fmt(dso),'']);
+    r.push(['TỔNG VIBA NHẬN THÁNG '+thTxt(t),'',cong+bx]);dam.push(r.length-1);
+    r.push([]);r.push(['B. CÔNG GIAO HÀNG THEO NGƯỜI']);dam.push(r.length-1);
+    r.push(['NV giao','Số đơn','Số SP','Tiền giao hàng']);dam.push(r.length-1);
+    var g={},ord=[];a.forEach(function(o){var m=o.x.nv||'';if(!g[m]){g[m]=[];ord.push(m)}g[m].push(o)});ord.sort();
+    var nvTen=function(m){return m?m+' '+vbNvTen(m,c):'(chưa ghi NV)'};
+    ord.forEach(function(m){var s=0,q=0;g[m].forEach(function(o){s+=o.d.sosp;q+=o.k.tong});r.push([nvTen(m),g[m].length,s,q])});
+    r.push(['Cộng',a.length,sp,cong]);dam.push(r.length-1);
+    r.push([]);r.push(['C. CHI TIẾT TỪNG ĐƠN (theo người giao)']);dam.push(r.length-1);
+    r.push(['Ngày giao','Số phiếu','Khách','Địa chỉ','Hàng','Số SP','Ghi chú','Tiền']);dam.push(r.length-1);
+    ord.forEach(function(m){r.push([nvTen(m)]);dam.push(r.length-1);var q=0;
+      g[m].forEach(function(o){var x=o.x,gc=[];if(x.nv==='TL')gc.push('tự lấy, không tính công');else{if(o.k.duoiMin)gc.push('dưới '+c.min+' SP');if(x.tang)gc.push('lên tầng');if(x.ngoai)gc.push('ngoại thành')}
+        q+=o.k.tong;r.push([x.ngaygiao,x.sophieu||'(thiếu)',x.khach||'',x.dc||'',vbHangTxt(x),o.d.sosp,gc.join(', '),o.k.tong])});
+      r.push(['','','','','Cộng '+nvTen(m),'','',q])});
+    r.push([]);r.push(['D. CÔNG BỐC XẾP — HÀNG NHẬP VỀ KHO VIBA']);dam.push(r.length-1);
+    r.push(['Ngày','Mã','Tên hàng','Số lượng','kg / đơn vị','Khối lượng (kg)','Thành tiền']);dam.push(r.length-1);
+    if(!bxRows.length)r.push(['Không có phiếu nhập kho trong tháng.']);
+    bxRows.forEach(function(w){r.push(w)});
+    r.push(['Cộng','','','','',kgT,bx]);dam.push(r.length-1);
+    r.push([]);r.push(['Bốc xếp '+fmt(BXG)+' đ/tấn: bình 19L 19 kg · thùng 500ml 12 kg · thùng 350ml 8,4 kg · can 5L 5 kg. Thưởng 1% + 5% doanh số: tạm chưa tính.']);
+    mt.push({ten:'Tháng '+t.slice(5,7)+'-'+t.slice(0,4),rows:r,dam:dam,rong:[22,14,26,26,40,12,22,14]});
+  });
+  tabs.splice.apply(tabs,[1,0].concat(mt.reverse()));
   return tabs;
 }
 var VBSHEET_DANG=false;
@@ -3305,7 +3345,7 @@ function vnVao(){
   VBNHAP=true;document.body.classList.add('vbnhap');
   document.getElementById('vnCard').style.display='block';
   var c=vcfg(),nv=document.getElementById('vnNv'),cur=nv.value;
-  nv.innerHTML='<option value="">-- chọn NV giao --</option>'+c.nv.map(function(n){return '<option value="'+esc(n[0])+'">'+esc(n[0])+' — '+esc(n[1])+'</option>'}).join('');nv.value=cur;
+  nv.innerHTML='<option value="">-- chọn NV giao --</option><option value="TL">TL — Tự lấy tại kho (không tính công)</option>'+c.nv.map(function(n){return '<option value="'+esc(n[0])+'">'+esc(n[0])+' — '+esc(n[1])+'</option>'}).join('');nv.value=cur;
   if(!document.getElementById('vnNgay').value)document.getElementById('vnNgay').value=vbHomNay();
   var ng=document.getElementById('vnNguoi');if(!ng.value)ng.value=localStorage.getItem('hd_vb_nguoi')||'';
   var b=document.getElementById('dbBtn');if(!/Đã lưu/.test(b.textContent))b.textContent='Lưu đơn VIBA đã giao';
