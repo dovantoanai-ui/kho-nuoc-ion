@@ -2111,30 +2111,57 @@ function hnPost(loai,rows){
   if(!GS){alert('Chưa cấu hình backend. Bấm Cài đặt để dán URL /exec.');return Promise.reject(new Error('no GS'))}
   return fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({loai:loai,rows:rows})});
 }
-/* --- COC 50k/binh 19L --- */
+/* --- COC 50k/binh 19L (popup khi luu hoa don) --- */
+var COC_OK=null, COC_PP=null; /* COC_OK = {n,coc,lydo}: da xac nhan qua popup cho dung so binh + so coc */
 function cocWarn(){
   var w=document.getElementById('cocWarn');if(!w)return;
   var n=hnBinh19(readItems()),coc=Number(document.getElementById('coc').value)||0,need=n*COC_BINH;
   var ci=document.getElementById('coc');
   if(n<=0){w.style.display='none';if(!COC_TAY&&COC_AUTO&&ci.value!==''){ci.value='';COC_AUTO=false}return}
-  /* 09/11/2026: co binh 19L -> tu dien tien coc n x 50k (nhan vien go lai thi giu so cua ho) */
-  if(!COC_TAY&&!KHONGCOC&&!THAYTHE&&Number(ci.value||0)!==need){ci.value=need;COC_AUTO=true;coc=need}
+  /* co binh 19L -> tu dien tien coc n x 50k (nhan vien da sua thi giu so cua ho) */
+  if(!COC_TAY&&!THAYTHE&&Number(ci.value||0)!==need){ci.value=need;COC_AUTO=true;coc=need}
   var ok=coc>=need;
   w.style.display='block';w.style.background=ok?'#e9f7ef':'#fdeceb';w.style.color=ok?'#0f7a3a':'var(--red)';
   w.innerHTML='<b>💰 Thu tiền cọc: '+n+' bình 19L × '+fmt(COC_BINH)+' = '+fmt(need)+' đ</b>'+(ok?' · ✓ đã đủ cọc':' · hiện cọc '+fmt(coc)+' đ')
-    +(ok?'':'<div style="margin-top:6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="add" style="width:auto;margin:0;padding:6px 10px" onclick="cocDien()">Điền cọc '+fmt(need)+' đ</button>'
-    +'<label style="margin:0;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink)"><input type="checkbox" '+(KHONGCOC?'checked ':'')+'onchange="cocKhong(this.checked)" style="width:18px;height:18px"> Không cọc (bắt buộc ghi chú đặc biệt)</label></div>');
+    +'<div style="margin-top:6px"><button type="button" class="add" style="width:auto;margin:0;padding:6px 10px" onclick="cocPopup('+n+','+need+','+coc+')">Sửa tiền cọc / không cọc</button></div>';
 }
-function cocKhong(v){KHONGCOC=v;if(v){document.getElementById('coc').value='';COC_TAY=true}render()}
-function cocDien(){var n=hnBinh19(readItems());document.getElementById('coc').value=n*COC_BINH;KHONGCOC=false;COC_TAY=false;render()}
+function cocDien(){var n=hnBinh19(readItems());document.getElementById('coc').value=n*COC_BINH;COC_TAY=false;COC_OK=null;render()}
 function cocKiem(items,coc,gc){
   var n=hnBinh19(items);if(n<=0)return {ok:true,gc:gc};
   var need=n*COC_BINH;if(coc>=need)return {ok:true,gc:gc};
-  if(!KHONGCOC){alert('Hóa đơn có '+n+' bình 19L → phải cọc '+fmt(need)+' đ ('+n+' × '+fmt(COC_BINH)+').\n\nBấm "Điền cọc", hoặc tích "Không cọc" và ghi chú đặc biệt.');return {ok:false}}
-  if(gc.replace(/\[[^\]]*\]/g,'').trim().length<5){alert('Không cọc / cọc thiếu → phải ghi chú đặc biệt (lý do, ít nhất 5 ký tự) ở ô Ghi chú.');try{document.getElementById('ghichu').focus()}catch(e){}return {ok:false}}
-  var tag=coc>0?'[CỌC THIẾU '+fmt(coc)+'/'+fmt(need)+']':'[KHÔNG CỌC]';
-  if(gc.indexOf(tag)<0)gc=tag+' '+gc;
-  return {ok:true,gc:gc};
+  if(COC_OK&&COC_OK.n===n&&COC_OK.coc===coc){ /* da xac nhan o popup */
+    var tag=coc>0?'[CỌC THIẾU '+fmt(coc)+'/'+fmt(need)+']':'[KHÔNG CỌC]';
+    if(gc.indexOf(tag)<0)gc=tag+' '+COC_OK.lydo+(gc?' · '+gc:'');
+    return {ok:true,gc:gc};
+  }
+  cocPopup(n,need,coc);return {ok:false};
+}
+function cocPopup(n,need,cur){
+  COC_PP={n:n,need:need};
+  var v=(COC_TAY&&cur>0)?cur:need;
+  var h='<div style="margin:8px 0 12px;font-size:15px"><b>'+n+' bình 19L × '+fmt(COC_BINH)+' = '+fmt(need)+' đ</b><div class="muted">Đây là gợi ý. Sửa số nếu thu khác.</div></div>'
+   +'<label>Tiền cọc thu (đ)</label><input id="cpAmt" type="number" inputmode="numeric" value="'+v+'" oninput="cocPopupChange()" style="font-size:22px;font-weight:700;text-align:center">'
+   +'<div id="cpLyWrap" style="display:none;margin-top:10px"><label style="color:var(--red)">Lý do không cọc / cọc thiếu (bắt buộc)</label><input id="cpLydo" placeholder="VD: khách quen, trả vỏ lần sau"></div>'
+   +'<div style="display:flex;gap:8px;margin-top:14px"><button type="button" class="add" style="flex:0 0 auto;width:auto;padding:12px 14px" onclick="cocPopupKhong()">✕ Không cọc</button>'
+   +'<button type="button" class="btn bgrn" style="flex:1" onclick="cocPopupOk()">Xác nhận cọc</button></div>';
+  hnModal('💰 Thu tiền cọc bình',h,'',null);
+  cocPopupChange();
+}
+function cocPopupChange(){
+  var a=Number(document.getElementById('cpAmt').value)||0;
+  document.getElementById('cpLyWrap').style.display=(a<COC_PP.need)?'block':'none';
+}
+function cocPopupKhong(){
+  document.getElementById('cpAmt').value=0;cocPopupChange();
+  try{document.getElementById('cpLydo').focus()}catch(e){}
+}
+function cocPopupOk(){
+  var a=Math.max(0,Math.round(Number(document.getElementById('cpAmt').value)||0)),lydo=(document.getElementById('cpLydo').value||'').trim();
+  if(a<COC_PP.need&&lydo.length<5){alert('Cọc thấp hơn gợi ý hoặc không cọc → phải ghi lý do (ít nhất 5 ký tự).');try{document.getElementById('cpLydo').focus()}catch(e){}return}
+  COC_OK=a<COC_PP.need?{n:COC_PP.n,coc:a,lydo:lydo}:null;
+  document.getElementById('coc').value=a>0?a:'';COC_TAY=true;
+  hnClose();render();
+  dongBo(); /* tiep tuc luu hoa don */
 }
 /* --- TON KHO HA NOI --- */
 function hnTonCalc(){
@@ -2234,7 +2261,7 @@ function hnThuVo(){
   hnModal('🔄 Thu vỏ bình',h,'Gắn vào hóa đơn',function(){VOTHU=Math.max(0,Math.round(Number(document.getElementById('hnVoN').value)||0));hnVoBtn();hnClose();render()});
 }
 function hnSauLuu(id,ng,thu,laViba){
-  KHONGCOC=false;COC_TAY=false;COC_AUTO=false;
+  KHONGCOC=false;COC_TAY=false;COC_AUTO=false;COC_OK=null;
   if(VOTHU>0&&!laViba){
     var r=[id+'_VO',id,ng,'Thu vỏ','SP02','Vỏ 19L',VOTHU,thu||'','Khách trả theo hóa đơn',id,''];
     hnPost('khohn',[r]).then(function(){HNPK.push({idd:r[0],id:r[1],ngay:r[2],loai:r[3],ma:r[4],ten:r[5],sl:r[6],nguoi:r[7],nguon:r[8],hd:id,gc:''});});
