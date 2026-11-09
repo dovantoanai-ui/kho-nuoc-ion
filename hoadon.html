@@ -123,6 +123,7 @@
       <button onclick="hnNhapKho()">📥 Nhập kho</button>
       <button onclick="hnKiemKe()">📋 Kiểm kê kho</button>
       <button onclick="hnTonKho()">📊 Tồn kho</button>
+      <button onclick="hnVoBinh()">🫙 Vỏ bình</button>
     </div>
     <div class="tabs">
       <button class="tb active" data-t="hd" onclick="showTab('hd')">Hoá đơn</button>
@@ -757,7 +758,7 @@ function loadData(manual,cb){
   document.getElementById('dataInfo').textContent='Đang tải dữ liệu...';
   jsonp(GS,function(d){
     if(!d||!d.ok){document.getElementById('dataInfo').textContent='Lỗi tải dữ liệu';if(manual)alert('Không tải được dữ liệu. Kiểm tra URL backend đã deploy đúng chưa.');if(cb)cb(false);return}
-    KH=d.khach||[];HD=d.hoadon||[];TT=d.thanhtoan||[];VB=d.viba||[];CHO=d.cho||[];HUY=d.huy||[];KV=d.khoviba||[];KKV=d.kiemkhoviba||[];VCFG=d.vbcfg||null;VBSHEET=d.vbSheet||'';CSK=d.cskh||[];HNPK=d.khohn||[];HNKK=d.kiemkehn||[];
+    KH=d.khach||[];HD=d.hoadon||[];TT=d.thanhtoan||[];VB=d.viba||[];CHO=d.cho||[];HUY=d.huy||[];KV=d.khoviba||[];KKV=d.kiemkhoviba||[];VCFG=d.vbcfg||null;VBSHEET=d.vbSheet||'';CSK=d.cskh||[];HNPK=d.khohn||[];HNKK=d.kiemkehn||[];VOBINH=d.vobinh||null;
     if(d.cat&&d.cat.length){CAT=d.cat;try{localStorage.setItem('hd_cat',JSON.stringify(CAT))}catch(e){}refreshRows();}
     document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn';
     fillKhSelect();renderMaPreview();renderKhList();renderBaoCao();if(TAB==='bc')bcXChon(BCX);renderCongNo();renderThuNo();renderViba();renderCSKH();vbRenderSub();
@@ -2267,6 +2268,47 @@ function hnSauLuu(id,ng,thu,laViba){
     hnPost('khohn',[r]).then(function(){HNPK.push({idd:r[0],id:r[1],ngay:r[2],loai:r[3],ma:r[4],ten:r[5],sl:r[6],nguoi:r[7],nguon:r[8],hd:id,gc:''});});
     VOTHU=0;hnVoBtn();
   }
+}
+/* --- VO BINH 19L: ai chua coc, ai dang giu vo (du lieu tinh san o backend: d.vobinh) --- */
+var VOBINH=null;
+function vbTel(ma,ten,sdt){
+  var s=String(sdt||'').replace(/[^0-9+]/g,'');
+  if(!s){var k=ma?khByMa(ma):null;s=k?String(k.sdt||'').replace(/[^0-9+]/g,''):''}
+  return s?'<a href="tel:'+s+'" style="color:var(--red);font-weight:700;text-decoration:none">'+esc(ten)+' 📞</a>':'<b>'+esc(ten)+'</b>';
+}
+function hnVoBinh(){
+  var v=VOBINH;
+  if(!v){hnModal('🫙 Vỏ bình 19L','<div class="muted">Chưa có dữ liệu vỏ bình (backend chưa trả). Bấm "Làm mới", đợi tải xong rồi mở lại.</div>','',null);return}
+  var tongThieu=0;(v.hdThieu||[]).forEach(function(x){tongThieu+=x.thieu});
+  var h='<div class="muted" style="margin-bottom:6px">Tính từ '+hnDmy(v.tuNgay)+' (hóa đơn cũ hơn không ghi vỏ/cọc).</div>'
+   +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">'
+   +'<div class="card" style="flex:1 1 45%;margin:0;padding:8px"><div class="muted">Vỏ khách đang giữ</div><b style="font-size:20px">'+fmt(v.tongGiu)+'</b></div>'
+   +'<div class="card" style="flex:1 1 45%;margin:0;padding:8px"><div class="muted">Cọc còn thiếu</div><b style="font-size:20px;color:var(--red)">'+fmt(Math.max(0,v.cocPhai-v.cocThu))+' đ</b></div>'
+   +'<div class="card" style="flex:1 1 45%;margin:0;padding:8px"><div class="muted">Bình đầy tại kho</div><b style="font-size:20px">'+fmt(v.tonBinh)+'</b></div>'
+   +'<div class="card" style="flex:1 1 45%;margin:0;padding:8px"><div class="muted">Vỏ rỗng tại kho</div><b style="font-size:20px">'+fmt(v.tonVo)+'</b></div></div>';
+  h+='<h2 style="margin:10px 0 4px;font-size:15px">Hóa đơn chưa cọc đủ — đòi cọc ('+(v.hdThieu||[]).length+')</h2>';
+  if(!(v.hdThieu||[]).length)h+='<div class="muted">Không có hóa đơn nào thiếu cọc.</div>';
+  else{
+    h+='<div style="overflow-x:auto"><table class="rpt"><thead><tr><th>Khách · hóa đơn</th><th>Bình</th><th>Cọc thiếu</th><th>Treo</th></tr></thead><tbody>';
+    v.hdThieu.forEach(function(x){
+      var d=hnDmy(x.ngay),t=daysSince(d);
+      h+='<tr><td>'+vbTel(x.ma,x.khach,x.sdt)+'<div class="muted" style="font-size:11px">'+d+' · '+esc(x.id.slice(-6))+'</div></td><td>'+fmt(x.binh)+'</td>'
+        +'<td><b style="color:var(--red)">'+fmt(x.thieu)+'</b>'+(x.coc>0?'<div class="muted" style="font-size:11px">đã cọc '+fmt(x.coc)+'</div>':'')+'</td><td>'+t+' ngày</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  h+='<h2 style="margin:12px 0 4px;font-size:15px">Khách đang giữ vỏ — đòi vỏ ('+(v.khachGiu||[]).length+')</h2>';
+  if(!(v.khachGiu||[]).length)h+='<div class="muted">Không có khách nào đang giữ vỏ.</div>';
+  else{
+    h+='<div style="overflow-x:auto"><table class="rpt"><thead><tr><th>Khách</th><th>Giữ</th><th>Cọc thiếu</th><th>Giao gần nhất</th></tr></thead><tbody>';
+    v.khachGiu.forEach(function(x){
+      var th=Math.max(0,x.cocPhai-x.cocThu),d=hnDmy(x.gan);
+      h+='<tr><td>'+vbTel(x.ma,x.khach,x.sdt)+'</td><td><b>'+fmt(x.giu)+'</b></td><td>'+(th>0?'<b style="color:var(--red)">'+fmt(th)+'</b>':'-')+'</td><td>'+(x.gan?d+'<div class="muted" style="font-size:11px">'+daysSince(d)+' ngày</div>':'-')+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  if(v.url)h+='<div style="margin-top:12px"><a href="'+esc(v.url)+'" target="_blank" rel="noopener" style="color:var(--red);font-weight:700">Mở sheet theo dõi vỏ bình ↗</a></div>';
+  hnModal('🫙 Vỏ bình 19L',h,'',null);
 }
 /* --- BANG TON KHO HA NOI --- */
 function hnTonKho(){

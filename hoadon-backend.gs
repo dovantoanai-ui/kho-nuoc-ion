@@ -541,7 +541,11 @@ function doGet(e) {
     out.vbcfg = readCfgViba_(ss);
     try { out.cskh = readCskh_(ss); } catch (e5) { out.cskh = []; } // 17/10/2026
     try { out.khohn = readKhoHN_(ss); out.kiemkehn = readKiemKeHN_(ss); } catch (e6) { out.khohn = []; out.kiemkehn = []; } // 09/11/2026: kho Ha Noi
-    try { capNhatVoBinhNeuCan_(ss, out.hoadon, out.viba, out.khohn, out.kiemkehn, false); } catch (e7) {} // 09/11/2026: tab VoBinh_* (toi da 5 phut/lan)
+    try { // 09/11/2026: vo binh 19L - tinh moi lan, ghi tab VoBinh_* toi da 5 phut/lan
+      out.vobinh = capNhatVoBinhNeuCan_(ss, out.hoadon, out.viba, out.khohn, out.kiemkehn, false);
+      var shVb = ss.getSheetByName('VoBinh_TongHop');
+      if (shVb) out.vobinh.url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit#gid=' + shVb.getSheetId();
+    } catch (e7) { out.vobinh = null; }
     var vbid = PropertiesService.getScriptProperties().getProperty(VBSHEET_KEY);
     if (vbid) out.vbSheet = 'https://docs.google.com/spreadsheets/d/' + vbid + '/edit';
   } catch (err) {
@@ -596,6 +600,7 @@ function readCskh_(ss) {
 // ============================================================
 var VOBINH_TU_NGAY = '2026-11-01'; // chi tinh giao/thu tu ngay nay (hoa don cu khong ghi vo thu)
 var VOBINH_COC = 50000;            // d / binh
+var VOBINH_NOI_BO = ['nem thanh']; // khach noi bo: khong dua vao bang dong vo/coc
 var VOBINH_DK_HEAD = ['Ma KH', 'Ten khach', 'Vo dang giu dau ky', 'Coc dang giu dau ky (d)'];
 
 // Ngay (Date | dd/MM/yyyy | yyyy-MM-dd) -> yyyy-MM-dd ('' neu khong doc duoc)
@@ -630,7 +635,7 @@ function ghiBangVoBinh_(ss, name, rows, headRows, flagRows) {
 }
 
 // hd, vb, pk, kk = ket qua readHoaDon_ / readViba_ / readKhoHN_ / readKiemKeHN_ (da doc san)
-function capNhatVoBinh_(ss, hd, vb, pk, kk) {
+function capNhatVoBinh_(ss, hd, vb, pk, kk, ghi) {
   var tu = VOBINH_TU_NGAY;
   var luc = Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm');
   // ---- dau ky (anh dien tay) ----
@@ -650,13 +655,14 @@ function capNhatVoBinh_(ss, hd, vb, pk, kk) {
   Object.keys(dk).forEach(function (k) { var o = K(k, dk[k].ten); o.vo0 = dk[k].vo; o.coc0 = dk[k].coc; });
 
   // ---- hoa don: meta + giao binh + coc ----
-  var meta = {}, cocMax = {}, co19 = {}, so = [];
+  var meta = {}, cocMax = {}, co19 = {}, so = [], invBinh = {}, invVo = {};
   hd.forEach(function (r) {
-    if (!meta[r.id]) meta[r.id] = { ma: r.ma, khach: r.khach, ngay: r.ngay };
+    if (!meta[r.id]) meta[r.id] = { ma: r.ma, khach: r.khach, ngay: r.ngay, sdt: r.sdt || '' };
+    if (!meta[r.id].sdt && r.sdt) meta[r.id].sdt = r.sdt;
     if (r.coc > (cocMax[r.id] || 0)) cocMax[r.id] = r.coc;
     var y = ymdDmy_(r.ngay);
     if (!laBinh19_(r.sp) || !(r.sl > 0) || y < tu) return;
-    co19[r.id] = 1;
+    co19[r.id] = 1; invBinh[r.id] = (invBinh[r.id] || 0) + r.sl;
     var o = K(meta[r.id].ma, meta[r.id].khach); o.giao += r.sl; if (y > o.gan) o.gan = y;
     so.push([y, 'Giao binh', meta[r.id].khach, r.sl, 0, r.id]);
   });
@@ -670,12 +676,14 @@ function capNhatVoBinh_(ss, hd, vb, pk, kk) {
     if (x.loai !== 'Thu vỏ' || !(x.sl > 0)) return;
     var y = ymdDmy_(x.ngay); if (y < tu) return;
     var m = x.hd && meta[x.hd] ? meta[x.hd] : null;
+    if (x.hd) invVo[x.hd] = (invVo[x.hd] || 0) + x.sl;
     K(m ? m.ma : '', m ? m.khach : '(vo le, khong gan hoa don)').thu += x.sl;
     so.push([y, 'Thu vo', m ? m.khach : '(vo le)', x.sl, 0, x.hd || x.id]);
   });
   vb.forEach(function (v) {
     if (!v.cotTt || !(v.vothu > 0)) return;
     var y = ymdDmy_(v.ngaygiao); if (!y || y < tu) return;
+    invVo[v.id] = (invVo[v.id] || 0) + v.vothu;
     K(v.ma, v.khach).thu += v.vothu;
     so.push([y, 'Thu vo (giao VIBA)', v.khach, v.vothu, 0, v.id]);
   });
@@ -702,7 +710,7 @@ function capNhatVoBinh_(ss, hd, vb, pk, kk) {
   so.push([m2 ? m2.y : '', 'Moc kiem ke vo 19L', 'Kho Ha Noi', m2 ? m2.v : 0, 0, '']);
 
   // ---- bang theo khach ----
-  var arr = Object.keys(kh).map(function (k) { return kh[k]; });
+  var arr = Object.keys(kh).map(function (k) { return kh[k]; }).filter(function (o) { return VOBINH_NOI_BO.indexOf(chuanTen_(o.ten)) < 0; });
   arr.forEach(function (o) {
     o.giu = o.vo0 + o.giao - o.thu;
     o.cocThu = o.coc0 + o.coc;
@@ -718,7 +726,7 @@ function capNhatVoBinh_(ss, hd, vb, pk, kk) {
     if (o.chenh < 0) flag.push(tk.length - 1);
     T.giao += o.giao; T.thu += o.thu; T.giu += o.giu; T.cocThu += o.cocThu; T.cocPhaiGiu += o.cocPhaiGiu;
   });
-  ghiBangVoBinh_(ss, 'VoBinh_TheoKhach', tk, [0], flag);
+  if (ghi) ghiBangVoBinh_(ss, 'VoBinh_TheoKhach', tk, [0], flag);
 
   // ---- tong hop ----
   var th = [
@@ -734,25 +742,43 @@ function capNhatVoBinh_(ss, hd, vb, pk, kk) {
     ['Chenh coc (am = thu thieu coc) (d)', T.cocThu - T.cocPhaiGiu],
     ['Ghi chu', 'Hoa don truoc ngay chot khong ghi vo thu -> dien so vo/coc dang giu vao tab VoBinh_DauKy neu can']
   ];
-  ghiBangVoBinh_(ss, 'VoBinh_TongHop', th, [0], (T.cocThu - T.cocPhaiGiu) < 0 ? [9] : []);
+  if (ghi) ghiBangVoBinh_(ss, 'VoBinh_TongHop', th, [0], (T.cocThu - T.cocPhaiGiu) < 0 ? [9] : []);
 
   // ---- so cai ----
   so.sort(function (a, b) { return a[0] < b[0] ? 1 : (a[0] > b[0] ? -1 : 0); });
   var sc = [['Ngay', 'Loai', 'Khach', 'So luong', 'Coc (d)', 'Hoa don / phieu']];
   so.forEach(function (r) { sc.push([r[0] ? r[0].slice(8, 10) + '/' + r[0].slice(5, 7) + '/' + r[0].slice(0, 4) : '', r[1], r[2], r[3], r[4], r[5]]); });
-  ghiBangVoBinh_(ss, 'VoBinh_SoCai', sc, [0], []);
-  PropertiesService.getScriptProperties().setProperty('vobinh_luc', String(new Date().getTime()));
-  return { ok: true, khach: arr.length, giu: T.giu };
+  if (ghi) {
+    ghiBangVoBinh_(ss, 'VoBinh_SoCai', sc, [0], []);
+    PropertiesService.getScriptProperties().setProperty('vobinh_luc', String(new Date().getTime()));
+  }
+  // ---- du lieu cho app: hoa don chua coc du (de doi coc / doi binh) + khach dang giu vo ----
+  var sdtOf = {};
+  Object.keys(meta).forEach(function (id) { var m = meta[id]; if (m.sdt) sdtOf[m.ma || m.khach] = m.sdt; });
+  var hdThieu = [];
+  Object.keys(co19).forEach(function (id) {
+    var m = meta[id]; if (VOBINH_NOI_BO.indexOf(chuanTen_(m.khach)) >= 0) return;
+    var n = invBinh[id] || 0, c = cocMax[id] || 0, need = n * VOBINH_COC;
+    if (c >= need) return;
+    hdThieu.push({ id: id, ngay: ymdDmy_(m.ngay), ma: m.ma, khach: m.khach, sdt: m.sdt || '', binh: n, coc: c, thieu: need - c, vo: invVo[id] || 0 });
+  });
+  hdThieu.sort(function (a, b) { return a.ngay < b.ngay ? -1 : (a.ngay > b.ngay ? 1 : 0); });
+  var tkApp = arr.filter(function (o) { return o.giu > 0; }).sort(function (a, b) { return b.giu - a.giu; }).map(function (o) {
+    return { ma: o.ma, khach: o.ten, sdt: sdtOf[o.ma || o.ten] || '', giao: o.giao, thu: o.thu, giu: o.giu, cocThu: o.cocThu, cocPhai: o.cocPhaiGiu, chenh: o.chenh, gan: o.gan };
+  });
+  return { ok: true, khach: arr.length, giu: T.giu, tuNgay: tu, tonBinh: tonBinh, tonVo: tonVo, tongGiu: T.giu, cocThu: T.cocThu, cocPhai: T.cocPhaiGiu,
+           hdThieu: hdThieu.slice(0, 120), khachGiu: tkApp.slice(0, 40) };
 }
 
-// Goi tu doGet: toi da 5 phut/lan (hoac force)
+// Goi tu doGet: luon TINH (cho app), chi GHI sheet toi da 5 phut/lan (hoac force)
 function capNhatVoBinhNeuCan_(ss, hd, vb, pk, kk, force) {
   var props = PropertiesService.getScriptProperties();
   var last = Number(props.getProperty('vobinh_luc') || 0);
-  if (!force && last && (new Date().getTime() - last) < 5 * 60 * 1000) return { ok: true, boqua: 1 };
+  var ghi = !!force || !last || (new Date().getTime() - last) >= 5 * 60 * 1000;
+  if (!ghi) return capNhatVoBinh_(ss, hd, vb, pk, kk, false);
   var lock = LockService.getScriptLock();
-  try { lock.waitLock(20000); } catch (e) { return { ok: false, error: 'khoa ban' }; }
-  try { return capNhatVoBinh_(ss, hd, vb, pk, kk); } finally { try { lock.releaseLock(); } catch (e2) {} }
+  try { lock.waitLock(20000); } catch (e) { return capNhatVoBinh_(ss, hd, vb, pk, kk, false); }
+  try { return capNhatVoBinh_(ss, hd, vb, pk, kk, true); } finally { try { lock.releaseLock(); } catch (e2) {} }
 }
 
 // ============================================================
