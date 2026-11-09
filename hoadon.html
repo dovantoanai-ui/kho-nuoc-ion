@@ -175,6 +175,7 @@
         <div id="rows"></div>
         <button class="add" onclick="addRow()">+ Thêm sản phẩm</button>
         <button type="button" id="hnVoBtn" class="add" onclick="hnThuVo()">🔄 Thu vỏ bình (đi cùng hóa đơn này)</button>
+        <div id="cocWarn" style="display:none;border-radius:9px;padding:8px 10px;font-size:13px;margin-top:8px"></div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:12px">
           <input type="checkbox" id="vat" onchange="render()" style="width:20px;height:20px;flex:0 0 20px">
           <label for="vat" style="margin:0;font-size:14px;color:var(--ink);flex:1">Tính VAT (thuế GTGT)</label>
@@ -194,8 +195,7 @@
         </div>
         <label>Người thu tiền</label><input id="thu" oninput="render()" placeholder="Tên người thu">
         <div id="dathuWrap" style="display:none"><label>Số tiền đã thu (đ)</label><input id="dathu" type="number" inputmode="numeric" placeholder="0" oninput="render()"></div>
-        <label>Cọc bình (đ)</label><input id="coc" type="number" inputmode="numeric" placeholder="0" oninput="render()">
-        <div id="cocWarn" style="display:none;border-radius:9px;padding:8px 10px;font-size:13px;margin-top:6px"></div>
+        <label>Cọc bình (đ)</label><input id="coc" type="number" inputmode="numeric" placeholder="0" oninput="COC_TAY=true;render()">
         <label>Ghi chú (tuỳ chọn)</label><textarea id="ghichu" rows="2" placeholder="VD: giao giờ hành chính, gọi trước khi giao..." oninput="render()" style="width:100%;font:inherit;font-size:15px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);resize:vertical"></textarea>
       </div>
 
@@ -2093,7 +2093,7 @@ function saveKiemKe(){
 /* ---------- 09/11/2026: KHO HA NOI (nhap kho · kiem ke · thu vo · coc 50k/binh 19L) ----------
    Kho Ha Noi cua ION (KHONG phai kho VIBA). Du lieu: tab PhieuKhoHN + KiemKeHN trong Sheet duan-nuoc-ion.
    Ton = moc kiem ke moi nhat + nhap/thu vo SAU ngay moc - ban (hoa don kho Ha Noi, tru don giao VIBA). */
-var HNPK=[], HNKK=[], VOTHU=0, KHONGCOC=false, COC_BINH=50000;
+var HNPK=[], HNKK=[], VOTHU=0, KHONGCOC=false, COC_BINH=50000, COC_TAY=false, COC_AUTO=false;
 function hnMaOf(ten){
   var n=String(ten||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d').replace(/\s+/g,' ');
   if(/\bvo\b/.test(n)&&/19l|binh/.test(n))return 'SP02';
@@ -2115,14 +2115,18 @@ function hnPost(loai,rows){
 function cocWarn(){
   var w=document.getElementById('cocWarn');if(!w)return;
   var n=hnBinh19(readItems()),coc=Number(document.getElementById('coc').value)||0,need=n*COC_BINH;
-  if(n<=0){w.style.display='none';return}
+  var ci=document.getElementById('coc');
+  if(n<=0){w.style.display='none';if(!COC_TAY&&COC_AUTO&&ci.value!==''){ci.value='';COC_AUTO=false}return}
+  /* 09/11/2026: co binh 19L -> tu dien tien coc n x 50k (nhan vien go lai thi giu so cua ho) */
+  if(!COC_TAY&&!KHONGCOC&&!THAYTHE&&Number(ci.value||0)!==need){ci.value=need;COC_AUTO=true;coc=need}
   var ok=coc>=need;
   w.style.display='block';w.style.background=ok?'#e9f7ef':'#fdeceb';w.style.color=ok?'#0f7a3a':'var(--red)';
-  w.innerHTML='<b>'+n+' bình 19L → cần cọc '+fmt(need)+' đ</b> ('+n+' × '+fmt(COC_BINH)+')'+(ok?' · ✓ đã đủ cọc':' · hiện cọc '+fmt(coc)+' đ')
+  w.innerHTML='<b>💰 Thu tiền cọc: '+n+' bình 19L × '+fmt(COC_BINH)+' = '+fmt(need)+' đ</b>'+(ok?' · ✓ đã đủ cọc':' · hiện cọc '+fmt(coc)+' đ')
     +(ok?'':'<div style="margin-top:6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="add" style="width:auto;margin:0;padding:6px 10px" onclick="cocDien()">Điền cọc '+fmt(need)+' đ</button>'
-    +'<label style="margin:0;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink)"><input type="checkbox" '+(KHONGCOC?'checked ':'')+'onchange="KHONGCOC=this.checked" style="width:18px;height:18px"> Không cọc (bắt buộc ghi chú đặc biệt)</label></div>');
+    +'<label style="margin:0;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink)"><input type="checkbox" '+(KHONGCOC?'checked ':'')+'onchange="cocKhong(this.checked)" style="width:18px;height:18px"> Không cọc (bắt buộc ghi chú đặc biệt)</label></div>');
 }
-function cocDien(){var n=hnBinh19(readItems());document.getElementById('coc').value=n*COC_BINH;KHONGCOC=false;render()}
+function cocKhong(v){KHONGCOC=v;if(v){document.getElementById('coc').value='';COC_TAY=true}render()}
+function cocDien(){var n=hnBinh19(readItems());document.getElementById('coc').value=n*COC_BINH;KHONGCOC=false;COC_TAY=false;render()}
 function cocKiem(items,coc,gc){
   var n=hnBinh19(items);if(n<=0)return {ok:true,gc:gc};
   var need=n*COC_BINH;if(coc>=need)return {ok:true,gc:gc};
@@ -2230,7 +2234,7 @@ function hnThuVo(){
   hnModal('🔄 Thu vỏ bình',h,'Gắn vào hóa đơn',function(){VOTHU=Math.max(0,Math.round(Number(document.getElementById('hnVoN').value)||0));hnVoBtn();hnClose();render()});
 }
 function hnSauLuu(id,ng,thu,laViba){
-  KHONGCOC=false;
+  KHONGCOC=false;COC_TAY=false;COC_AUTO=false;
   if(VOTHU>0&&!laViba){
     var r=[id+'_VO',id,ng,'Thu vỏ','SP02','Vỏ 19L',VOTHU,thu||'','Khách trả theo hóa đơn',id,''];
     hnPost('khohn',[r]).then(function(){HNPK.push({idd:r[0],id:r[1],ngay:r[2],loai:r[3],ma:r[4],ten:r[5],sl:r[6],nguoi:r[7],nguon:r[8],hd:id,gc:''});});
