@@ -745,7 +745,7 @@ var _jc=0;
 function jsonp(url,cb){
   var name='__hdcb'+(++_jc);
   var s=document.createElement('script');
-  var t=setTimeout(function(){cleanup();cb(null)},15000);
+  var t=setTimeout(function(){cleanup();cb(null)},60000); /* 09/11/2026: 15s -> 60s, backend doc ~20s khi Sheet nhieu tab */
   function cleanup(){try{delete window[name]}catch(e){window[name]=undefined}if(s.parentNode)s.parentNode.removeChild(s);clearTimeout(t)}
   window[name]=function(data){cleanup();cb(data)};
   s.src=url+(url.indexOf('?')<0?'?':'&')+'callback='+name+'&t='+Date.now();
