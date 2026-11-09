@@ -1,5 +1,8 @@
 # Hướng dẫn bật màn Kiểm kê kho (thêm 18/07/2026)
 
+> **CẬP NHẬT 06/11/2026:** Kho Hưng Yên ngừng dùng từ 14/10/2026 — `index.html` giờ chỉ là trang thông báo, **không còn màn "Kiểm kê" ở đó**. Kiểm kê hiện làm trong **app Hóa đơn** (`hoadon.html` → tab Kiểm kê, chọn kho Hà Nội/Hưng Yên), vẫn ghi vào tab `KiemKe` của backend kho (Bước 1 vẫn đúng; Bước 2 bỏ qua). Lưu ý: app báo "Đã lưu" ngay cả khi mạng/URL lỗi (gửi no-cors, không đọc được phản hồi) — sau khi lưu nên mở tab KiemKe trên Sheet xem có dòng mới.
+
+
 Đã thêm màn **"Kiểm kê"** vào app kho (index.html) + backend (backend-apps-script.gs). Backup bản cũ: `index_backup_20260718b.html`, `backend-apps-script_backup_20260718.gs`.
 
 ## Bước 1 — Cập nhật Backend (bắt buộc, làm trước)

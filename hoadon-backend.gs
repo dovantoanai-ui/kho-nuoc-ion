@@ -198,6 +198,10 @@ function doPost(e) {
       out = huyHoaDon_(ss, p);
     } else if (p.loai === 'cskh' && p.cs && p.cs.id) {
       out = ghiCskh_(ss, p.cs); // 17/10/2026: bao cao cham soc khach hang
+    } else if (p.loai === 'khohn' && p.rows && p.rows.length) {
+      out = ghiKhoHN_(ss, p.rows); // 09/11/2026: nhap kho / thu vo kho Ha Noi
+    } else if (p.loai === 'kiemkehn' && p.rows && p.rows.length) {
+      out = ghiKiemKeHN_(ss, p.rows); // 09/11/2026: kiem ke kho Ha Noi
     } else if (p.loai === 'doisoatck' && p.dot && p.rows && p.rows.length) {
       out = doiSoatCK_(ss, p);
     }
@@ -531,6 +535,7 @@ function doGet(e) {
     out.kiemkhoviba = readKiemKhoViba_(ss);
     out.vbcfg = readCfgViba_(ss);
     try { out.cskh = readCskh_(ss); } catch (e5) { out.cskh = []; } // 17/10/2026
+    try { out.khohn = readKhoHN_(ss); out.kiemkehn = readKiemKeHN_(ss); } catch (e6) { out.khohn = []; out.kiemkehn = []; } // 09/11/2026: kho Ha Noi
     var vbid = PropertiesService.getScriptProperties().getProperty(VBSHEET_KEY);
     if (vbid) out.vbSheet = 'https://docs.google.com/spreadsheets/d/' + vbid + '/edit';
   } catch (err) {
@@ -575,6 +580,95 @@ function readCskh_(ss) {
              ketqua: String(g(r, 'Ket qua')), ghichu: String(g(r, 'Ghi chu')), hen: g(r, 'Hen goi lai') ? fmtD_(g(r, 'Hen goi lai')) : '',
              roi: num_(g(r, 'Roi app (giay)')) };
   });
+}
+
+// ============================================================
+// 09/11/2026 - KHO HA NOI (kho rieng cua ION, KHONG phai kho VIBA)
+// Tab PhieuKhoHN: nhap kho / thu vo / dieu chinh.  Tab KiemKeHN: bien ban kiem ke (lam moc ton).
+// Ton = moc kiem ke moi nhat + nhap sau moc - ban (hoa don kho Ha Noi, khong tinh don giao VIBA) - tinh o app.
+// ============================================================
+var KHN_HEAD = ['ID dong', 'ID phieu', 'Ngay', 'Loai', 'Ma', 'Ten hang', 'So luong', 'Nguoi', 'Nguon',
+                'ID hoa don', 'Ghi chu', 'Ghi luc', 'Thang'];
+var KKHN_HEAD = ['ID dong', 'ID phieu', 'Ngay', 'Ma', 'Ten hang', 'Ton so sach', 'So dem', 'Chenh lech',
+                 'Nguoi kiem', 'Ghi chu', 'Ghi luc', 'Thang'];
+
+// rows: [ID dong, ID phieu, Ngay, Loai, Ma, Ten hang, So luong, Nguoi, Nguon, ID hoa don, Ghi chu]. Chong trung theo ID dong.
+function ghiKhoHN_(ss, rows) {
+  var sh = ensureSheet_(ss, 'PhieuKhoHN', KHN_HEAD);
+  var daCo = {}, last = sh.getLastRow();
+  if (last > 1) sh.getRange(2, 1, last - 1, 1).getValues().forEach(function (r) { daCo[String(r[0] || '').trim()] = 1; });
+  var luc = Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm');
+  var moi = [];
+  rows.forEach(function (r) {
+    var key = String(r[0] || '').trim();
+    if (!key || daCo[key]) return; daCo[key] = 1;
+    var x = r.slice(0, 11); while (x.length < 11) x.push('');
+    x[6] = num_(x[6]);
+    x.push(luc); x.push(thang_(x[2]));
+    moi.push(x.map(function (v, i) { return (i === 6) ? v : String(v == null ? '' : v); }));
+  });
+  if (!moi.length) return { ok: true, added: 0, skipped: rows.length };
+  var dau = sh.getLastRow() + 1;
+  sh.getRange(dau, 1, moi.length, KHN_HEAD.length).setNumberFormat('@');
+  sh.getRange(dau, 7, moi.length, 1).setNumberFormat('0');
+  sh.getRange(dau, 1, moi.length, KHN_HEAD.length).setValues(moi);
+  return { ok: true, added: moi.length, skipped: rows.length - moi.length };
+}
+
+function readKhoHN_(ss) {
+  var d = rowsOf_(ss, 'PhieuKhoHN'); if (!d.head.length) return [];
+  var h = d.head, c = {};
+  KHN_HEAD.forEach(function (n) { c[n] = idx_(h, n); });
+  function g(r, n) { return c[n] >= 0 ? r[c[n]] : ''; }
+  var out = [];
+  d.rows.forEach(function (r) {
+    var idd = String(g(r, 'ID dong') || '').trim(); if (!idd) return;
+    var slRaw = g(r, 'So luong');
+    out.push({ idd: idd, id: String(g(r, 'ID phieu') || '').trim(), ngay: fmtD_(g(r, 'Ngay')),
+      loai: String(g(r, 'Loai') || ''), ma: String(g(r, 'Ma') || '').trim(), ten: String(g(r, 'Ten hang') || ''),
+      sl: (typeof slRaw === 'number') ? slRaw : num_(slRaw), nguoi: String(g(r, 'Nguoi') || ''),
+      nguon: String(g(r, 'Nguon') || ''), hd: String(g(r, 'ID hoa don') || ''), gc: String(g(r, 'Ghi chu') || '') });
+  });
+  return out;
+}
+
+// rows: [ID dong, ID phieu, Ngay, Ma, Ten hang, Ton so sach, So dem, Chenh lech, Nguoi kiem, Ghi chu]
+function ghiKiemKeHN_(ss, rows) {
+  var sh = ensureSheet_(ss, 'KiemKeHN', KKHN_HEAD);
+  var daCo = {}, last = sh.getLastRow();
+  if (last > 1) sh.getRange(2, 1, last - 1, 1).getValues().forEach(function (r) { daCo[String(r[0] || '').trim()] = 1; });
+  var luc = Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm');
+  var moi = [];
+  rows.forEach(function (r) {
+    var key = String(r[0] || '').trim();
+    if (!key || daCo[key]) return; daCo[key] = 1;
+    var x = r.slice(0, 10); while (x.length < 10) x.push('');
+    x[5] = (x[5] === '' || x[5] == null) ? '' : num_(x[5]); x[6] = num_(x[6]); x[7] = (x[7] === '' || x[7] == null) ? '' : num_(x[7]);
+    x.push(luc); x.push(thang_(x[2]));
+    moi.push(x.map(function (v, i) { return (i >= 5 && i <= 7) ? v : String(v == null ? '' : v); }));
+  });
+  if (!moi.length) return { ok: true, added: 0, skipped: rows.length };
+  var dau = sh.getLastRow() + 1;
+  sh.getRange(dau, 1, moi.length, KKHN_HEAD.length).setNumberFormat('@');
+  sh.getRange(dau, 6, moi.length, 3).setNumberFormat('0');
+  sh.getRange(dau, 1, moi.length, KKHN_HEAD.length).setValues(moi);
+  return { ok: true, added: moi.length, skipped: rows.length - moi.length };
+}
+
+function readKiemKeHN_(ss) {
+  var d = rowsOf_(ss, 'KiemKeHN'); if (!d.head.length) return [];
+  var h = d.head, c = {};
+  KKHN_HEAD.forEach(function (n) { c[n] = idx_(h, n); });
+  function g(r, n) { return c[n] >= 0 ? r[c[n]] : ''; }
+  var out = [];
+  d.rows.forEach(function (r) {
+    var idd = String(g(r, 'ID dong') || '').trim(); if (!idd) return;
+    out.push({ idd: idd, id: String(g(r, 'ID phieu') || '').trim(), ngay: fmtD_(g(r, 'Ngay')),
+      ma: String(g(r, 'Ma') || '').trim(), ten: String(g(r, 'Ten hang') || ''),
+      so: num_(g(r, 'Ton so sach')), dem: num_(g(r, 'So dem')), lech: num_(g(r, 'Chenh lech')),
+      nguoi: String(g(r, 'Nguoi kiem') || ''), gc: String(g(r, 'Ghi chu') || '') });
+  });
+  return out;
 }
 
 // ---------- Helpers ----------

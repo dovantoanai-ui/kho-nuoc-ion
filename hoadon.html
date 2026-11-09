@@ -169,6 +169,12 @@
         </div>
         <div id="rows"></div>
         <button class="add" onclick="addRow()">+ Thêm sản phẩm</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <button type="button" class="add" style="flex:1 1 45%;width:auto" onclick="hnNhapKho()">📥 Nhập kho</button>
+          <button type="button" class="add" style="flex:1 1 45%;width:auto" onclick="hnKiemKe()">📋 Kiểm kê kho</button>
+          <button type="button" id="hnVoBtn" class="add" style="flex:1 1 45%;width:auto" onclick="hnThuVo()">🔄 Thu vỏ bình</button>
+          <button type="button" class="add" style="flex:1 1 45%;width:auto" onclick="hnTonKho()">📊 Tồn kho</button>
+        </div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:12px">
           <input type="checkbox" id="vat" onchange="render()" style="width:20px;height:20px;flex:0 0 20px">
           <label for="vat" style="margin:0;font-size:14px;color:var(--ink);flex:1">Tính VAT (thuế GTGT)</label>
@@ -189,6 +195,7 @@
         <label>Người thu tiền</label><input id="thu" oninput="render()" placeholder="Tên người thu">
         <div id="dathuWrap" style="display:none"><label>Số tiền đã thu (đ)</label><input id="dathu" type="number" inputmode="numeric" placeholder="0" oninput="render()"></div>
         <label>Cọc bình (đ)</label><input id="coc" type="number" inputmode="numeric" placeholder="0" oninput="render()">
+        <div id="cocWarn" style="display:none;border-radius:9px;padding:8px 10px;font-size:13px;margin-top:6px"></div>
         <label>Ghi chú (tuỳ chọn)</label><textarea id="ghichu" rows="2" placeholder="VD: giao giờ hành chính, gọi trước khi giao..." oninput="render()" style="width:100%;font:inherit;font-size:15px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);resize:vertical"></textarea>
       </div>
 
@@ -750,7 +757,7 @@ function loadData(manual,cb){
   document.getElementById('dataInfo').textContent='Đang tải dữ liệu...';
   jsonp(GS,function(d){
     if(!d||!d.ok){document.getElementById('dataInfo').textContent='Lỗi tải dữ liệu';if(manual)alert('Không tải được dữ liệu. Kiểm tra URL backend đã deploy đúng chưa.');if(cb)cb(false);return}
-    KH=d.khach||[];HD=d.hoadon||[];TT=d.thanhtoan||[];VB=d.viba||[];CHO=d.cho||[];HUY=d.huy||[];KV=d.khoviba||[];KKV=d.kiemkhoviba||[];VCFG=d.vbcfg||null;VBSHEET=d.vbSheet||'';CSK=d.cskh||[];
+    KH=d.khach||[];HD=d.hoadon||[];TT=d.thanhtoan||[];VB=d.viba||[];CHO=d.cho||[];HUY=d.huy||[];KV=d.khoviba||[];KKV=d.kiemkhoviba||[];VCFG=d.vbcfg||null;VBSHEET=d.vbSheet||'';CSK=d.cskh||[];HNPK=d.khohn||[];HNKK=d.kiemkehn||[];
     if(d.cat&&d.cat.length){CAT=d.cat;try{localStorage.setItem('hd_cat',JSON.stringify(CAT))}catch(e){}refreshRows();}
     document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn';
     fillKhSelect();renderMaPreview();renderKhList();renderBaoCao();if(TAB==='bc')bcXChon(BCX);renderCongNo();renderThuNo();renderViba();renderCSKH();vbRenderSub();
@@ -1092,6 +1099,7 @@ function readItems(){
   return out;
 }
 function render(){
+  try{cocWarn()}catch(e){}
   var items=readItems();var sub=0;items.forEach(function(x){sub+=x.tt});
   var k=selKh();var kh=k?k.ten:'';var sdt=k?k.sdt:'';var qh=k?k.qh:'';
   var hasVat=document.getElementById('vat').checked;var rate=Number(document.getElementById('vatr').value)||0;
@@ -1156,6 +1164,8 @@ function dongBo(){
   var htv=htValue();
   var dathu=ttv==='Đã thanh toán'?tong:(ttv==='Thanh toán 1 phần'?(Number(document.getElementById('dathu').value)||0):0);
   var ghichu=(document.getElementById('ghichu').value||'').trim();
+  /* 09/11/2026: bat buoc coc 50k/binh 19L (hoac ghi chu dac biet) */
+  var ck=cocKiem(items,coc,ghichu);if(!ck.ok)return;ghichu=ck.gc;
   /* 23/09/2026: kiem tra thong tin giao VIBA truoc khi gui */
   var vb=vbForm();
   if(vb){
@@ -1168,6 +1178,7 @@ function dongBo(){
   if(VBNHAP){if(THAYTHE){alert('Đang lập phiếu thay thế — làm ở tab Hoá đơn.');return}
     vnLuu(cust,items,{hasVat:hasVat,rate:rate,coc:coc,tong:tong,dathu:dathu,ttv:ttv,thu:thu,htv:htv,ghichu:ghichu});return}
   var id='HD'+Date.now();var ng=THAYTHE?THAYTHE.ngay:today();var rows=[];
+  if(VOTHU>0&&!vb)ghichu=(ghichu?ghichu+' · ':'')+'Thu vỏ '+VOTHU+' bình';
   items.forEach(function(x,i){
     rows.push([id,ng,cust.ma,i===0?cust.ten:'',i===0?cust.sdt:'',KHO,x.t,x.dv,x.sl,x.gia,x.tt,
       i===0?(hasVat?rate:0):'',i===0?coc:'',i===0?tong:'',i===0?dathu:'',i===0?ttv:'',i===0?thu:'',i===0?htv:'',i===0?ghichu:'']);
@@ -1193,6 +1204,7 @@ function dongBo(){
        rows.forEach(function(r){HD.push(toObj(r))});
      }
      document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn';
+     hnSauLuu(id,ng,thu,!!vbRow);
      b.textContent='Đã đồng bộ ✓ (bấm để gửi tiếp)';
      document.getElementById('vbTien').removeAttribute('data-tay');
      renderBaoCao();renderCongNo();renderCSKH();renderDonHang();renderViba();
@@ -2076,6 +2088,164 @@ function saveKiemKe(){
      alert('Da luu kiem ke '+rows.length+' ma len Sheet kho.');
    })
    .catch(function(e){if(b){b.disabled=false;b.textContent='Luu kiem ke len Sheet kho';}alert('Loi luu: '+e.message);});
+}
+
+/* ---------- 09/11/2026: KHO HA NOI (nhap kho · kiem ke · thu vo · coc 50k/binh 19L) ----------
+   Kho Ha Noi cua ION (KHONG phai kho VIBA). Du lieu: tab PhieuKhoHN + KiemKeHN trong Sheet duan-nuoc-ion.
+   Ton = moc kiem ke moi nhat + nhap/thu vo SAU ngay moc - ban (hoa don kho Ha Noi, tru don giao VIBA). */
+var HNPK=[], HNKK=[], VOTHU=0, KHONGCOC=false, COC_BINH=50000;
+function hnMaOf(ten){
+  var n=String(ten||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d').replace(/\s+/g,' ');
+  if(/\bvo\b/.test(n)&&/19l|binh/.test(n))return 'SP02';
+  if(/luxury 350|hong.*350|350.*hong/.test(n))return 'SP06';
+  if(/luxury 500|hong.*500|500.*hong/.test(n))return 'SP07';
+  if(/19l/.test(n))return 'SP01';
+  if(/can 5l|\b5l\b/.test(n))return 'SP03';
+  if(/350 ?ml/.test(n))return 'SP04';
+  if(/500 ?ml/.test(n))return 'SP05';
+  return '';
+}
+function hnBinh19(items){var n=0;items.forEach(function(x){if(hnMaOf(x.t)==='SP01')n+=Number(x.sl)||0});return n}
+function hnDmy(iso){var p=String(iso||'').split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:today()}
+function hnPost(loai,rows){
+  if(!GS){alert('Chưa cấu hình backend. Bấm Cài đặt để dán URL /exec.');return Promise.reject(new Error('no GS'))}
+  return fetch(GS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({loai:loai,rows:rows})});
+}
+/* --- COC 50k/binh 19L --- */
+function cocWarn(){
+  var w=document.getElementById('cocWarn');if(!w)return;
+  var n=hnBinh19(readItems()),coc=Number(document.getElementById('coc').value)||0,need=n*COC_BINH;
+  if(n<=0){w.style.display='none';return}
+  var ok=coc>=need;
+  w.style.display='block';w.style.background=ok?'#e9f7ef':'#fdeceb';w.style.color=ok?'#0f7a3a':'var(--red)';
+  w.innerHTML='<b>'+n+' bình 19L → cần cọc '+fmt(need)+' đ</b> ('+n+' × '+fmt(COC_BINH)+')'+(ok?' · ✓ đã đủ cọc':' · hiện cọc '+fmt(coc)+' đ')
+    +(ok?'':'<div style="margin-top:6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="add" style="width:auto;margin:0;padding:6px 10px" onclick="cocDien()">Điền cọc '+fmt(need)+' đ</button>'
+    +'<label style="margin:0;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink)"><input type="checkbox" '+(KHONGCOC?'checked ':'')+'onchange="KHONGCOC=this.checked" style="width:18px;height:18px"> Không cọc (bắt buộc ghi chú đặc biệt)</label></div>');
+}
+function cocDien(){var n=hnBinh19(readItems());document.getElementById('coc').value=n*COC_BINH;KHONGCOC=false;render()}
+function cocKiem(items,coc,gc){
+  var n=hnBinh19(items);if(n<=0)return {ok:true,gc:gc};
+  var need=n*COC_BINH;if(coc>=need)return {ok:true,gc:gc};
+  if(!KHONGCOC){alert('Hóa đơn có '+n+' bình 19L → phải cọc '+fmt(need)+' đ ('+n+' × '+fmt(COC_BINH)+').\n\nBấm "Điền cọc", hoặc tích "Không cọc" và ghi chú đặc biệt.');return {ok:false}}
+  if(gc.replace(/\[[^\]]*\]/g,'').trim().length<5){alert('Không cọc / cọc thiếu → phải ghi chú đặc biệt (lý do, ít nhất 5 ký tự) ở ô Ghi chú.');try{document.getElementById('ghichu').focus()}catch(e){}return {ok:false}}
+  var tag=coc>0?'[CỌC THIẾU '+fmt(coc)+'/'+fmt(need)+']':'[KHÔNG CỌC]';
+  if(gc.indexOf(tag)<0)gc=tag+' '+gc;
+  return {ok:true,gc:gc};
+}
+/* --- TON KHO HA NOI --- */
+function hnTonCalc(){
+  var r={};VB_SKU.forEach(function(s){r[s[0]]={ma:s[0],ten:s[1],moc:0,mocNgay:'',nhap:0,ban:0,ton:0}});
+  var mk={};
+  HNKK.forEach(function(k){if(!r[k.ma])return;var y=vbYmd(k.ngay);if(!mk[k.ma]||y>=mk[k.ma].y)mk[k.ma]={y:y,v:Number(k.dem)||0,n:k.ngay}});
+  Object.keys(mk).forEach(function(m){r[m].moc=mk[m].v;r[m].mocNgay=mk[m].n});
+  function sau(ma,ngay){return !mk[ma]||vbYmd(ngay)>mk[ma].y}
+  HNPK.forEach(function(x){var o=r[x.ma];if(!o||!sau(x.ma,x.ngay))return;o.nhap+=Number(x.sl)||0});
+  var vb={};VB.forEach(function(v){vb[v.id]=1});
+  HD.forEach(function(x){
+    if(x.kho!=='Hà Nội'||vb[x.id])return; /* don giao VIBA tru kho VIBA, khong tru kho HN */
+    var ma=hnMaOf(x.sp),o=r[ma];if(!o||ma==='SP02'||!sau(ma,x.ngay))return;o.ban+=Number(x.sl)||0;
+  });
+  Object.keys(r).forEach(function(m){r[m].ton=r[m].moc+r[m].nhap-r[m].ban});
+  return r;
+}
+/* --- KHUNG HOP THOAI --- */
+function hnModal(title,body,okText,onOk){
+  var m=document.getElementById('hnModal');
+  if(!m){m=document.createElement('div');m.id='hnModal';m.style.cssText='position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:flex-end;justify-content:center';document.body.appendChild(m)}
+  m.innerHTML='<div style="background:#fff;width:100%;max-width:520px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px 14px 18px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h2 style="margin:0">'+title+'</h2><button type="button" onclick="hnClose()" style="border:0;background:none;font-size:26px;line-height:1">×</button></div>'
+    +body+(okText?'<button type="button" class="btn bgrn" id="hnOk" style="width:100%;margin-top:12px">'+okText+'</button>':'')+'</div>';
+  m.style.display='flex';var b=document.getElementById('hnOk');if(b)b.onclick=onOk;
+}
+function hnClose(){var m=document.getElementById('hnModal');if(m)m.style.display='none'}
+function hnNguoiVal(){return localStorage.getItem('hn_nguoi')||''}
+/* --- NHAP KHO HA NOI --- */
+function hnNhapKho(){
+  var h='<div class="muted" style="margin-bottom:6px">Nhập hàng vào <b>kho Hà Nội</b> (không phải kho VIBA). Thu vỏ lẻ không kèm hóa đơn: nhập ở dòng "Vỏ 19L".</div>'
+   +'<div class="row" style="align-items:stretch"><div style="flex:1"><label>Ngày nhập</label><input id="hnNgay" type="date" value="'+todayISO()+'"></div>'
+   +'<div style="flex:1"><label>Người nhập</label><input id="hnNguoi" value="'+esc(hnNguoiVal())+'" placeholder="Tên người nhập"></div></div>'
+   +'<label>Nguồn hàng</label><select id="hnNguon"><option>Ion Fuji</option><option>Ocean</option><option>Kho Hưng Yên</option><option>Kho VIBA trả về</option><option>Khác</option></select>'
+   +'<table class="rpt" style="margin-top:8px"><thead><tr><th>Hàng</th><th>SL nhập</th></tr></thead><tbody>';
+  VB_SKU.forEach(function(s){h+='<tr><td>'+s[1]+(s[0]==='SP02'?' (thu về)':'')+'</td><td style="padding:3px 4px"><input id="hnN_'+s[0]+'" type="number" inputmode="numeric" min="0" style="width:84px;text-align:center;padding:7px 4px;font-weight:700"></td></tr>'});
+  h+='</tbody></table><label>Ghi chú (tuỳ chọn)</label><input id="hnGc" placeholder="VD: lô hàng ngày ...">';
+  hnModal('📥 Nhập kho Hà Nội',h,'Lưu phiếu nhập kho',function(){
+    var ng=hnDmy(document.getElementById('hnNgay').value),ngu=(document.getElementById('hnNguoi').value||'').trim(),
+        nguon=document.getElementById('hnNguon').value,gc=(document.getElementById('hnGc').value||'').trim();
+    if(!ngu){alert('Nhập tên người nhập.');return}
+    var pid='PK'+Date.now(),rows=[],i=0;
+    VB_SKU.forEach(function(s){var v=Math.round(Number(document.getElementById('hnN_'+s[0]).value)||0);if(v<=0)return;
+      rows.push([pid+'_'+(i++),pid,ng,s[0]==='SP02'?'Thu vỏ':'Nhập kho',s[0],s[1],v,ngu,nguon,'',gc])});
+    if(!rows.length){alert('Nhập số lượng ít nhất 1 mặt hàng.');return}
+    localStorage.setItem('hn_nguoi',ngu);
+    var b=document.getElementById('hnOk');b.disabled=true;b.textContent='Đang lưu...';
+    hnPost('khohn',rows).then(function(){
+      rows.forEach(function(r){HNPK.push({idd:r[0],id:r[1],ngay:r[2],loai:r[3],ma:r[4],ten:r[5],sl:r[6],nguoi:r[7],nguon:r[8],hd:'',gc:r[10]})});
+      hnClose();alert('Đã lưu phiếu nhập kho '+rows.length+' mặt hàng ('+ng+').');
+    }).catch(function(e){b.disabled=false;b.textContent='Lưu phiếu nhập kho';alert('Lỗi lưu: '+e.message)});
+  });
+}
+/* --- KIEM KE KHO HA NOI --- */
+function hnKkLech(inp){
+  var tr=inp.closest('tr'),c=tr.querySelector('.hnl'),so=Number(tr.getAttribute('data-so')),v=inp.value;
+  if(v===''){c.textContent='-';c.style.color='';return}
+  var d=Number(v)-so;c.textContent=(d>0?'+':'')+d;c.style.color=d>0?'#0f9d58':(d<0?'#c8102e':'');
+}
+function hnKiemKe(){
+  var t=hnTonCalc();
+  var h='<div class="muted" style="margin-bottom:6px">Đếm hàng thực tế ở <b>kho Hà Nội</b>. Lưu xong, số đếm làm <b>mốc tồn</b> mới (nhập/bán tính từ sau ngày kiểm kê).</div>'
+   +'<div class="row" style="align-items:stretch"><div style="flex:1"><label>Ngày kiểm kê</label><input id="hnNgay" type="date" value="'+todayISO()+'"></div>'
+   +'<div style="flex:1"><label>Người đếm</label><input id="hnNguoi" value="'+esc(hnNguoiVal())+'" placeholder="Tên người đếm"></div></div>'
+   +'<table class="rpt" style="margin-top:8px"><thead><tr><th>Hàng</th><th>Tồn sổ</th><th>SL đếm</th><th>Lệch</th></tr></thead><tbody>';
+  VB_SKU.forEach(function(s){var o=t[s[0]];h+='<tr data-ma="'+s[0]+'" data-so="'+o.ton+'"><td>'+s[1]+'</td><td>'+fmt(o.ton)+'</td>'
+    +'<td style="padding:3px 4px"><input type="number" inputmode="numeric" oninput="hnKkLech(this)" style="width:78px;text-align:center;padding:7px 4px;font-weight:700"></td><td class="hnl">-</td></tr>'});
+  h+='</tbody></table><label>Ghi chú (tuỳ chọn)</label><input id="hnGc" placeholder="VD: có 1 bình hỏng">';
+  hnModal('📋 Kiểm kê kho Hà Nội',h,'Lưu biên bản kiểm kê',function(){
+    var ng=hnDmy(document.getElementById('hnNgay').value),ngu=(document.getElementById('hnNguoi').value||'').trim(),gc=(document.getElementById('hnGc').value||'').trim();
+    if(!ngu){alert('Nhập tên người đếm.');return}
+    var pid='KKHN'+Date.now(),rows=[],i=0;
+    document.querySelectorAll('#hnModal tbody tr').forEach(function(tr){var inp=tr.querySelector('input');if(!inp||inp.value==='')return;
+      var ma=tr.getAttribute('data-ma'),so=Number(tr.getAttribute('data-so')),dem=Math.round(Number(inp.value)||0),name='';
+      VB_SKU.forEach(function(s){if(s[0]===ma)name=s[1]});
+      rows.push([pid+'_'+(i++),pid,ng,ma,name,so,dem,dem-so,ngu,gc])});
+    if(!rows.length){alert('Chưa nhập số đếm nào.');return}
+    if(!confirm('Lưu kiểm kê '+rows.length+' mặt hàng ngày '+ng+'?\nSố đếm sẽ thành mốc tồn mới của kho Hà Nội.'))return;
+    localStorage.setItem('hn_nguoi',ngu);
+    var b=document.getElementById('hnOk');b.disabled=true;b.textContent='Đang lưu...';
+    hnPost('kiemkehn',rows).then(function(){
+      rows.forEach(function(r){HNKK.push({idd:r[0],id:r[1],ngay:r[2],ma:r[3],ten:r[4],so:r[5],dem:r[6],lech:r[7],nguoi:r[8],gc:r[9]})});
+      hnClose();alert('Đã lưu kiểm kê '+rows.length+' mặt hàng ('+ng+').');
+    }).catch(function(e){b.disabled=false;b.textContent='Lưu biên bản kiểm kê';alert('Lỗi lưu: '+e.message)});
+  });
+}
+/* --- THU VO BINH (gan vao hoa don dang lap) --- */
+function hnVoBtn(){var b=document.getElementById('hnVoBtn');if(b)b.textContent='🔄 Thu vỏ bình'+(VOTHU>0?' ('+VOTHU+')':'')}
+function hnVoStep(d){var i=document.getElementById('hnVoN');i.value=Math.max(0,(Number(i.value)||0)+d)}
+function hnThuVo(){
+  var h='<div class="muted" style="margin-bottom:8px">Số vỏ bình 19L khách trả theo hóa đơn này. Vỏ được cộng vào kho Hà Nội khi lưu hóa đơn.</div>'
+   +'<div style="display:flex;align-items:center;justify-content:center;gap:14px;margin:14px 0">'
+   +'<button type="button" class="add" style="width:56px;font-size:24px" onclick="hnVoStep(-1)">−</button>'
+   +'<input id="hnVoN" type="number" inputmode="numeric" min="0" value="'+(VOTHU||1)+'" style="width:90px;text-align:center;font-size:24px;font-weight:700;padding:8px">'
+   +'<button type="button" class="add" style="width:56px;font-size:24px" onclick="hnVoStep(1)">+</button></div>'
+   +(VOTHU>0?'<button type="button" class="add" onclick="VOTHU=0;hnVoBtn();hnClose()">Bỏ thu vỏ</button>':'');
+  hnModal('🔄 Thu vỏ bình',h,'Gắn vào hóa đơn',function(){VOTHU=Math.max(0,Math.round(Number(document.getElementById('hnVoN').value)||0));hnVoBtn();hnClose();render()});
+}
+function hnSauLuu(id,ng,thu,laViba){
+  KHONGCOC=false;
+  if(VOTHU>0&&!laViba){
+    var r=[id+'_VO',id,ng,'Thu vỏ','SP02','Vỏ 19L',VOTHU,thu||'','Khách trả theo hóa đơn',id,''];
+    hnPost('khohn',[r]).then(function(){HNPK.push({idd:r[0],id:r[1],ngay:r[2],loai:r[3],ma:r[4],ten:r[5],sl:r[6],nguoi:r[7],nguon:r[8],hd:id,gc:''});});
+    VOTHU=0;hnVoBtn();
+  }
+}
+/* --- BANG TON KHO HA NOI --- */
+function hnTonKho(){
+  var t=hnTonCalc(),coMoc=HNKK.length>0;
+  var h='<div class="muted" style="margin-bottom:6px">Tồn = mốc kiểm kê gần nhất + nhập − bán (hóa đơn kho Hà Nội, trừ đơn giao VIBA). '+(coMoc?'':'<b style="color:var(--red)">Chưa có kiểm kê nào → tồn tính từ 0, nên bấm "Kiểm kê kho" trước.</b>')+'</div>'
+   +'<div style="overflow-x:auto"><table class="rpt"><thead><tr><th>Hàng</th><th>Mốc</th><th>+Nhập</th><th>−Bán</th><th>Tồn</th></tr></thead><tbody>';
+  VB_SKU.forEach(function(s){var o=t[s[0]];h+='<tr><td>'+s[1]+'</td><td>'+(o.mocNgay?fmt(o.moc)+'<div class="muted" style="font-size:11px">'+o.mocNgay+'</div>':'-')+'</td><td>'+fmt(o.nhap)+'</td><td>'+(s[0]==='SP02'?'-':fmt(o.ban))+'</td>'
+    +'<td><b style="color:'+(o.ton<0?'#c8102e':'inherit')+'">'+fmt(o.ton)+'</b></td></tr>'});
+  h+='</tbody></table></div>';
+  hnModal('📊 Tồn kho Hà Nội',h,'',null);
 }
 
 /* ---------- Export anh ---------- */
