@@ -753,16 +753,29 @@ function jsonp(url,cb){
   s.onerror=function(){cleanup();cb(null)};
   document.body.appendChild(s);
 }
+/* 09/11/2026: mo app NHANH - hien ngay du lieu luu lan truoc (localStorage), tai moi o nen roi cap nhat.
+   "Lam moi" (manual) bo qua cache may chu (?fresh=1). */
+function applyData(d){
+  KH=d.khach||[];HD=d.hoadon||[];TT=d.thanhtoan||[];VB=d.viba||[];CHO=d.cho||[];HUY=d.huy||[];KV=d.khoviba||[];KKV=d.kiemkhoviba||[];VCFG=d.vbcfg||null;VBSHEET=d.vbSheet||'';CSK=d.cskh||[];HNPK=d.khohn||[];HNKK=d.kiemkehn||[];VOBINH=d.vobinh||null;
+  if(d.cat&&d.cat.length){CAT=d.cat;try{localStorage.setItem('hd_cat',JSON.stringify(CAT))}catch(e){}refreshRows();}
+  document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn';
+  fillKhSelect();renderMaPreview();renderKhList();renderBaoCao();if(TAB==='bc')bcXChon(BCX);renderCongNo();renderThuNo();renderViba();renderCSKH();vbRenderSub();
+  if(TAB==='nt')ntVe();
+}
 function loadData(manual,cb){
   if(!GS){document.getElementById('dataInfo').textContent='Chưa cấu hình — bấm Cài đặt';if(manual)caiDat();if(cb)cb(false);return}
-  document.getElementById('dataInfo').textContent='Đang tải dữ liệu...';
-  jsonp(GS,function(d){
-    if(!d||!d.ok){document.getElementById('dataInfo').textContent='Lỗi tải dữ liệu';if(manual)alert('Không tải được dữ liệu. Kiểm tra URL backend đã deploy đúng chưa.');if(cb)cb(false);return}
-    KH=d.khach||[];HD=d.hoadon||[];TT=d.thanhtoan||[];VB=d.viba||[];CHO=d.cho||[];HUY=d.huy||[];KV=d.khoviba||[];KKV=d.kiemkhoviba||[];VCFG=d.vbcfg||null;VBSHEET=d.vbSheet||'';CSK=d.cskh||[];HNPK=d.khohn||[];HNKK=d.kiemkehn||[];VOBINH=d.vobinh||null;
-    if(d.cat&&d.cat.length){CAT=d.cat;try{localStorage.setItem('hd_cat',JSON.stringify(CAT))}catch(e){}refreshRows();}
-    document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn';
-    fillKhSelect();renderMaPreview();renderKhList();renderBaoCao();if(TAB==='bc')bcXChon(BCX);renderCongNo();renderThuNo();renderViba();renderCSKH();vbRenderSub();
-    if(TAB==='nt')ntVe();
+  var daCache=false;
+  if(!manual&&!KH.length){
+    try{var c=JSON.parse(localStorage.getItem('hd_cache_v1')||'null');
+      if(c&&c.d&&c.d.ok){applyData(c.d);daCache=true;
+        var t=new Date(c.t);document.getElementById('dataInfo').textContent=KH.length+' khách · '+countInvoices()+' hoá đơn · lưu '+pad(t.getHours())+':'+pad(t.getMinutes())+' — đang cập nhật...';}
+    }catch(e){}
+  }
+  if(!daCache)document.getElementById('dataInfo').textContent='Đang tải dữ liệu...';
+  jsonp(GS+(manual?(GS.indexOf('?')<0?'?':'&')+'fresh=1':''),function(d){
+    if(!d||!d.ok){document.getElementById('dataInfo').textContent=daCache?(KH.length+' khách · '+countInvoices()+' hoá đơn · (chưa cập nhật được — bấm Làm mới)'):'Lỗi tải dữ liệu';if(manual)alert('Không tải được dữ liệu. Kiểm tra URL backend đã deploy đúng chưa.');if(cb)cb(false);return}
+    applyData(d);
+    try{localStorage.setItem('hd_cache_v1',JSON.stringify({t:Date.now(),d:d}))}catch(e){}
     if(cb)cb(true);
   });
 }
