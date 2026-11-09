@@ -514,6 +514,11 @@ function doGet(e) {
   var cb = (e && e.parameter && e.parameter.callback) ? e.parameter.callback : 'callback';
   var out = { ok: true, khach: [], hoadon: [], thanhtoan: [], viba: [], cho: [], huy: [], khoviba: [], kiemkhoviba: [], vbcfg: null };
   // 13/10/2026: mo <URL exec>?lenh=dienma sau khi ke toan dien tab MaMISA -> dien ma cho cac dong cu
+  if (e && e.parameter && e.parameter.lenh === 'vobinh') { // 09/11/2026: ep cap nhat tab VoBinh_*
+    try { var ss0 = SpreadsheetApp.openById(SHEET_ID); out = capNhatVoBinhNeuCan_(ss0, readHoaDon_(ss0), readViba_(ss0), readKhoHN_(ss0), readKiemKeHN_(ss0), true); }
+    catch (err1) { out = { ok: false, error: err1.message }; }
+    return ContentService.createTextOutput(cb + '(' + JSON.stringify(out) + ')').setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
   if (e && e.parameter && e.parameter.lenh === 'dienma') {
     var lk = LockService.getScriptLock();
     try { lk.waitLock(30000); out = { ok: true, dienMa: dienMaMisa_(SpreadsheetApp.openById(SHEET_ID)) }; }
@@ -536,6 +541,7 @@ function doGet(e) {
     out.vbcfg = readCfgViba_(ss);
     try { out.cskh = readCskh_(ss); } catch (e5) { out.cskh = []; } // 17/10/2026
     try { out.khohn = readKhoHN_(ss); out.kiemkehn = readKiemKeHN_(ss); } catch (e6) { out.khohn = []; out.kiemkehn = []; } // 09/11/2026: kho Ha Noi
+    try { capNhatVoBinhNeuCan_(ss, out.hoadon, out.viba, out.khohn, out.kiemkehn, false); } catch (e7) {} // 09/11/2026: tab VoBinh_* (toi da 5 phut/lan)
     var vbid = PropertiesService.getScriptProperties().getProperty(VBSHEET_KEY);
     if (vbid) out.vbSheet = 'https://docs.google.com/spreadsheets/d/' + vbid + '/edit';
   } catch (err) {
@@ -580,6 +586,173 @@ function readCskh_(ss) {
              ketqua: String(g(r, 'Ket qua')), ghichu: String(g(r, 'Ghi chu')), hen: g(r, 'Hen goi lai') ? fmtD_(g(r, 'Hen goi lai')) : '',
              roi: num_(g(r, 'Roi app (giay)')) };
   });
+}
+
+// ============================================================
+// 09/11/2026 - THEO DOI VO BINH 19L (V-261109-07)
+// 3 tab TU TINH (khong nhap tay): VoBinh_TongHop, VoBinh_TheoKhach, VoBinh_SoCai.
+// Tab VoBinh_DauKy: anh dien tay (tuy chon) so vo + coc moi khach dang giu TAI NGAY CHOT.
+// Cap nhat: moi lan app tai du lieu (doGet), toi da 5 phut/lan; ep chay: <URL>?lenh=vobinh
+// ============================================================
+var VOBINH_TU_NGAY = '2026-11-01'; // chi tinh giao/thu tu ngay nay (hoa don cu khong ghi vo thu)
+var VOBINH_COC = 50000;            // d / binh
+var VOBINH_DK_HEAD = ['Ma KH', 'Ten khach', 'Vo dang giu dau ky', 'Coc dang giu dau ky (d)'];
+
+// Ngay (Date | dd/MM/yyyy | yyyy-MM-dd) -> yyyy-MM-dd ('' neu khong doc duoc)
+function ymdDmy_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, 'GMT+7', 'yyyy-MM-dd');
+  var s = String(v == null ? '' : v).trim();
+  var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? m[0] : '';
+}
+function laBinh19_(sp) {
+  var n = chuanTen_(sp);
+  return n.indexOf('19l') >= 0 && !/\bvo\b/.test(n);
+}
+
+// Ghi 1 tab: rows = mang 2 chieu; headRows/flagRows = chi so dong (0-based) de to dam / to do
+function ghiBangVoBinh_(ss, name, rows, headRows, flagRows) {
+  var sh = ss.getSheetByName(name) || ss.insertSheet(name);
+  sh.clearContents(); sh.clearFormats();
+  if (!rows.length) return sh;
+  var w = 1; rows.forEach(function (r) { if (r.length > w) w = r.length; });
+  var data = rows.map(function (r) { var x = r.slice(); while (x.length < w) x.push(''); return x; });
+  var fm = data.map(function (r) { return r.map(function (v) { return typeof v === 'number' ? '#,##0;[Red]-#,##0' : '@'; }); });
+  var rg = sh.getRange(1, 1, data.length, w);
+  rg.setNumberFormats(fm).setValues(data).setFontFamily('Arial').setFontSize(10);
+  (headRows || []).forEach(function (i) { sh.getRange(i + 1, 1, 1, w).setFontWeight('bold').setBackground('#d9e2f3'); });
+  (flagRows || []).forEach(function (i) { sh.getRange(i + 1, 1, 1, w).setBackground('#fdeceb'); });
+  sh.setFrozenRows(1);
+  for (var c = 1; c <= w; c++) { try { sh.autoResizeColumn(c); } catch (e) {} }
+  return sh;
+}
+
+// hd, vb, pk, kk = ket qua readHoaDon_ / readViba_ / readKhoHN_ / readKiemKeHN_ (da doc san)
+function capNhatVoBinh_(ss, hd, vb, pk, kk) {
+  var tu = VOBINH_TU_NGAY;
+  var luc = Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy HH:mm');
+  // ---- dau ky (anh dien tay) ----
+  var dkSh = ensureSheet_(ss, 'VoBinh_DauKy', VOBINH_DK_HEAD);
+  var dk = {};
+  if (dkSh.getLastRow() > 1) dkSh.getRange(2, 1, dkSh.getLastRow() - 1, 4).getValues().forEach(function (r) {
+    var k = String(r[0] || '').trim(); if (k) dk[k] = { ten: String(r[1] || ''), vo: num_(r[2]), coc: num_(r[3]) };
+  });
+  var viId = {}; vb.forEach(function (v) { viId[v.id] = 1; });
+  var kh = {};
+  function K(ma, ten) {
+    var k = ma || ten || '(khong ma)';
+    if (!kh[k]) kh[k] = { ma: ma || '', ten: ten || '', giao: 0, thu: 0, coc: 0, gan: '', vo0: 0, coc0: 0 };
+    if (!kh[k].ten && ten) kh[k].ten = ten;
+    return kh[k];
+  }
+  Object.keys(dk).forEach(function (k) { var o = K(k, dk[k].ten); o.vo0 = dk[k].vo; o.coc0 = dk[k].coc; });
+
+  // ---- hoa don: meta + giao binh + coc ----
+  var meta = {}, cocMax = {}, co19 = {}, so = [];
+  hd.forEach(function (r) {
+    if (!meta[r.id]) meta[r.id] = { ma: r.ma, khach: r.khach, ngay: r.ngay };
+    if (r.coc > (cocMax[r.id] || 0)) cocMax[r.id] = r.coc;
+    var y = ymdDmy_(r.ngay);
+    if (!laBinh19_(r.sp) || !(r.sl > 0) || y < tu) return;
+    co19[r.id] = 1;
+    var o = K(meta[r.id].ma, meta[r.id].khach); o.giao += r.sl; if (y > o.gan) o.gan = y;
+    so.push([y, 'Giao binh', meta[r.id].khach, r.sl, 0, r.id]);
+  });
+  Object.keys(co19).forEach(function (id) {
+    var m = meta[id], c = cocMax[id] || 0; if (!c) return;
+    K(m.ma, m.khach).coc += c;
+    so.push([ymdDmy_(m.ngay), 'Coc binh (hoa don)', m.khach, 0, c, id]);
+  });
+  // ---- vo thu: phieu kho HN (gan hoa don hoac vo le) + giao VIBA ----
+  pk.forEach(function (x) {
+    if (x.loai !== 'Thu vỏ' || !(x.sl > 0)) return;
+    var y = ymdDmy_(x.ngay); if (y < tu) return;
+    var m = x.hd && meta[x.hd] ? meta[x.hd] : null;
+    K(m ? m.ma : '', m ? m.khach : '(vo le, khong gan hoa don)').thu += x.sl;
+    so.push([y, 'Thu vo', m ? m.khach : '(vo le)', x.sl, 0, x.hd || x.id]);
+  });
+  vb.forEach(function (v) {
+    if (!v.cotTt || !(v.vothu > 0)) return;
+    var y = ymdDmy_(v.ngaygiao); if (!y || y < tu) return;
+    K(v.ma, v.khach).thu += v.vothu;
+    so.push([y, 'Thu vo (giao VIBA)', v.khach, v.vothu, 0, v.id]);
+  });
+
+  // ---- ton kho HN: binh day (SP01) + vo (SP02) ----
+  function moc(ma) {
+    var best = null;
+    kk.forEach(function (k, i) { if (k.ma !== ma) return; var y = ymdDmy_(k.ngay); if (!best || y >= best.y) best = { y: y, v: num_(k.dem), n: k.ngay }; });
+    return best;
+  }
+  function sau(m, ngay) { return !m || ymdDmy_(ngay) > m.y; }
+  var m1 = moc('SP01'), m2 = moc('SP02');
+  var nhap1 = 0, nhap2 = 0, ban1 = 0;
+  pk.forEach(function (x) {
+    if (x.ma === 'SP01' && sau(m1, x.ngay)) nhap1 += x.sl;
+    if (x.ma === 'SP02' && sau(m2, x.ngay)) nhap2 += x.sl;
+  });
+  hd.forEach(function (r) {
+    if (r.kho !== 'Hà Nội' || viId[r.id] || !laBinh19_(r.sp) || !sau(m1, r.ngay)) return;
+    ban1 += r.sl;
+  });
+  var tonBinh = (m1 ? m1.v : 0) + nhap1 - ban1, tonVo = (m2 ? m2.v : 0) + nhap2;
+  so.push([m1 ? m1.y : '', 'Moc kiem ke binh 19L', 'Kho Ha Noi', m1 ? m1.v : 0, 0, '']);
+  so.push([m2 ? m2.y : '', 'Moc kiem ke vo 19L', 'Kho Ha Noi', m2 ? m2.v : 0, 0, '']);
+
+  // ---- bang theo khach ----
+  var arr = Object.keys(kh).map(function (k) { return kh[k]; });
+  arr.forEach(function (o) {
+    o.giu = o.vo0 + o.giao - o.thu;
+    o.cocThu = o.coc0 + o.coc;
+    o.cocPhaiGiu = Math.max(o.giu, 0) * VOBINH_COC;
+    o.chenh = o.cocThu - o.cocPhaiGiu;
+  });
+  arr.sort(function (a, b) { return a.chenh - b.chenh; });
+  var tk = [['Ma KH', 'Khach', 'Binh da giao', 'Vo da thu', 'Vo khach dang giu', 'Coc da thu (d)', 'Coc phai giu (d)', 'Chenh coc (d)', 'Giao gan nhat']];
+  var flag = [];
+  var T = { giao: 0, thu: 0, giu: 0, cocThu: 0, cocPhaiGiu: 0 };
+  arr.forEach(function (o) {
+    tk.push([o.ma, o.ten, o.giao, o.thu, o.giu, o.cocThu, o.cocPhaiGiu, o.chenh, o.gan]);
+    if (o.chenh < 0) flag.push(tk.length - 1);
+    T.giao += o.giao; T.thu += o.thu; T.giu += o.giu; T.cocThu += o.cocThu; T.cocPhaiGiu += o.cocPhaiGiu;
+  });
+  ghiBangVoBinh_(ss, 'VoBinh_TheoKhach', tk, [0], flag);
+
+  // ---- tong hop ----
+  var th = [
+    ['VO BINH 19L - TONG HOP (tinh tu ' + tu + ')', 'So luong / Tien'],
+    ['Cap nhat luc', luc],
+    ['Binh 19L day tai kho Ha Noi', tonBinh],
+    ['Vo rong tai kho Ha Noi', tonVo],
+    ['Binh da giao khach (tu ngay chot)', T.giao],
+    ['Vo da thu ve (tu ngay chot)', T.thu],
+    ['Vo khach dang giu (gom dau ky)', T.giu],
+    ['Tien coc da thu (d)', T.cocThu],
+    ['Tien coc phai giu = vo dang giu x ' + VOBINH_COC + ' (d)', T.cocPhaiGiu],
+    ['Chenh coc (am = thu thieu coc) (d)', T.cocThu - T.cocPhaiGiu],
+    ['Ghi chu', 'Hoa don truoc ngay chot khong ghi vo thu -> dien so vo/coc dang giu vao tab VoBinh_DauKy neu can']
+  ];
+  ghiBangVoBinh_(ss, 'VoBinh_TongHop', th, [0], (T.cocThu - T.cocPhaiGiu) < 0 ? [9] : []);
+
+  // ---- so cai ----
+  so.sort(function (a, b) { return a[0] < b[0] ? 1 : (a[0] > b[0] ? -1 : 0); });
+  var sc = [['Ngay', 'Loai', 'Khach', 'So luong', 'Coc (d)', 'Hoa don / phieu']];
+  so.forEach(function (r) { sc.push([r[0] ? r[0].slice(8, 10) + '/' + r[0].slice(5, 7) + '/' + r[0].slice(0, 4) : '', r[1], r[2], r[3], r[4], r[5]]); });
+  ghiBangVoBinh_(ss, 'VoBinh_SoCai', sc, [0], []);
+  PropertiesService.getScriptProperties().setProperty('vobinh_luc', String(new Date().getTime()));
+  return { ok: true, khach: arr.length, giu: T.giu };
+}
+
+// Goi tu doGet: toi da 5 phut/lan (hoac force)
+function capNhatVoBinhNeuCan_(ss, hd, vb, pk, kk, force) {
+  var props = PropertiesService.getScriptProperties();
+  var last = Number(props.getProperty('vobinh_luc') || 0);
+  if (!force && last && (new Date().getTime() - last) < 5 * 60 * 1000) return { ok: true, boqua: 1 };
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(20000); } catch (e) { return { ok: false, error: 'khoa ban' }; }
+  try { return capNhatVoBinh_(ss, hd, vb, pk, kk); } finally { try { lock.releaseLock(); } catch (e2) {} }
 }
 
 // ============================================================

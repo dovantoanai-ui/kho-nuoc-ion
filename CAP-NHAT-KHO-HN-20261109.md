@@ -26,3 +26,13 @@ Tồn = mốc kiểm kê gần nhất + nhập/thu vỏ SAU ngày mốc − bán
 1. Dán `hoadon-backend.gs` mới vào Apps Script của Sheet duan-nuoc-ion → Deploy → New version.
 2. Đẩy `hoadon.html` lên GitHub (như `_day-len-20261105.bat`).
 Chưa deploy backend thì nút vẫn mở nhưng lưu sẽ không vào Sheet (app báo "Đã lưu" vì gửi no-cors).
+
+---
+## Bổ sung 09/11 tối — Theo dõi vỏ bình 19L (3 tab tự tính trong Sheet duan-nuoc-ion)
+- `VoBinh_TongHop`: bình đầy + vỏ rỗng tại kho HN, bình đã giao, vỏ đã thu, vỏ khách đang giữ, cọc đã thu / phải giữ / chênh.
+- `VoBinh_TheoKhach`: mỗi khách 1 dòng (giao, thu, đang giữ, cọc, chênh; dòng đỏ = thu thiếu cọc).
+- `VoBinh_SoCai`: nhật ký từng lần (giao bình, cọc, thu vỏ, thu vỏ VIBA, mốc kiểm kê).
+- `VoBinh_DauKy`: anh điền tay (tùy chọn) vỏ + cọc mỗi khách đang giữ tại ngày chốt.
+- Ngày chốt `VOBINH_TU_NGAY` = 2026-11-01; cọc `VOBINH_COC` = 50.000 (đầu khối VoBinh trong hoadon-backend.gs).
+- Cập nhật mỗi khi app tải dữ liệu (tối đa 5 phút/lần); ép chạy: `<URL /exec>?lenh=vobinh`.
+- Backup trước khi sửa: `hoadon-backend_backup_20261109b.gs`. Deploy @26.
