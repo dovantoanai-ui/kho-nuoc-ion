@@ -119,6 +119,11 @@
       <button onclick="loadData(true)">Làm mới</button>
       <button onclick="caiDat()">Cài đặt</button>
     </div>
+    <div class="r1" style="margin-top:6px">
+      <button onclick="hnNhapKho()">📥 Nhập kho</button>
+      <button onclick="hnKiemKe()">📋 Kiểm kê kho</button>
+      <button onclick="hnTonKho()">📊 Tồn kho</button>
+    </div>
     <div class="tabs">
       <button class="tb active" data-t="hd" onclick="showTab('hd')">Hoá đơn</button>
       <button class="tb" data-t="kh" onclick="showTab('kh')">Khách</button>
@@ -169,12 +174,7 @@
         </div>
         <div id="rows"></div>
         <button class="add" onclick="addRow()">+ Thêm sản phẩm</button>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-          <button type="button" class="add" style="flex:1 1 45%;width:auto" onclick="hnNhapKho()">📥 Nhập kho</button>
-          <button type="button" class="add" style="flex:1 1 45%;width:auto" onclick="hnKiemKe()">📋 Kiểm kê kho</button>
-          <button type="button" id="hnVoBtn" class="add" style="flex:1 1 45%;width:auto" onclick="hnThuVo()">🔄 Thu vỏ bình</button>
-          <button type="button" class="add" style="flex:1 1 45%;width:auto" onclick="hnTonKho()">📊 Tồn kho</button>
-        </div>
+        <button type="button" id="hnVoBtn" class="add" onclick="hnThuVo()">🔄 Thu vỏ bình (đi cùng hóa đơn này)</button>
         <div style="display:flex;align-items:center;gap:8px;margin-top:12px">
           <input type="checkbox" id="vat" onchange="render()" style="width:20px;height:20px;flex:0 0 20px">
           <label for="vat" style="margin:0;font-size:14px;color:var(--ink);flex:1">Tính VAT (thuế GTGT)</label>
@@ -2218,7 +2218,7 @@ function hnKiemKe(){
   });
 }
 /* --- THU VO BINH (gan vao hoa don dang lap) --- */
-function hnVoBtn(){var b=document.getElementById('hnVoBtn');if(b)b.textContent='🔄 Thu vỏ bình'+(VOTHU>0?' ('+VOTHU+')':'')}
+function hnVoBtn(){var b=document.getElementById('hnVoBtn');if(b)b.textContent=VOTHU>0?'🔄 Thu vỏ bình: '+VOTHU+' vỏ (đi cùng hóa đơn này)':'🔄 Thu vỏ bình (đi cùng hóa đơn này)'}
 function hnVoStep(d){var i=document.getElementById('hnVoN');i.value=Math.max(0,(Number(i.value)||0)+d)}
 function hnThuVo(){
   var h='<div class="muted" style="margin-bottom:8px">Số vỏ bình 19L khách trả theo hóa đơn này. Vỏ được cộng vào kho Hà Nội khi lưu hóa đơn.</div>'
