@@ -1251,20 +1251,20 @@ function renderBaoCao(){
   var lbl=document.getElementById('bcKhoLbl');if(lbl)lbl.textContent='Báo cáo kho: '+KHO;
   var tstr=today();var mm=tstr.slice(3);
   var dtToday=0,slToday=0,dtMonth=0,cust={};
+  /* 11/11/2026: doanh thu = TONG THANH TOAN cua tung hoa don (gom VAT + coc), ca 2 kho - khop dashboard (V-261110-01) */
   HD.forEach(function(x){
-    if(x.kho!==KHO)return;
+    if(!khoGop(x.kho))return;
     cust[x.ma]=1;
-    if(x.ngay===tstr){dtToday+=x.tien;slToday+=x.sl}
-    if(x.ngay.slice(3)===mm)dtMonth+=x.tien;
+    if(x.ngay===tstr)slToday+=x.sl;
   });
-  var invs=invoicesInKho();var no=0;invs.forEach(function(v){no+=conNoOf(v)});
-  var kpi=[['Doanh thu hôm nay',fmt(dtToday)],['Công nợ đang thu',fmt(no)],['SL bán hôm nay',slToday],['DT tháng này',fmt(dtMonth)],['Số khách',Object.keys(cust).length],['Số hoá đơn',invs.length]];
+  var invs=invoicesInKho();var no=0;invs.forEach(function(v){no+=conNoOf(v);if(v.ngay===tstr)dtToday+=v.tong;if(String(v.ngay).slice(3)===mm)dtMonth+=v.tong});
+  var kpi=[['Doanh thu hôm nay',fmt(dtToday)],['Công nợ đang thu',fmt(no)],['SL bán hôm nay',slToday],['DT tháng này (gồm VAT + cọc)',fmt(dtMonth)],['Số khách',Object.keys(cust).length],['Số hoá đơn',invs.length]];
   var h='';kpi.forEach(function(a){h+='<div class="kbox"><div class="l">'+a[0]+'</div><div class="v">'+a[1]+'</div></div>'});
   document.getElementById('bcKpi').innerHTML=h;
   // theo ngay (chi tiet)
   var day={};function gd(n){return day[n]||(day[n]={dt:0,sl:0,dathu:0,conno:0,hd:0})}
-  HD.forEach(function(x){if(x.kho!==KHO)return;var g=gd(x.ngay);g.dt+=x.tien;g.sl+=x.sl});
-  invs.forEach(function(v){var g=gd(v.ngay);g.dathu+=v.dathu;g.conno+=conNoOf(v);g.hd++});
+  HD.forEach(function(x){if(!khoGop(x.kho))return;var g=gd(x.ngay);g.sl+=x.sl});
+  invs.forEach(function(v){var g=gd(v.ngay);g.dt+=v.tong;g.dathu+=v.dathu;g.conno+=conNoOf(v);g.hd++});
   var ds=Object.keys(day).filter(function(d){return d}).sort(function(a,b){return (parseD(b)||0)-(parseD(a)||0)});
   var chEl=document.getElementById('bcChart');
   if(chEl){
