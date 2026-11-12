@@ -200,6 +200,9 @@ function doPost(e) {
       out = ghiCskh_(ss, p.cs); // 17/10/2026: bao cao cham soc khach hang
     } else if (p.loai === 'khohn' && p.rows && p.rows.length) {
       out = ghiKhoHN_(ss, p.rows); // 09/11/2026: nhap kho / thu vo kho Ha Noi
+    } else if (p.loai === 'trahl' && p.rows && p.rows.length) {
+      out = ghiKhoHN_(ss, p.rows); // 12/11/2026: tra vo / binh loi ve Ha Long
+      try { out.nhaphang = ghiNhapHangTraHL_(ss, p.rows); } catch (eN) { out.nhaphangErr = eN.message; }
     } else if (p.loai === 'kiemkehn' && p.rows && p.rows.length) {
       out = ghiKiemKeHN_(ss, p.rows); // 09/11/2026: kiem ke kho Ha Noi
     } else if (p.loai === 'doisoatck' && p.dot && p.rows && p.rows.length) {
@@ -698,8 +701,9 @@ function capNhatVoBinh_(ss, hd, vb, pk, kk, ghi) {
   var m1 = moc('SP01'), m2 = moc('SP02');
   var nhap1 = 0, nhap2 = 0, ban1 = 0;
   pk.forEach(function (x) {
-    if (x.ma === 'SP01' && sau(m1, x.ngay)) nhap1 += x.sl;
-    if (x.ma === 'SP02' && sau(m2, x.ngay)) nhap2 += x.sl;
+    var dau = (x.loai === 'Trả Hạ Long') ? -1 : 1; // 12/11/2026: tra Ha Long tru kho
+    if (x.ma === 'SP01' && sau(m1, x.ngay)) nhap1 += dau * x.sl;
+    if (x.ma === 'SP02' && sau(m2, x.ngay)) nhap2 += dau * x.sl;
   });
   hd.forEach(function (r) {
     if (r.kho !== 'Hà Nội' || viId[r.id] || !laBinh19_(r.sp) || !sau(m1, r.ngay)) return;
@@ -812,6 +816,32 @@ function ghiKhoHN_(ss, rows) {
   sh.getRange(dau, 7, moi.length, 1).setNumberFormat('0');
   sh.getRange(dau, 1, moi.length, KHN_HEAD.length).setValues(moi);
   return { ok: true, added: moi.length, skipped: rows.length - moi.length };
+}
+
+// 12/11/2026: binh 19L loi tra Ha Long -> ghi 1 dong SO AM vao tab NhapHang (bao cao ton tong tu tru).
+// Chi ghi cot A-E, H, K, L (F, G, J la ARRAYFORMULA). Chong trung theo ID phieu o cot B.
+function ghiNhapHangTraHL_(ss, rows) {
+  var sh = ss.getSheetByName('NhapHang'); if (!sh) return { ok: false, error: 'khong co tab NhapHang' };
+  var colA = sh.getRange(1, 1, sh.getMaxRows(), 2).getValues();
+  var last = 1, daCo = {};
+  for (var i = 0; i < colA.length; i++) {
+    if (String(colA[i][0]).trim() !== '') last = i + 1;
+    daCo[String(colA[i][1] || '')] = 1;
+  }
+  var added = 0;
+  rows.forEach(function (r) {
+    if (String(r[3]) !== 'Trả Hạ Long' || String(r[4]) !== 'SP01') return;
+    var sl = num_(r[6]); if (!(sl > 0)) return;
+    var src = 'App kho HN - ' + r[1] + ' (trả HL)'; if (daCo[src]) return; daCo[src] = 1;
+    var p = String(r[2]).split('/'); var d = new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0]));
+    last += 1;
+    sh.getRange(last, 1, 1, 5).setValues([[d, src, 'Hạ Long (Quang Hanh)', 'Hà Nội (Ocean)', 'ION19LVOI']]);
+    sh.getRange(last, 1).setNumberFormat('dd/MM/yyyy');
+    sh.getRange(last, 8).setValue(-sl);
+    sh.getRange(last, 11, 1, 2).setValues([['Trả bình lỗi về Hạ Long' + (r[10] ? ' · ' + r[10] : ''), String(r[7] || '')]]);
+    added++;
+  });
+  return { ok: true, added: added };
 }
 
 function readKhoHN_(ss) {

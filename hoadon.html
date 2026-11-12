@@ -124,6 +124,7 @@
       <button onclick="hnKiemKe()">📋 Kiểm kê kho</button>
       <button onclick="hnTonKho()">📊 Tồn kho</button>
       <button onclick="hnVoBinh()">🫙 Vỏ bình</button>
+      <button onclick="hnTraHL()" style="grid-column:1/-1">🚚 Trả về Hạ Long</button>
     </div>
     <div class="tabs">
       <button class="tb active" data-t="hd" onclick="showTab('hd')">Hoá đơn</button>
@@ -2179,18 +2180,18 @@ function cocPopupOk(){
 }
 /* --- TON KHO HA NOI --- */
 function hnTonCalc(){
-  var r={};VB_SKU.forEach(function(s){r[s[0]]={ma:s[0],ten:s[1],moc:0,mocNgay:'',nhap:0,ban:0,ton:0}});
+  var r={};VB_SKU.forEach(function(s){r[s[0]]={ma:s[0],ten:s[1],moc:0,mocNgay:'',nhap:0,ban:0,tra:0,ton:0}});
   var mk={};
   HNKK.forEach(function(k){if(!r[k.ma])return;var y=vbYmd(k.ngay);if(!mk[k.ma]||y>=mk[k.ma].y)mk[k.ma]={y:y,v:Number(k.dem)||0,n:k.ngay}});
   Object.keys(mk).forEach(function(m){r[m].moc=mk[m].v;r[m].mocNgay=mk[m].n});
   function sau(ma,ngay){return !mk[ma]||vbYmd(ngay)>mk[ma].y}
-  HNPK.forEach(function(x){var o=r[x.ma];if(!o||!sau(x.ma,x.ngay))return;o.nhap+=Number(x.sl)||0});
+  HNPK.forEach(function(x){var o=r[x.ma];if(!o||!sau(x.ma,x.ngay))return;if(x.loai==='Trả Hạ Long')o.tra+=Number(x.sl)||0;else o.nhap+=Number(x.sl)||0});
   var vb={};VB.forEach(function(v){vb[v.id]=1});
   HD.forEach(function(x){
     if(x.kho!=='Hà Nội'||vb[x.id])return; /* don giao VIBA tru kho VIBA, khong tru kho HN */
     var ma=hnMaOf(x.sp),o=r[ma];if(!o||ma==='SP02'||!sau(ma,x.ngay))return;o.ban+=Number(x.sl)||0;
   });
-  Object.keys(r).forEach(function(m){r[m].ton=r[m].moc+r[m].nhap-r[m].ban});
+  Object.keys(r).forEach(function(m){r[m].ton=r[m].moc+r[m].nhap-r[m].ban-r[m].tra});
   return r;
 }
 /* --- KHUNG HOP THOAI --- */
@@ -2228,6 +2229,40 @@ function hnNhapKho(){
       hnClose();alert('Đã lưu phiếu nhập kho '+rows.length+' mặt hàng ('+ng+').');
     }).catch(function(e){b.disabled=false;b.textContent='Lưu phiếu nhập kho';alert('Lỗi lưu: '+e.message)});
   });
+}
+/* --- TRA VE HA LONG (12/11/2026): vo 19L rong + binh 19L loi -> tru kho HN --- */
+function hnTraHL(){
+  var t=hnTonCalc(),tonVo=t.SP02?t.SP02.ton:0,tonBinh=t.SP01?t.SP01.ton:0;
+  var h='<div class="muted" style="margin-bottom:6px">Trả về Hạ Long: <b>trừ khỏi kho Hà Nội</b>, không tính doanh thu. Bình lỗi tự ghi số âm vào tab NhapHang.</div>'
+   +'<div class="row" style="align-items:stretch"><div style="flex:1"><label>Ngày trả</label><input id="hlNgay" type="date" value="'+todayISO()+'"></div>'
+   +'<div style="flex:1"><label>Người trả</label><input id="hlNguoi" value="'+esc(hnNguoiVal())+'" placeholder="Tên người trả"></div></div>'
+   +'<table class="rpt" style="margin-top:8px"><thead><tr><th>Hàng trả</th><th>Đang có</th><th>SL trả</th></tr></thead><tbody>'
+   +'<tr><td>Vỏ 19L (rỗng)</td><td>'+fmt(tonVo)+'</td><td style="padding:3px 4px"><input id="hlVo" type="number" inputmode="numeric" min="0" style="width:84px;text-align:center;padding:7px 4px;font-weight:700"></td></tr>'
+   +'<tr><td>Bình 19L lỗi / hỏng</td><td>'+fmt(tonBinh)+'</td><td style="padding:3px 4px"><input id="hlBinh" type="number" inputmode="numeric" min="0" style="width:84px;text-align:center;padding:7px 4px;font-weight:700"></td></tr>'
+   +'</tbody></table><div id="hlWarn" style="display:none;margin-top:8px;padding:8px;border-radius:8px;background:#fff4d6;color:#7a5200;font-size:13px"></div>'
+   +'<label>Ghi chú (tuỳ chọn)</label><input id="hlGc" placeholder="VD: xe Hạ Long lấy kèm lô 10/11">';
+  hnModal('🚚 Trả về Hạ Long',h,'Lưu phiếu trả',function(){
+    var ng=hnDmy(document.getElementById('hlNgay').value),ngu=(document.getElementById('hlNguoi').value||'').trim(),gc=(document.getElementById('hlGc').value||'').trim();
+    var vo=Math.round(Number(document.getElementById('hlVo').value)||0),bi=Math.round(Number(document.getElementById('hlBinh').value)||0);
+    if(!ngu){alert('Nhập tên người trả.');return}
+    if(vo<=0&&bi<=0){alert('Nhập số vỏ hoặc số bình lỗi cần trả.');return}
+    var vuot=[];if(vo>tonVo)vuot.push('vỏ '+vo+' > đang có '+tonVo);if(bi>tonBinh)vuot.push('bình '+bi+' > đang có '+tonBinh);
+    if(vuot.length&&!confirm('Số trả vượt tồn kho ('+vuot.join('; ')+').\nTồn kho có thể chưa chuẩn. Vẫn lưu phiếu?'))return;
+    var pid='TL'+Date.now(),rows=[],i=0;
+    if(vo>0)rows.push([pid+'_'+(i++),pid,ng,'Trả Hạ Long','SP02','Vỏ 19L',vo,ngu,'Hạ Long','',gc]);
+    if(bi>0)rows.push([pid+'_'+(i++),pid,ng,'Trả Hạ Long','SP01','Bình 19L',bi,ngu,'Hạ Long','',gc?'Bình lỗi · '+gc:'Bình lỗi']);
+    localStorage.setItem('hn_nguoi',ngu);
+    var b=document.getElementById('hnOk');b.disabled=true;b.textContent='Đang lưu...';
+    hnPost('trahl',rows).then(function(){
+      rows.forEach(function(r){HNPK.push({idd:r[0],id:r[1],ngay:r[2],loai:r[3],ma:r[4],ten:r[5],sl:r[6],nguoi:r[7],nguon:r[8],hd:'',gc:r[10]})});
+      hnClose();alert('Đã lưu phiếu trả Hạ Long ('+ng+'): '+(vo?vo+' vỏ':'')+(vo&&bi?', ':'')+(bi?bi+' bình lỗi':'')+'.');
+    }).catch(function(e){b.disabled=false;b.textContent='Lưu phiếu trả';alert('Lỗi lưu: '+e.message)});
+  });
+  function chk(){var w=document.getElementById('hlWarn');if(!w)return;var vo=Number(document.getElementById('hlVo').value)||0,bi=Number(document.getElementById('hlBinh').value)||0,m=[];
+    if(vo>tonVo)m.push('Vỏ trả '+vo+' > vỏ đang có '+tonVo);if(bi>tonBinh)m.push('Bình trả '+bi+' > bình đang có '+tonBinh);
+    w.style.display=m.length?'block':'none';w.textContent=m.length?m.join(' · ')+'. Vẫn lưu được, nhưng nên kiểm kê lại.':''}
+  var e1=document.getElementById('hlVo'),e2=document.getElementById('hlBinh');
+  e1.addEventListener('input',function(){chk()});e2.addEventListener('input',function(){chk()});
 }
 /* --- KIEM KE KHO HA NOI --- */
 function hnKkLech(inp){
@@ -2327,8 +2362,8 @@ function hnVoBinh(){
 function hnTonKho(){
   var t=hnTonCalc(),coMoc=HNKK.length>0;
   var h='<div class="muted" style="margin-bottom:6px">Tồn = mốc kiểm kê gần nhất + nhập − bán (hóa đơn kho Hà Nội, trừ đơn giao VIBA). '+(coMoc?'':'<b style="color:var(--red)">Chưa có kiểm kê nào → tồn tính từ 0, nên bấm "Kiểm kê kho" trước.</b>')+'</div>'
-   +'<div style="overflow-x:auto"><table class="rpt"><thead><tr><th>Hàng</th><th>Mốc</th><th>+Nhập</th><th>−Bán</th><th>Tồn</th></tr></thead><tbody>';
-  VB_SKU.forEach(function(s){var o=t[s[0]];h+='<tr><td>'+s[1]+'</td><td>'+(o.mocNgay?fmt(o.moc)+'<div class="muted" style="font-size:11px">'+o.mocNgay+'</div>':'-')+'</td><td>'+fmt(o.nhap)+'</td><td>'+(s[0]==='SP02'?'-':fmt(o.ban))+'</td>'
+   +'<div style="overflow-x:auto"><table class="rpt"><thead><tr><th>Hàng</th><th>Mốc</th><th>+Nhập</th><th>−Bán</th><th>−Trả HL</th><th>Tồn</th></tr></thead><tbody>';
+  VB_SKU.forEach(function(s){var o=t[s[0]];h+='<tr><td>'+s[1]+'</td><td>'+(o.mocNgay?fmt(o.moc)+'<div class="muted" style="font-size:11px">'+o.mocNgay+'</div>':'-')+'</td><td>'+fmt(o.nhap)+'</td><td>'+(s[0]==='SP02'?'-':fmt(o.ban))+'</td><td>'+(o.tra?fmt(o.tra):'-')+'</td>'
     +'<td><b style="color:'+(o.ton<0?'#c8102e':'inherit')+'">'+fmt(o.ton)+'</b></td></tr>'});
   h+='</tbody></table></div>';
   hnModal('📊 Tồn kho Hà Nội',h,'',null);
